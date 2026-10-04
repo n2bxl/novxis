@@ -4,7 +4,9 @@ from collections.abc import Callable
 from decimal import Decimal
 from typing import Any
 
-from scapy.sendrecv import AsyncSniffer
+# Import through scapy.all so Scapy loads its configured protocol layers and
+# link-layer registrations before opening the capture socket.
+from scapy.all import AsyncSniffer
 
 from novxis.capture.frame import CapturedFrame
 from novxis.capture.provider import FrameHandler
