@@ -1,15 +1,13 @@
-"""Live ARP observation and exchange correlation for Phase 0."""
+"""Replay PCAP/PCAPNG through the Phase 0 ARP event pipeline."""
 
 import argparse
 from decimal import Decimal
+from pathlib import Path
 import sys
 
 from novxis.capture.frame import CapturedFrame
-from novxis.capture.scapy_provider import ScapyCaptureProvider
-from novxis.pipeline import (
-    ARPEventPipeline,
-    UnsupportedLinkTypeError,
-)
+from novxis.capture.pcap_replay import PcapReplayError, PcapReplayProvider
+from novxis.pipeline import ARPEventPipeline, UnsupportedLinkTypeError
 from novxis.presentation.arp_console import format_timestamp, print_arp_result
 from novxis.protocols.arp import ARPParseError
 from novxis.protocols.ethernet import EthernetParseError
@@ -39,20 +37,19 @@ def _build_handler(pipeline: ARPEventPipeline):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Capture ARP observations and correlate request/reply exchanges."
+        description="Replay PCAP/PCAPNG through the NOVXIS ARP event pipeline."
     )
-    parser.add_argument("interface", help="Interface to capture from, such as en5.")
+    parser.add_argument("path", type=Path, help="Capture file to replay.")
     parser.add_argument(
         "--count",
         type=int,
-        default=10,
-        help="Stop after this many ARP frames. Use 0 for no packet limit.",
+        default=0,
+        help="Replay at most this many captured frames. Use 0 for all frames.",
     )
     parser.add_argument(
-        "--timeout",
-        type=float,
-        default=30.0,
-        help="Stop after this many seconds.",
+        "--interface-label",
+        default="replay",
+        help="Fallback interface label when the capture format does not provide one.",
     )
     parser.add_argument(
         "--correlation-window",
@@ -69,41 +66,35 @@ def main() -> int:
 
     if args.count < 0:
         parser.error("--count must be zero or greater")
-    if args.timeout <= 0:
-        parser.error("--timeout must be greater than zero")
+    if not args.interface_label:
+        parser.error("--interface-label must not be empty")
     if args.correlation_window <= 0:
         parser.error("--correlation-window must be greater than zero")
 
-    provider = ScapyCaptureProvider()
+    provider = PcapReplayProvider()
     pipeline = ARPEventPipeline(correlation_window=args.correlation_window)
 
-    print("NOVXIS ARP event capture")
+    print("NOVXIS ARP replay")
     print(
-        f"interface={args.interface} filter=arp "
-        f"count={args.count} timeout={args.timeout}s "
+        f"path={args.path} count={args.count or 'all'} "
+        f"fallback_interface={args.interface_label} "
         f"correlation_window={args.correlation_window}s"
     )
     print()
 
     try:
-        provider.start(
-            args.interface,
+        replayed = provider.replay(
+            args.path,
             _build_handler(pipeline),
-            bpf_filter="arp",
+            interface_label=args.interface_label,
             count=args.count,
-            timeout=args.timeout,
         )
-        provider.wait()
-    except KeyboardInterrupt:
-        provider.stop()
-        print("\nCapture stopped.")
-        return 130
-    except Exception as exc:
-        provider.stop()
-        print(f"Capture failed: {exc}", file=sys.stderr)
+    except (OSError, PcapReplayError, ValueError) as exc:
+        print(f"Replay failed: {exc}", file=sys.stderr)
         return 1
 
-    print("\nCapture complete.")
+    print("\nReplay complete.")
+    print(f"Frames replayed: {replayed}")
     print(f"Pending unmatched requests: {len(pipeline.pending_requests)}")
     return 0
 
