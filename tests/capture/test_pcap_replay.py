@@ -1,5 +1,6 @@
 from collections import namedtuple
 from decimal import Decimal
+import struct
 
 import pytest
 
@@ -172,3 +173,51 @@ def test_replay_validates_arguments(interface_label, count, message):
             interface_label=interface_label,
             count=count,
         )
+
+
+def test_replay_reads_real_classic_pcap_through_scapy(tmp_path):
+    raw_frame = bytes.fromhex(
+        "ffffffffffff"
+        "5c475e67b325"
+        "0806"
+        "0001"
+        "0800"
+        "06"
+        "04"
+        "0001"
+        "5c475e67b325"
+        "c0a8041e"
+        "000000000000"
+        "c0a8041e"
+    ) + (b"\x00" * 18)
+
+    global_header = struct.pack(
+        "<IHHIIII",
+        0xA1B2C3D4,
+        2,
+        4,
+        0,
+        0,
+        65535,
+        1,
+    )
+    packet_header = struct.pack(
+        "<IIII",
+        100,
+        250_000,
+        len(raw_frame),
+        len(raw_frame),
+    )
+
+    path = tmp_path / "fixture.pcap"
+    path.write_bytes(global_header + packet_header + raw_frame)
+
+    frames = []
+    emitted = PcapReplayProvider().replay(path, frames.append)
+
+    assert emitted == 1
+    assert frames[0].timestamp == Decimal("100.25")
+    assert frames[0].data == raw_frame
+    assert frames[0].captured_length == len(raw_frame)
+    assert frames[0].original_length == len(raw_frame)
+    assert frames[0].link_type == 1
