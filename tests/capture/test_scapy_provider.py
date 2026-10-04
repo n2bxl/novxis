@@ -16,10 +16,12 @@ class FakePacket:
 
 class FakeSniffer:
     def __init__(self, **kwargs):
+        if "timeout" in kwargs:
+            raise TypeError("'timeout' isn't supported with AsyncSniffer. Use join(timeout=1)")
         self.kwargs = kwargs
         self.running = False
         self.stop_calls = 0
-        self.join_calls = 0
+        self.join_calls = []
 
     def start(self):
         self.running = True
@@ -28,9 +30,10 @@ class FakeSniffer:
         self.stop_calls += 1
         self.running = False
 
-    def join(self):
-        self.join_calls += 1
-        self.running = False
+    def join(self, timeout=None):
+        self.join_calls.append(timeout)
+        if timeout is None:
+            self.running = False
 
 
 class FakeSnifferFactory:
@@ -61,7 +64,7 @@ def test_start_configures_async_sniffer_and_emits_captured_frame():
     assert sniffer.kwargs["filter"] == "arp"
     assert sniffer.kwargs["store"] is False
     assert sniffer.kwargs["count"] == 5
-    assert sniffer.kwargs["timeout"] == 30
+    assert "timeout" not in sniffer.kwargs
     assert provider.is_running is True
 
     sniffer.kwargs["prn"](FakePacket())
@@ -126,7 +129,7 @@ def test_stop_and_wait_delegate_to_active_sniffer():
     sniffer = factory.instances[0]
 
     provider.wait()
-    assert sniffer.join_calls == 1
+    assert sniffer.join_calls == [None]
     assert provider.is_running is False
 
     sniffer.running = True
@@ -153,3 +156,18 @@ def test_captured_frame_preserves_trailing_bytes_exactly():
     assert frames[0].data == (b"\xaa" * 42) + (b"\x00" * 32)
     assert frames[0].captured_length == 74
     assert frames[0].original_length is None
+
+
+def test_wait_enforces_timeout_with_join_then_stop():
+    factory = FakeSnifferFactory()
+    provider = ScapyCaptureProvider(sniffer_factory=factory)
+    provider.start("en5", lambda frame: None, timeout=30)
+
+    sniffer = factory.instances[0]
+    assert "timeout" not in sniffer.kwargs
+
+    provider.wait()
+
+    assert sniffer.join_calls == [30]
+    assert sniffer.stop_calls == 1
+    assert provider.is_running is False
