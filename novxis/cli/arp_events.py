@@ -93,7 +93,7 @@ def _build_handler(correlator: ARPCorrelator):
             f"{_format_protocol_address(request_message.protocol_type, request_message.sender_protocol)} "
             "→ "
             f"{_format_protocol_address(request_message.protocol_type, request_message.target_protocol)} "
-            f"resolved_to={_format_hardware_address(reply_message.sender_hardware)} "
+            f"reply_sender_hw={_format_hardware_address(reply_message.sender_hardware)} "
             f"duration={duration_ms}ms"
         )
 
