@@ -5,6 +5,7 @@ from decimal import Decimal
 from os import PathLike
 from typing import Any
 
+from scapy.error import Scapy_Exception
 from scapy.utils import RawPcapReader
 
 from novxis.capture.frame import CapturedFrame
@@ -37,23 +38,30 @@ class PcapReplayProvider:
         if count < 0:
             raise ValueError("count must be zero or greater")
 
-        reader = self._reader_factory(str(path))
+        try:
+            reader = self._reader_factory(str(path))
+        except Scapy_Exception as exc:
+            raise PcapReplayError(str(exc)) from exc
+
         emitted = 0
 
         try:
-            for data, metadata in reader:
-                handler(
-                    self._to_captured_frame(
-                        data,
-                        metadata,
-                        reader,
-                        interface_label,
+            try:
+                for data, metadata in reader:
+                    handler(
+                        self._to_captured_frame(
+                            data,
+                            metadata,
+                            reader,
+                            interface_label,
+                        )
                     )
-                )
-                emitted += 1
+                    emitted += 1
 
-                if count and emitted >= count:
-                    break
+                    if count and emitted >= count:
+                        break
+            except Scapy_Exception as exc:
+                raise PcapReplayError(str(exc)) from exc
         finally:
             reader.close()
 
@@ -102,7 +110,7 @@ class PcapReplayProvider:
     def _interface(metadata: Any, fallback: str) -> str:
         ifname = getattr(metadata, "ifname", None)
 
-        if isinstance(ifname, bytes):
+        if isinstance(ifname, bytes) and ifname:
             return ifname.decode("utf-8", errors="replace")
         if isinstance(ifname, str) and ifname:
             return ifname
