@@ -92,6 +92,41 @@ Protocol interpretation
 
 Scapy packet objects should remain inside the Scapy capture implementation. Protocol parsers and event models should consume NOVXIS-owned evidence types instead.
 
+## ARP Evidence Decoding
+
+The next Phase 0 layer decodes the captured bytes without asking Scapy to interpret the protocol for NOVXIS:
+
+```text
+CapturedFrame
+     ↓
+parse_ethernet()
+     ↓
+EthernetFrame
+     ↓
+parse_arp()
+     ↓
+ARPMessage
+```
+
+Run the live ARP evidence decoder with:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.arp_capture en5 --count 5 --timeout 30
+```
+
+After reinstalling the editable package so the new console entry point is registered, the equivalent command is:
+
+```bash
+python -m pip install -e ".[dev]"
+sudo .venv/bin/novxis-arp-capture en5 --count 5 --timeout 30
+```
+
+The decoder reports packet facts such as Ethernet source/destination, EtherType, ARP header fields, sender/target addresses, opcode, and the exact number and contents of bytes that remain after the logical ARP message.
+
+The ARP parser calculates its offsets from the packet's own `HLEN` and `PLEN` fields. It does not assume Ethernet/IPv4 address sizes internally, and it preserves all trailing bytes without assigning them a meaning.
+
+This layer intentionally stops at decoded evidence. Classifications such as ARP probe, announcement, cache validation, or completed resolution belong to later interpretation and correlation layers.
+
 ## Current Phase 0 Boundary
 
 ```text
