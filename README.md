@@ -127,6 +127,38 @@ The ARP parser calculates its offsets from the packet's own `HLEN` and `PLEN` fi
 
 This layer intentionally stops at decoded evidence. Classifications such as ARP probe, announcement, cache validation, or completed resolution belong to later interpretation and correlation layers.
 
+## ARP Observations and Correlation
+
+NOVXIS can now normalize decoded ARP evidence into observations and conservatively correlate matching request/reply pairs:
+
+```text
+ARPMessage
+    ↓
+observe_arp()
+    ↓
+ARPRequestObserved / ARPReplyObserved
+    ↓
+ARPCorrelator
+    ↓
+ARPExchangeCompleted
+```
+
+Run the live event view with:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.arp_events en5 --count 10 --timeout 30
+```
+
+The corresponding installed console command is `novxis-arp-events` after reinstalling the editable package.
+
+Every observation retains the original `CapturedFrame`, decoded `EthernetFrame`, and `ARPMessage`, so higher-level events remain traceable to the exact packet evidence that produced them.
+
+A request/reply exchange is completed only when the observations occur on the same interface, fall within the configured correlation window, use matching ARP address types and lengths, reverse the sender/target protocol addresses, and the reply targets the requester's hardware address.
+
+The default correlation window is five seconds. This is a configurable NOVXIS implementation policy, not a property guaranteed by ARP itself. Unmatched requests and replies remain unmatched rather than being forced into an inferred conversation.
+
+This layer still does not classify higher-level behaviors such as probes, announcements, cache validation, address conflicts, or resolution failures.
+
 ## Current Phase 0 Boundary
 
 ```text
