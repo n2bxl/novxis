@@ -18,6 +18,7 @@ class ScapyCaptureProvider:
     def __init__(self, sniffer_factory: SnifferFactory = AsyncSniffer) -> None:
         self._sniffer_factory = sniffer_factory
         self._sniffer: Any | None = None
+        self._timeout: float | None = None
 
     @property
     def is_running(self) -> bool:
@@ -55,16 +56,16 @@ class ScapyCaptureProvider:
 
         if bpf_filter:
             kwargs["filter"] = bpf_filter
-        if timeout is not None:
-            kwargs["timeout"] = timeout
 
         sniffer = self._sniffer_factory(**kwargs)
         self._sniffer = sniffer
+        self._timeout = timeout
 
         try:
             sniffer.start()
         except Exception:
             self._sniffer = None
+            self._timeout = None
             raise
 
     def stop(self) -> None:
@@ -73,9 +74,14 @@ class ScapyCaptureProvider:
             self._sniffer.stop()
 
     def wait(self) -> None:
-        """Block until the current sniffer exits."""
-        if self._sniffer is not None:
-            self._sniffer.join()
+        """Wait until capture completes, enforcing the configured timeout."""
+        if self._sniffer is None:
+            return
+
+        self._sniffer.join(timeout=self._timeout)
+
+        if self._timeout is not None and self._sniffer.running:
+            self._sniffer.stop()
 
     @staticmethod
     def _to_captured_frame(packet: Any, interface: str) -> CapturedFrame:
