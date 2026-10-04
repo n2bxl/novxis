@@ -159,6 +159,42 @@ The default correlation window is five seconds. This is a configurable NOVXIS im
 
 This layer still does not classify higher-level behaviors such as probes, announcements, cache validation, address conflicts, or resolution failures.
 
+## PCAP/PCAPNG Replay
+
+Live capture and file replay now converge on the same ARP processing pipeline:
+
+```text
+ScapyCaptureProvider ──► CapturedFrame ──┐
+                                         ├──► ARPEventPipeline ──► console
+PcapReplayProvider  ──► CapturedFrame ───┘
+```
+
+Replay a capture with:
+
+```bash
+python -m novxis.cli.arp_replay path/to/capture.pcapng
+```
+
+After reinstalling the editable package, the equivalent console command is:
+
+```bash
+novxis-arp-replay path/to/capture.pcapng
+```
+
+Replay does not require elevated packet-capture privileges because it reads an existing file rather than opening a live network interface.
+
+The replay provider uses Scapy's raw PCAP reader so the original packet bytes are preserved. Classic PCAP timestamps, captured lengths, original wire lengths, and link type are converted into `CapturedFrame` metadata. For PCAPNG, per-packet link type and interface names are preserved when available.
+
+Phase 0's ARP pipeline currently supports Ethernet captures (DLT 1). A capture that explicitly declares another link type is rejected rather than being guessed as Ethernet.
+
+The optional `--interface-label` argument supplies a fallback label for formats such as classic PCAP that do not encode a capture interface name. PCAPNG interface names take precedence when present.
+
+```bash
+python -m novxis.cli.arp_replay capture.pcap \
+  --interface-label en5 \
+  --correlation-window 5
+```
+
 ## Current Phase 0 Boundary
 
 ```text
