@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "novxis"
+version = "0.0.1"
+description = "Network Observation, Visualization, eXploration Interface System"
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "scapy>=2.8.0,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1,<10",
+]
+
+[project.scripts]
+novxis-interfaces = "novxis.cli.interfaces:main"
+
+[tool.setuptools.packages.find]
+include = ["novxis*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
