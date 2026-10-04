@@ -89,3 +89,57 @@ def test_parse_arp_rejects_bytes_shorter_than_declared_lengths():
 
     with pytest.raises(ARPParseError, match="requiring 28 bytes; got 27"):
         parse_arp(data)
+
+
+def test_parse_observed_60_byte_unicast_request_preserves_18_padding_bytes():
+    raw = bytes.fromhex(
+        "9cebe887e189"
+        "6813f3e958ce"
+        "0806"
+        "0001"
+        "0800"
+        "06"
+        "04"
+        "0001"
+        "6813f3e958ce"
+        "c0a80417"
+        "000000000000"
+        "c0a8044e"
+    ) + (b"\x00" * 18)
+
+    ethernet = parse_ethernet(raw)
+    arp = parse_arp(ethernet.payload)
+
+    assert len(raw) == 60
+    assert ethernet.destination == bytes.fromhex("9cebe887e189")
+    assert ethernet.source == bytes.fromhex("6813f3e958ce")
+    assert arp.opcode == 1
+    assert arp.sender_protocol == bytes([192, 168, 4, 23])
+    assert arp.target_protocol == bytes([192, 168, 4, 78])
+    assert arp.trailing_bytes == b"\x00" * 18
+
+
+def test_parse_observed_42_byte_reply_has_no_trailing_bytes():
+    raw = bytes.fromhex(
+        "6813f3e958ce"
+        "9cebe887e189"
+        "0806"
+        "0001"
+        "0800"
+        "06"
+        "04"
+        "0002"
+        "9cebe887e189"
+        "c0a8044e"
+        "6813f3e958ce"
+        "c0a80417"
+    )
+
+    ethernet = parse_ethernet(raw)
+    arp = parse_arp(ethernet.payload)
+
+    assert len(raw) == 42
+    assert arp.opcode == 2
+    assert arp.sender_protocol == bytes([192, 168, 4, 78])
+    assert arp.target_protocol == bytes([192, 168, 4, 23])
+    assert arp.trailing_bytes == b""
