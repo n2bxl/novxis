@@ -133,3 +133,23 @@ def test_stop_and_wait_delegate_to_active_sniffer():
     provider.stop()
     assert sniffer.stop_calls == 1
     assert provider.is_running is False
+
+
+def test_captured_frame_preserves_trailing_bytes_exactly():
+    factory = FakeSnifferFactory()
+    provider = ScapyCaptureProvider(sniffer_factory=factory)
+    frames: list[CapturedFrame] = []
+
+    class PaddedPacket:
+        time = Decimal("2000.25")
+        wirelen = None
+
+        def __bytes__(self) -> bytes:
+            return (b"\xaa" * 42) + (b"\x00" * 32)
+
+    provider.start("en5", frames.append, bpf_filter="arp")
+    factory.instances[0].kwargs["prn"](PaddedPacket())
+
+    assert frames[0].data == (b"\xaa" * 42) + (b"\x00" * 32)
+    assert frames[0].captured_length == 74
+    assert frames[0].original_length is None
