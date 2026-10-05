@@ -5,9 +5,15 @@ from novxis.pipeline.arp import (
     ARPProcessingResult,
     UnsupportedLinkTypeError,
 )
+from novxis.pipeline.arp_state import (
+    ARPStatePipeline,
+    ARPStateProcessingResult,
+)
 
 __all__ = [
     "ARPEventPipeline",
     "ARPProcessingResult",
+    "ARPStatePipeline",
+    "ARPStateProcessingResult",
     "UnsupportedLinkTypeError",
 ]
