@@ -4,7 +4,9 @@
 
 NOVXIS is an open-source networking education, exploration, visualization, and troubleshooting project focused on making abstract network behavior visually concrete.
 
-Phase 0 is intentionally console-first. The first vertical slice uses ARP to prove that NOVXIS can capture or replay real traffic, decode protocol evidence, produce normalized events, and present those events clearly.
+Phase 0 established the console-first ARP vertical slice: NOVXIS can capture or replay real traffic, decode protocol evidence, produce normalized events, correlate exchanges, and present them clearly.
+
+Phase 1 begins the network-state layer that turns a stream of observations into a conservative current view of what NOVXIS has actually learned.
 
 ## Phase 0 Development Environment
 
@@ -195,7 +197,51 @@ python -m novxis.cli.arp_replay capture.pcap \
   --correlation-window 5
 ```
 
-## Current Phase 0 Boundary
+## Phase 1: ARP-Derived Network State
+
+Phase 1 begins by deriving scoped address bindings from normalized ARP observations:
+
+```text
+CapturedFrame
+     ↓
+ARPEventPipeline
+     ↓
+ARPMessageObserved
+     ↓
+NetworkState
+     ↓
+ARPBindingLearned
+ARPBindingRefreshed
+ARPBindingChanged
+```
+
+An ARP binding records the currently observed relationship between one protocol address and one hardware address on one interface, together with first-seen, last-seen, and observation-count metadata.
+
+NOVXIS deliberately does not equate an ARP binding with a physical host identity. Technologies such as proxy ARP, virtual addressing, interface changes, and address reuse can make that inference unsafe. Host identity can be layered on later when multiple sources of evidence support it.
+
+Only the ARP sender fields establish state in this first slice. Target fields are not treated as proof of a binding. Sender protocol address `0.0.0.0` and all-zero sender hardware addresses are preserved in packet/event evidence but do not create state entries.
+
+A hardware-address change for the same protocol address and interface produces `ARPBindingChanged`. It is not automatically labeled an address conflict.
+
+Replay the sanitized Phase 0 fixture through the new state layer with:
+
+```bash
+python -m novxis.cli.arp_state_replay \
+  tests/fixtures/arp_phase0_sanitized.pcap \
+  --interface-label fixture
+```
+
+After reinstalling the editable package, the equivalent command is:
+
+```bash
+novxis-arp-state-replay \
+  tests/fixtures/arp_phase0_sanitized.pcap \
+  --interface-label fixture
+```
+
+The final snapshot should contain six ARP-derived bindings. The `0.0.0.0` sender does not become a binding, while the repeated `192.0.2.70` observation refreshes the existing binding rather than creating a duplicate.
+
+## Phase 0 Completed Boundary
 
 ```text
 LIVE CAPTURE ─────┐
@@ -204,3 +250,19 @@ PCAP/PCAPNG ──────┘
 ```
 
 The first supported protocol vertical slice is ARP.
+
+## Current Phase 1 Boundary
+
+```text
+PACKETS
+   ↓
+EVIDENCE
+   ↓
+NORMALIZED EVENTS
+   ↓
+NETWORK STATE
+   ↓
+PRESENTATION
+```
+
+Phase 1 currently stops at ARP-derived address-binding state. It does not yet infer durable host identity or render a graphical network world.
