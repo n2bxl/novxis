@@ -251,6 +251,39 @@ PCAP/PCAPNG ──────┘
 
 The first supported protocol vertical slice is ARP.
 
+## Live ARP Network State
+
+The same Phase 1 state pipeline can now consume live ARP capture:
+
+```text
+ScapyCaptureProvider ──► CapturedFrame ──► ARPStatePipeline ──► NetworkState
+PcapReplayProvider  ───► CapturedFrame ──────────┘
+```
+
+Run a finite live state capture with:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.arp_state_live en0 \
+  --count 20 \
+  --timeout 30
+```
+
+After reinstalling the editable package, the equivalent console command is:
+
+```bash
+sudo .venv/bin/novxis-arp-state-live en0 \
+  --count 20 \
+  --timeout 30
+```
+
+The command prints packet/event evidence as it arrives, prints any derived
+`ARPBindingLearned`, `ARPBindingRefreshed`, or `ARPBindingChanged`
+state changes, and prints the current ARP-derived state snapshot when capture
+ends.
+
+Live capture and file replay therefore share the same state-building logic.
+Only the source of `CapturedFrame` evidence differs.
+
 ## Current Phase 1 Boundary
 
 ```text
