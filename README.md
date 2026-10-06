@@ -284,6 +284,46 @@ ends.
 Live capture and file replay therefore share the same state-building logic.
 Only the source of `CapturedFrame` evidence differs.
 
+## IPv4 Evidence Decoding
+
+The second protocol path begins with IPv4 as a reusable Layer 3 boundary rather
+than jumping directly from Ethernet into a transport or application protocol:
+
+```text
+CapturedFrame
+     ↓
+parse_ethernet()
+     ↓
+EthernetFrame
+     ↓
+parse_ipv4()
+     ↓
+IPv4Datagram
+```
+
+Run a finite live IPv4 evidence capture with:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.ipv4_capture en0 \
+  --count 5 \
+  --timeout 30
+```
+
+After reinstalling the editable package, the equivalent console command is:
+
+```bash
+sudo .venv/bin/novxis-ipv4-capture en0 --count 5 --timeout 30
+```
+
+The IPv4 decoder derives the header length from IHL, respects the datagram's
+declared total length, preserves IPv4 options, exposes fragmentation fields,
+and keeps any bytes beyond the logical IPv4 datagram as trailing evidence.
+It does not yet validate the IPv4 header checksum or interpret the upper-layer
+payload.
+
+This establishes the boundary needed for the next vertical slice: ICMP can
+consume `IPv4Datagram.payload` without depending on Scapy protocol objects.
+
 ## Current Phase 1 Boundary
 
 ```text
