@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 ETHERNET_HEADER_LENGTH = 14
+ETHERTYPE_IPV4 = 0x0800
 ETHERTYPE_ARP = 0x0806
 
 
