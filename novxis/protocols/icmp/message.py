@@ -3,7 +3,9 @@
 from dataclasses import dataclass
 
 ICMP_ECHO_REPLY = 0
+ICMP_DESTINATION_UNREACHABLE = 3
 ICMP_ECHO_REQUEST = 8
+ICMP_TIME_EXCEEDED = 11
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,5 +29,12 @@ class ICMPMessage:
     def echo_sequence(self) -> int | None:
         """Return the Echo sequence number when the message type uses Echo format."""
         if self.type not in (ICMP_ECHO_REPLY, ICMP_ECHO_REQUEST):
+            return None
+        return int.from_bytes(self.rest_of_header[2:4], byteorder="big")
+
+    @property
+    def next_hop_mtu(self) -> int | None:
+        """Return the advertised next-hop MTU for Destination Unreachable code 4."""
+        if self.type != ICMP_DESTINATION_UNREACHABLE or self.code != 4:
             return None
         return int.from_bytes(self.rest_of_header[2:4], byteorder="big")

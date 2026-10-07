@@ -35,6 +35,18 @@ def test_parse_generic_icmp_preserves_rest_of_header_without_echo_interpretation
     assert message.payload == bytes.fromhex("aabb")
 
 
+def test_destination_unreachable_fragmentation_needed_exposes_next_hop_mtu():
+    message = parse_icmp(bytes.fromhex("03041234000005dc") + (b"\x00" * 20))
+
+    assert message.next_hop_mtu == 1500
+
+
+def test_next_hop_mtu_is_not_inferred_for_other_messages():
+    message = parse_icmp(bytes.fromhex("0b001234000005dc") + (b"\x00" * 20))
+
+    assert message.next_hop_mtu is None
+
+
 def test_parse_icmp_rejects_truncated_base_message():
     with pytest.raises(ICMPParseError, match="at least 8 bytes"):
         parse_icmp(b"\x08" + (b"\x00" * 6))
