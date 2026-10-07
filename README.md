@@ -384,9 +384,6 @@ stack.
 Detailed acceptance evidence is recorded in
 `docs/validation/2026-10-06-ipv4-icmp-live-validation.md`.
 
-This establishes the boundary needed for the next vertical slice: ICMP can
-consume `IPv4Datagram.payload` without depending on Scapy protocol objects.
-
 ## Current Phase 1 Boundary
 
 ```text
