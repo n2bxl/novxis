@@ -52,6 +52,25 @@ def _time_exceeded_frame():
     )
 
 
+def _time_exceeded_frame_with_trailing_quote_bytes():
+    quoted = (
+        bytes.fromhex(
+            "45000028beef40000111abcd"
+            "c000020ac6336414"
+            "c000829a00281234"
+        )
+        + (b"\x00" * 12)
+        + (b"\xaa" * 28)
+    )
+    icmp = bytes.fromhex("0b00222200000000") + quoted
+    return _outer_frame(
+        icmp,
+        "102.000",
+        bytes([198, 51, 100, 1]),
+        bytes([192, 0, 2, 10]),
+    )
+
+
 def test_live_handler_prints_echo_events_and_completed_exchange(capsys):
     pipeline = ICMPEventPipeline()
     handle = _build_handler(pipeline)
@@ -85,3 +104,18 @@ def test_live_handler_prints_time_exceeded_with_quoted_ipv4(capsys):
     assert "protocol=17" in output
     assert "payload_prefix=8 bytes" in output
     assert "truncated=true" in output
+
+
+def test_live_handler_prints_trailing_quoted_ipv4_evidence(capsys):
+    handle = _build_handler(ICMPEventPipeline())
+
+    handle(_time_exceeded_frame_with_trailing_quote_bytes())
+
+    output = capsys.readouterr().out
+
+    assert "ICMPTimeExceededObserved" in output
+    assert "declared_total=40" in output
+    assert "available=68" in output
+    assert "payload_prefix=20 bytes" in output
+    assert "trailing=28 bytes" in output
+    assert "truncated=false" in output
