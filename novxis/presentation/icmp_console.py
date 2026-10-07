@@ -113,6 +113,7 @@ def print_icmp_result(result: ICMPProcessingResult) -> None:
             f"declared_total={quoted.total_length} "
             f"available={quoted.available_length} "
             f"payload_prefix={len(quoted.payload_prefix)} bytes "
+            f"trailing={len(quoted.trailing_bytes)} bytes "
             f"truncated={str(quoted.is_truncated).lower()}"
         )
 
