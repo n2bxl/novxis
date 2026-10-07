@@ -25,6 +25,7 @@ novxis-arp-events = "novxis.cli.arp_events:main"
 novxis-arp-replay = "novxis.cli.arp_replay:main"
 novxis-arp-state-replay = "novxis.cli.arp_state_replay:main"
 novxis-arp-state-live = "novxis.cli.arp_state_live:main"
+novxis-ipv4-capture = "novxis.cli.ipv4_capture:main"
 
 [tool.setuptools.packages.find]
 include = ["novxis*"]

@@ -10,14 +10,9 @@ from novxis.events import (
     ARPMessageObserved,
     observe_arp,
 )
+from novxis.pipeline.link import UnsupportedLinkTypeError, validate_ethernet_link_type
 from novxis.protocols.arp import parse_arp
 from novxis.protocols.ethernet import ETHERTYPE_ARP, parse_ethernet
-
-DLT_EN10MB = 1
-
-
-class UnsupportedLinkTypeError(ValueError):
-    """Raised when a known capture link type is not Ethernet."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,11 +36,7 @@ class ARPEventPipeline:
 
     def process(self, frame: CapturedFrame) -> ARPProcessingResult | None:
         """Decode one Ethernet/ARP frame and update correlation state."""
-        if frame.link_type not in (None, DLT_EN10MB):
-            raise UnsupportedLinkTypeError(
-                f"ARP Phase 0 supports Ethernet link type {DLT_EN10MB}; "
-                f"got {frame.link_type}."
-            )
+        validate_ethernet_link_type(frame.link_type)
 
         ethernet = parse_ethernet(frame.data)
 
