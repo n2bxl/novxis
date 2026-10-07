@@ -1,4 +1,4 @@
-"""Shared Ethernet/IPv4/ICMP Echo event pipeline."""
+"""Shared Ethernet/IPv4/ICMP event pipeline."""
 
 from dataclasses import dataclass
 from decimal import Decimal
@@ -7,7 +7,17 @@ from novxis.capture.frame import CapturedFrame
 from novxis.events.icmp import ICMPEchoExchangeCompleted, ICMPMessageObserved, observe_icmp
 from novxis.events.icmp_correlator import ICMPEchoCorrelator
 from novxis.pipeline.ipv4 import IPv4EvidencePipeline
-from novxis.protocols.icmp import parse_icmp
+from novxis.protocols.icmp import (
+    ICMP_DESTINATION_UNREACHABLE,
+    ICMP_TIME_EXCEEDED,
+    ICMPMessage,
+    parse_icmp,
+)
+from novxis.protocols.ipv4 import (
+    IPv4DatagramQuote,
+    IPv4QuoteParseError,
+    parse_ipv4_quote,
+)
 
 IP_PROTOCOL_ICMP = 1
 IPV4_FLAG_MORE_FRAGMENTS = 0b001
@@ -22,7 +32,7 @@ class ICMPProcessingResult:
 
 
 class ICMPEventPipeline:
-    """Process captured frames through Ethernet, IPv4, and ICMP Echo events."""
+    """Process captured frames through Ethernet, IPv4, and ICMP events."""
 
     def __init__(self, correlation_window: Decimal = Decimal("5")) -> None:
         self._ipv4 = IPv4EvidencePipeline()
@@ -34,7 +44,7 @@ class ICMPEventPipeline:
         return self._correlator.pending_requests
 
     def process(self, frame: CapturedFrame) -> ICMPProcessingResult | None:
-        """Decode one unfragmented IPv4/ICMP frame and update Echo correlation."""
+        """Decode one unfragmented IPv4/ICMP frame and update ICMP semantics."""
         ipv4_result = self._ipv4.process(frame)
 
         if ipv4_result is None:
@@ -52,11 +62,13 @@ class ICMPEventPipeline:
             return None
 
         message = parse_icmp(datagram.payload)
+        quoted_ipv4 = _decode_error_quote(message)
         observation = observe_icmp(
             ipv4_result.captured,
             ipv4_result.ethernet,
             datagram,
             message,
+            quoted_ipv4=quoted_ipv4,
         )
         exchange = self._correlator.observe(observation)
 
@@ -64,3 +76,17 @@ class ICMPEventPipeline:
             observation=observation,
             exchange=exchange,
         )
+
+
+def _decode_error_quote(message: ICMPMessage) -> IPv4DatagramQuote | None:
+    """Decode quoted IPv4 evidence only for supported ICMP error types."""
+    if message.type not in (
+        ICMP_DESTINATION_UNREACHABLE,
+        ICMP_TIME_EXCEEDED,
+    ):
+        return None
+
+    try:
+        return parse_ipv4_quote(message.payload)
+    except IPv4QuoteParseError:
+        return None

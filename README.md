@@ -384,6 +384,42 @@ stack.
 Detailed acceptance evidence is recorded in
 `docs/validation/2026-10-06-ipv4-icmp-live-validation.md`.
 
+## ICMP Error Events and Quoted IPv4 Evidence
+
+ICMP error handling now extends the same IPv4 evidence path with semantic
+observations for Destination Unreachable and Time Exceeded:
+
+```text
+IPv4Datagram
+     ↓
+ICMPMessage
+     ↓
+ICMPDestinationUnreachableObserved / ICMPTimeExceededObserved
+     ↓
+IPv4DatagramQuote
+```
+
+The quoted IPv4 model is intentionally distinct from a complete `IPv4Datagram`.
+ICMP errors may include the entire original datagram, only the original IPv4
+header plus a transport prefix, or additional bytes beyond the original
+datagram's declared total length. NOVXIS preserves those cases without forcing
+them into one representation.
+
+Live validation on 2026-10-06 exercised both implemented error families:
+
+- `traceroute -m 4 1.1.1.1` produced Time Exceeded / TTL Exceeded in Transit
+  responses from successive hops.
+- `traceroute -m 2 192.168.4.1` produced Destination Unreachable / Port
+  Unreachable responses from the local gateway.
+- The quoted original packets reported IPv4 protocol 17, confirming real UDP
+  traceroute probes.
+- Quotes were observed as complete, truncated to the IPv4 header plus eight
+  transport bytes, and complete with additional trailing evidence.
+
+The console reports both the quoted payload-prefix length and any preserved
+trailing-byte count. The extra bytes remain uninterpreted evidence until a
+future ICMP-extension parser can identify them safely.
+
 ## Current Phase 1 Boundary
 
 ```text

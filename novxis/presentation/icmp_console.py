@@ -1,9 +1,12 @@
 """Console presentation for normalized ICMPv4 processing results."""
 
 from novxis.events.icmp import (
+    ICMPDestinationUnreachableObserved,
     ICMPEchoReplyObserved,
     ICMPEchoRequestObserved,
+    ICMPErrorObserved,
     ICMPMessageObserved,
+    ICMPTimeExceededObserved,
 )
 from novxis.pipeline.icmp import ICMPProcessingResult
 from novxis.presentation.ipv4_console import format_ipv4_address, format_timestamp
@@ -14,6 +17,10 @@ def _observation_name(observation: ICMPMessageObserved) -> str:
         return "ICMPEchoRequestObserved"
     if isinstance(observation, ICMPEchoReplyObserved):
         return "ICMPEchoReplyObserved"
+    if isinstance(observation, ICMPDestinationUnreachableObserved):
+        return "ICMPDestinationUnreachableObserved"
+    if isinstance(observation, ICMPTimeExceededObserved):
+        return "ICMPTimeExceededObserved"
     return "ICMPMessageObserved"
 
 
@@ -28,6 +35,36 @@ def _type_name(type_value: int) -> str:
     }.get(type_value, "unknown")
 
 
+def _code_name(type_value: int, code: int) -> str | None:
+    if type_value == 3:
+        return {
+            0: "Network Unreachable",
+            1: "Host Unreachable",
+            2: "Protocol Unreachable",
+            3: "Port Unreachable",
+            4: "Fragmentation Needed",
+            5: "Source Route Failed",
+            6: "Destination Network Unknown",
+            7: "Destination Host Unknown",
+            8: "Source Host Isolated",
+            9: "Network Administratively Prohibited",
+            10: "Host Administratively Prohibited",
+            11: "Network Unreachable for TOS",
+            12: "Host Unreachable for TOS",
+            13: "Communication Administratively Prohibited",
+            14: "Host Precedence Violation",
+            15: "Precedence Cutoff",
+        }.get(code)
+
+    if type_value == 11:
+        return {
+            0: "TTL Exceeded in Transit",
+            1: "Fragment Reassembly Time Exceeded",
+        }.get(code)
+
+    return None
+
+
 def print_icmp_result(result: ICMPProcessingResult) -> None:
     observation = result.observation
     message = observation.message
@@ -40,6 +77,15 @@ def print_icmp_result(result: ICMPProcessingResult) -> None:
             f" seq={message.echo_sequence}"
         )
 
+    code_name = _code_name(message.type, message.code)
+    code_details = f"code={message.code}"
+    if code_name is not None:
+        code_details += f" ({code_name})"
+
+    mtu_details = ""
+    if message.next_hop_mtu is not None:
+        mtu_details = f" next_hop_mtu={message.next_hop_mtu}"
+
     print(
         f"[{format_timestamp(observation.timestamp)}] "
         f"{_observation_name(observation)} "
@@ -47,11 +93,29 @@ def print_icmp_result(result: ICMPProcessingResult) -> None:
         f"{format_ipv4_address(ipv4.source)} → "
         f"{format_ipv4_address(ipv4.destination)} "
         f"type={message.type} ({_type_name(message.type)}) "
-        f"code={message.code} "
+        f"{code_details} "
         f"checksum=0x{message.checksum:04x}"
-        f"{echo_details} "
+        f"{echo_details}"
+        f"{mtu_details} "
         f"payload={len(message.payload)} bytes"
     )
+
+    if isinstance(observation, ICMPErrorObserved):
+        quoted = observation.quoted_ipv4
+        print(
+            "  QuotedIPv4 "
+            f"{format_ipv4_address(quoted.source)} → "
+            f"{format_ipv4_address(quoted.destination)} "
+            f"protocol={quoted.protocol} "
+            f"ttl={quoted.ttl} "
+            f"id=0x{quoted.identification:04x} "
+            f"header={quoted.header_length} "
+            f"declared_total={quoted.total_length} "
+            f"available={quoted.available_length} "
+            f"payload_prefix={len(quoted.payload_prefix)} bytes "
+            f"trailing={len(quoted.trailing_bytes)} bytes "
+            f"truncated={str(quoted.is_truncated).lower()}"
+        )
 
     if result.exchange is None:
         return

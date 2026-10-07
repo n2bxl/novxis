@@ -2,14 +2,16 @@ from decimal import Decimal
 
 from novxis.capture.frame import CapturedFrame
 from novxis.events import (
+    ICMPDestinationUnreachableObserved,
     ICMPEchoReplyObserved,
     ICMPEchoRequestObserved,
     ICMPMessageObserved,
+    ICMPTimeExceededObserved,
     observe_icmp,
 )
 from novxis.protocols.ethernet import EthernetFrame
 from novxis.protocols.icmp import ICMPMessage
-from novxis.protocols.ipv4 import IPv4Datagram
+from novxis.protocols.ipv4 import IPv4Datagram, parse_ipv4_quote
 
 
 def _captured() -> CapturedFrame:
@@ -61,6 +63,16 @@ def _message(type_value: int, code: int = 0) -> ICMPMessage:
     )
 
 
+def _quoted_ipv4():
+    return parse_ipv4_quote(
+        bytes.fromhex(
+            "4500003cbeef40004011abcd"
+            "c000020ac6336414"
+            "c000829a00281234"
+        )
+    )
+
+
 def test_echo_request_becomes_request_observation():
     event = observe_icmp(_captured(), _ethernet(), _ipv4(), _message(8))
 
@@ -75,6 +87,38 @@ def test_echo_reply_becomes_reply_observation():
     assert isinstance(event, ICMPEchoReplyObserved)
 
 
+def test_destination_unreachable_with_quote_becomes_error_observation():
+    event = observe_icmp(
+        _captured(),
+        _ethernet(),
+        _ipv4(),
+        _message(3, code=3),
+        quoted_ipv4=_quoted_ipv4(),
+    )
+
+    assert isinstance(event, ICMPDestinationUnreachableObserved)
+    assert event.quoted_ipv4.protocol == 17
+
+
+def test_time_exceeded_with_quote_becomes_error_observation():
+    event = observe_icmp(
+        _captured(),
+        _ethernet(),
+        _ipv4(),
+        _message(11, code=0),
+        quoted_ipv4=_quoted_ipv4(),
+    )
+
+    assert isinstance(event, ICMPTimeExceededObserved)
+    assert event.quoted_ipv4.destination == bytes([198, 51, 100, 20])
+
+
+def test_error_without_decodable_quote_remains_generic():
+    event = observe_icmp(_captured(), _ethernet(), _ipv4(), _message(3, code=1))
+
+    assert type(event) is ICMPMessageObserved
+
+
 def test_echo_type_with_nonzero_code_remains_generic():
     event = observe_icmp(_captured(), _ethernet(), _ipv4(), _message(8, code=1))
 
@@ -82,6 +126,6 @@ def test_echo_type_with_nonzero_code_remains_generic():
 
 
 def test_non_echo_type_remains_generic():
-    event = observe_icmp(_captured(), _ethernet(), _ipv4(), _message(3, code=1))
+    event = observe_icmp(_captured(), _ethernet(), _ipv4(), _message(5, code=1))
 
     assert type(event) is ICMPMessageObserved

@@ -9,10 +9,13 @@ from novxis.events.arp import (
 )
 from novxis.events.arp_correlator import ARPCorrelator
 from novxis.events.icmp import (
+    ICMPDestinationUnreachableObserved,
     ICMPEchoExchangeCompleted,
     ICMPEchoReplyObserved,
     ICMPEchoRequestObserved,
+    ICMPErrorObserved,
     ICMPMessageObserved,
+    ICMPTimeExceededObserved,
     observe_icmp,
 )
 from novxis.events.icmp_correlator import ICMPEchoCorrelator
@@ -24,10 +27,13 @@ __all__ = [
     "ARPReplyObserved",
     "ARPRequestObserved",
     "observe_arp",
+    "ICMPDestinationUnreachableObserved",
     "ICMPEchoCorrelator",
     "ICMPEchoExchangeCompleted",
     "ICMPEchoReplyObserved",
     "ICMPEchoRequestObserved",
+    "ICMPErrorObserved",
     "ICMPMessageObserved",
+    "ICMPTimeExceededObserved",
     "observe_icmp",
 ]
