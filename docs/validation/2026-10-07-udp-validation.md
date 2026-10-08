@@ -1,7 +1,7 @@
 # UDP Validation: Initial Capture and Controlled Exchange Plan
 
 **Date:** 2026-10-07  
-**Status:** Passive live observation and end-to-end automated testing passed; controlled two-Mac exchange and independent packet comparison pending.
+**Status:** Passive UDP capture, end-to-end automated testing, and controlled two-Mac LAN exchange passed; independent Wireshark/tcpdump field comparison and checksum validation pending.
 
 ## Observed evidence from the first UDP slice (PR #14)
 
@@ -13,7 +13,7 @@ On macOS, with the NOVXIS Python 3.14 virtual environment:
 - All ten records had **zero bytes of trailing UDP evidence**.
 - Captured traffic included both directions across matching IPv4 address/port pairs and a directed-broadcast candidate.
 - Representative UDP length/payload-length pairs: **49/41**, **40/32**, and **52/44** bytes.
-- No comparison against independently decoded packets or known controlled payloads has yet occurred.
+- Initial passive capture was not compared against independently decoded packets or known controlled payloads. A subsequent controlled capture is documented below.
 - UDP checksums were displayed, not verified. A zero trailing-byte count is not a substitute for checksum validation.
 
 Only generalized packet observations are recorded here. Internal network addresses and public peer addresses from the live capture are omitted.
@@ -42,7 +42,7 @@ pytest
 - Full regression suite (`pytest`): **129 passed in 0.21s**.
 - Failures: **0**.
 - The suite confirms Ethernet-to-IPv4-to-UDP decoding, preserved evidence, no inferred sessions, fragment filtering, malformed-length rejection, and CLI filter input handling.
-- These passing tests **do not** substitute for independently verified live payload bytes, which remain pending.
+- These passing tests **do not** substitute for independent live packet decoding. A controlled application-level request/reply exchange and NOVXIS packet observations were subsequently completed, as recorded below.
 
 ## Controlled UDP exchange on two Macs
 
@@ -110,6 +110,37 @@ sudo tcpdump -i en0 -nn -vv -X 'udp port 49000'
 ```
 
 Compare source/destination ports, UDP length, packet direction, and exact payload bytes. Record any disagreements rather than altering NOVXIS output to fit an assumed result.
+
+## Controlled LAN exchange results (2026-10-07, 19:14 CDT)
+
+**Outcome: PASS for two-way application delivery and matching NOVXIS transport-header observations.**
+
+The user's M5 MacBook Air sent `b"NOVXIS-UDP-CONTROLLED"` to the old MacBook Air on UDP port 49000. The old MacBook application's receiver printed the exact 21-byte payload and sent `b"NOVXIS-ACK"` back to the originating ephemeral UDP port. The M5 sender printed the exact 10-byte acknowledgment received from the old MacBook.
+
+NOVXIS captured two datagrams on the M5 MacBook's `en0` interface using:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.udp_events en0 \
+  --port 49000 --count 2 --timeout 90
+```
+
+| Observation (local CDT) | Direction | UDP ports (src → dst) | UDP length | Payload length | Checksum reported | UDP trailing |
+|---|---|---|---:|---:|---|---:|
+| 19:14:21.445 | M5 → Old Mac | 49431 → 49000 | 29 | 21 | `0xe557` | 0 |
+| 19:14:21.662 | Old Mac → M5 | 49000 → 49431 | 18 | 10 | `0x96fc` | 0 |
+
+Corresponding IPv4 endpoints: M5 `192.168.4.91`, Old Mac `192.168.4.26`, reversed between request and reply. The sender's ephemeral port was **49431** for this particular run; this should not be treated as fixed in future experiments.
+
+**What this supports:**
+
+- Confirmed actual application delivery in both directions, with exact expected payloads printed by the Python receiver/sender processes.
+- NOVXIS decoded the same request/reply directions, ports, and UDP payload lengths (21+8=29, 10+8=18), with no trailing UDP bytes.
+- The CLI's `--port 49000` filter captured the intended datagrams and stopped at `--count 2`.
+- The request and reply were kept as **two independent UDP observations**, not interpreted as a transport-layer connection.
+
+**What is not yet proved:** NOVXIS's console prints payload length, not payload bytes. Agreement with the endpoints therefore demonstrates consistent lengths and metadata, **not a byte-for-byte independent verification of the captured payload content**. There is not yet a Wireshark/tcpdump packet-by-packet comparison. Reported UDP checksum fields were not independently validated.
+
+The timing gap between capture timestamps should not be reported as a UDP-layer RTT because processing and reply generation in the Python receiver contribute to the interval.
 
 ## Exit criteria
 
