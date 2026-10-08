@@ -1,7 +1,7 @@
 # UDP Validation: Initial Capture and Controlled Exchange Plan
 
 **Date:** 2026-10-07  
-**Status:** Passive UDP capture, end-to-end automated testing, and controlled two-Mac LAN exchange passed; independent Wireshark/tcpdump field comparison and checksum validation pending.
+**Status:** Automated testing, controlled two-Mac UDP exchange, and independent PCAPNG byte-level comparison passed. UDP checksum verification and IPv4 fragment reassembly remain out of scope.
 
 ## Observed evidence from the first UDP slice (PR #14)
 
@@ -70,10 +70,10 @@ Find the receiver's actual LAN IPv4 address (for example, using System Settings 
 
 ```bash
 sudo .venv/bin/python -m novxis.cli.udp_events en0 \
-  --port 49000 --count 2 --timeout 45
+  --port 49000 --count 10 --timeout 90
 ```
 
-The filter applies to either source or destination port 49000. If no traffic is captured, first confirm both the sender interface and the receiver are on the expected network.
+The filter applies to either source or destination port 49000. Allow more than two matching packets because an earlier request or repeated test can exhaust a two-packet capture limit before the reply arrives. If no traffic is captured, first confirm both the sender interface and the receiver are on the expected network.
 
 **3. On the primary Mac, Terminal B:** replace `RECEIVER_IP` with the actual LAN IP of the receiving Mac, then send a known payload:
 
@@ -142,11 +142,31 @@ Corresponding IPv4 endpoints: M5 `192.168.4.91`, Old Mac `192.168.4.26`, reverse
 
 The timing gap between capture timestamps should not be reported as a UDP-layer RTT because processing and reply generation in the Python receiver contribute to the interval.
 
+## Independent PCAPNG verification (2026-10-07, 19:18 CDT)
+
+**Outcome: PASS for raw UDP header, payload-length, checksum-field, timestamp, and payload-byte comparison.**
+
+The user supplied `UDP test 20261007.pcapng`, captured in Wireshark on the M5 MacBook's `en0` interface. The file was inspected using an independent PCAPNG/IPv4/UDP byte decoder. It contains **218 packet records** (Ethernet link type 1, microsecond timestamps), of which **33** were IPv4 UDP packets and **three** used UDP port 49000. The original full capture is **not committed to this repository**, because it contains unrelated network traffic.
+
+| PCAP packet | Local time (CDT) | Direction | Ports (source → destination) | UDP length | Payload length | UDP checksum field | Trailing |
+|---|---|---|---|---:|---:|---|---:|
+| 122 | 19:18:20.376 | M5 → Intel Mac | 59724 → 49000 | 29 | 21 | `0xbd22` | 0 |
+| 185 | 19:18:28.507 | M5 → Intel Mac | 63665 → 49000 | 29 | 21 | `0xadbd` | 0 |
+| 188 | 19:18:28.650 | Intel Mac → M5 | 49000 → 63665 | 18 | 10 | `0x5f62` | 0 |
+
+The two outbound UDP payloads independently decode as `b"NOVXIS-UDP-CONTROLLED"` (21 bytes, hex `4e4f565849532d5544502d434f4e54524f4c4c4544`). The inbound packet independently decodes as `b"NOVXIS-ACK"` (10 bytes, hex `4e4f565849532d41434b`).
+
+**Comparison with NOVXIS:** both console lines from the 19:18 capture matched PCAP packets 122 and 185 in time (millisecond precision), port tuple, UDP length, payload length, checksum *field*, and zero trailing bytes. The Intel Mac's Python receiver specifically printed a datagram from sender port 63665, matching packet 185, and the M5 sender printed the expected ACK. The PCAPNG independently confirms the payload byte sequences of both requests and the acknowledgment.
+
+**Why NOVXIS did not print packet 188:** the console was started with `--count 2` and finished after the two outbound packets. Packet 188 arrived approximately 143 milliseconds after packet 185, after the packet limit was reached. This is expected capture-limit behavior, not UDP parsing failure. Future captures should use a larger `--count` or `--count 0` with a finite timeout.
+
+NOVXIS prints payload *length*, not raw payload bytes. Independently decoded bytes agree with the sending/receiving Python applications, while checksum fields were compared by value only and were **not mathematically validated** with the IPv4 pseudoheader. The gap between timestamps is not a UDP-layer RTT because the application and OS contribute to it.
+
 ## Exit criteria
 
 - New end-to-end tests and full suite pass.
 - The filtered CLI accurately captures controlled UDP traffic.
-- At least one generated datagram's bytes/lengths match an independent decoder; preferably both request and response.
+- Independent PCAPNG decoding confirms both outbound packets and the inbound ACK, including the exact payload bytes. **Passed**.
 - Documentation clearly distinguishes observations from inferred behavior.
 
 Out of scope: checksum verification, IP fragment reassembly, application-protocol inference, connection/session correlation, and GUI rendering.
