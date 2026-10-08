@@ -438,3 +438,46 @@ Phase 1 currently maintains persistent network state only for ARP-derived
 address bindings, while the protocol/event stack now extends through Ethernet,
 IPv4, and ICMP Echo correlation. NOVXIS does not yet infer durable host identity,
 perform IPv4 fragment reassembly, or render a graphical network world.
+
+
+## UDP Evidence and Live Observations
+
+UDP uses the existing Ethernet and IPv4 decoding boundary:
+
+```text
+CapturedFrame → EthernetFrame → IPv4Datagram → UDPDatagram → UDPDatagramObserved
+```
+
+The UDP parser decodes source/destination ports, declared UDP length, checksum,
+and payload. It preserves bytes beyond the declared UDP length as separate
+evidence. A malformed length or truncated header/datagram raises `UDPParseError`.
+The checksum is captured but not yet verified against the IPv4 pseudoheader.
+
+Because IPv4 reassembly is not implemented, the UDP pipeline conservatively
+skips all IPv4 fragments, including first fragments with the More Fragments bit.
+It does not infer UDP sessions, DNS/DHCP application semantics, or delivery.
+
+Run unit tests:
+
+```bash
+pytest tests/test_udp.py
+pytest
+```
+
+Start a finite live capture using the interface carrying the test traffic:
+
+```bash
+python -m pip install -e ".[dev]"
+sudo .venv/bin/python -m novxis.cli.udp_events en0 --count 10 --timeout 30
+```
+
+Equivalent installed command: `sudo .venv/bin/novxis-udp-events en0 --count 10 --timeout 30`.
+
+For a controlled loopback smoke test, run the live command against the macOS
+`lo0` interface in one terminal (subject to link-type support), then generate
+UDP traffic in a second terminal with Python's `socket` module. Note that the
+current evidence pipeline only accepts Ethernet link types, so macOS loopback
+may be rejected. Prefer a real Ethernet capture interface for this iteration
+rather than mislabeling loopback packets as Ethernet.
+
+Live validation and checksum verification remain outstanding for this slice.

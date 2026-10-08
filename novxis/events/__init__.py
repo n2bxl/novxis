@@ -19,6 +19,7 @@ from novxis.events.icmp import (
     observe_icmp,
 )
 from novxis.events.icmp_correlator import ICMPEchoCorrelator
+from novxis.events.udp import UDPDatagramObserved, observe_udp
 
 __all__ = [
     "ARPCorrelator",
@@ -36,4 +37,6 @@ __all__ = [
     "ICMPMessageObserved",
     "ICMPTimeExceededObserved",
     "observe_icmp",
+    "UDPDatagramObserved",
+    "observe_udp",
 ]
