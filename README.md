@@ -480,4 +480,25 @@ current evidence pipeline only accepts Ethernet link types, so macOS loopback
 may be rejected. Prefer a real Ethernet capture interface for this iteration
 rather than mislabeling loopback packets as Ethernet.
 
-Live validation and checksum verification remain outstanding for this slice.
+UDP validation on 2026-10-07 completed an initial passive capture
+(10 datagrams), a 14-test raw Ethernet/IPv4/UDP integration-and-CLI suite,
+and the 129-test full regression suite, all passing. A controlled two-Mac
+LAN exchange also succeeded: NOVXIS decoded UDP lengths of 29 and 18 bytes
+for the outbound request and inbound acknowledgment. A subsequent Wireshark
+PCAPNG capture independently confirmed the byte contents of two outbound
+21-byte requests and a 10-byte acknowledgment, as well as the NOVXIS-reported
+packet fields for both observed requests. UDP checksum verification remains
+out of scope.
+
+To restrict capture to one UDP source or destination port, add `--port`:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.udp_events en0 \
+  --port 49000 --count 10 --timeout 90
+```
+
+The two-Mac capture plan and packet-by-packet validation results are in
+`docs/validation/2026-10-07-udp-validation.md`. Choose a capture count
+larger than the expected two datagrams, because other matching UDP packets
+can exhaust the limit before the acknowledgment arrives.
+
