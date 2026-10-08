@@ -1,7 +1,7 @@
 # UDP Validation: Initial Capture and Controlled Exchange Plan
 
 **Date:** 2026-10-07  
-**Status:** Passive live observation passed; end-to-end regression tests and controlled exchange awaiting execution.
+**Status:** Passive live observation and end-to-end automated testing passed; controlled two-Mac exchange and independent packet comparison pending.
 
 ## Observed evidence from the first UDP slice (PR #14)
 
@@ -20,7 +20,7 @@ Only generalized packet observations are recorded here. Internal network address
 
 ## Integration-test acceptance
 
-The next change adds byte-level integration tests that do not mock IPv4:
+PR #15 adds byte-level integration tests that do not mock IPv4:
 
 ```text
 CapturedFrame → EthernetFrame → IPv4Datagram → UDPDatagramObserved
@@ -36,7 +36,13 @@ pytest tests/integration/test_udp_evidence.py tests/cli/test_udp_events_cli.py -
 pytest
 ```
 
-Record the complete test counts and any failures after running them.
+**Executed on macOS with Python 3.14.6 and pytest 9.1.1 on October 7, 2026:**
+
+- Targeted suite (`tests/integration/test_udp_evidence.py` and `tests/cli/test_udp_events_cli.py`): **14 passed in 0.21s**.
+- Full regression suite (`pytest`): **129 passed in 0.21s**.
+- Failures: **0**.
+- The suite confirms Ethernet-to-IPv4-to-UDP decoding, preserved evidence, no inferred sessions, fragment filtering, malformed-length rejection, and CLI filter input handling.
+- These passing tests **do not** substitute for independently verified live payload bytes, which remain pending.
 
 ## Controlled UDP exchange on two Macs
 
