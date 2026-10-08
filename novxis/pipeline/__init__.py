@@ -11,6 +11,7 @@ from novxis.pipeline.arp_state import (
 from novxis.pipeline.icmp import ICMPEventPipeline, ICMPProcessingResult
 from novxis.pipeline.ipv4 import IPv4EvidencePipeline, IPv4ProcessingResult
 from novxis.pipeline.link import UnsupportedLinkTypeError
+from novxis.pipeline.udp import UDPEventPipeline
 
 __all__ = [
     "ARPEventPipeline",
@@ -22,4 +23,5 @@ __all__ = [
     "IPv4EvidencePipeline",
     "IPv4ProcessingResult",
     "UnsupportedLinkTypeError",
+    "UDPEventPipeline",
 ]
