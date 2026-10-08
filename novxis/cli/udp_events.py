@@ -43,6 +43,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("interface", help="Capture interface, such as en0.")
     parser.add_argument("--count", type=int, default=10)
     parser.add_argument("--timeout", type=float, default=30.0)
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="Optional UDP source or destination port filter (1–65535).",
+    )
     return parser
 
 
@@ -54,13 +60,17 @@ def main() -> int:
         parser.error("--count must be zero or greater")
     if args.timeout <= 0:
         parser.error("--timeout must be greater than zero")
+    if args.port is not None and not (1 <= args.port <= 65535):
+        parser.error("--port must be between 1 and 65535")
+
+    capture_filter = "udp" if args.port is None else f"udp port {args.port}"
 
     provider = ScapyCaptureProvider()
     pipeline = UDPEventPipeline()
 
     print("NOVXIS live UDP events")
     print(
-        f"interface={args.interface} filter=udp "
+        f"interface={args.interface} filter={capture_filter} "
         f"count={args.count} timeout={args.timeout}s"
     )
     print()
@@ -69,7 +79,7 @@ def main() -> int:
         provider.start(
             args.interface,
             _build_handler(pipeline),
-            bpf_filter="udp",
+            bpf_filter=capture_filter,
             count=args.count,
             timeout=args.timeout,
         )
