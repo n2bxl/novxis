@@ -425,19 +425,26 @@ future ICMP-extension parser can identify them safely.
 ```text
 PACKETS
    ↓
-EVIDENCE
+EVIDENCE (Ethernet / ARP / IPv4 / ICMP / UDP)
    ↓
 NORMALIZED EVENTS
    ↓
-NETWORK STATE
+NETWORK STATE (currently ARP-derived bindings only)
    ↓
 PRESENTATION
 ```
 
 Phase 1 currently maintains persistent network state only for ARP-derived
-address bindings, while the protocol/event stack now extends through Ethernet,
-IPv4, and ICMP Echo correlation. NOVXIS does not yet infer durable host identity,
-perform IPv4 fragment reassembly, or render a graphical network world.
+address bindings. The protocol/event stack also supports IPv4 evidence, ICMP
+Echo correlation, ICMP Destination Unreachable / Time Exceeded error evidence,
+and individual UDP datagram observations. ICMP and UDP observations **do not**
+yet establish additional persistent network state or imply durable physical-host
+identity. The next planned protocol slice is DHCP over UDP to collect local
+network configuration evidence toward a conservative local subnet map.
+
+NOVXIS does not yet reassemble IPv4 fragments, validate UDP checksums, infer
+UDP sessions or application-layer identity from port numbers, or render a
+graphical network world.
 
 
 ## UDP Evidence and Live Observations
