@@ -29,6 +29,7 @@ novxis-ipv4-capture = "novxis.cli.ipv4_capture:main"
 novxis-icmp-events = "novxis.cli.icmp_events:main"
 novxis-udp-events = "novxis.cli.udp_events:main"
 novxis-dhcpv4-replay = "novxis.cli.dhcpv4_replay:main"
+novxis-dhcpv4-state-replay = "novxis.cli.dhcpv4_state_replay:main"
 
 [tool.setuptools.packages.find]
 include = ["novxis*"]
