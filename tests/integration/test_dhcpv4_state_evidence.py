@@ -304,7 +304,7 @@ def test_dhcpnak_does_not_erase_earlier_ack_evidence():
 
 def test_malformed_client_identifier_does_not_match_a_valid_ack():
     pipe = DHCPv4StatePipeline()
-    pipe.process(_request(client_id=b"\\x01"))
+    pipe.process(_request(client_id=bytes((1,))))
     result = pipe.process(_frame(5, timestamp="100.1"))
     assert result is not None and result.exchange is None
 
