@@ -1,5 +1,8 @@
 """Reusable NOVXIS interpretation pipelines."""
 
+from novxis.pipeline.dhcpv4 import DHCPv4EventPipeline
+
+
 from novxis.pipeline.arp import (
     ARPEventPipeline,
     ARPProcessingResult,
@@ -14,6 +17,7 @@ from novxis.pipeline.link import UnsupportedLinkTypeError
 from novxis.pipeline.udp import UDPEventPipeline
 
 __all__ = [
+    "DHCPv4EventPipeline",
     "ARPEventPipeline",
     "ARPProcessingResult",
     "ARPStatePipeline",
