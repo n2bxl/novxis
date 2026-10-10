@@ -14,7 +14,7 @@ def _option(code: int, value: bytes) -> bytes:
     return bytes((code, len(value))) + value
 
 
-def _message(*, op: int = 1, options: bytes = b"\xff", xid: int = 0xB06B35DB) -> bytes:
+def _message(*, op: int = 1, options: bytes = b"\xff", xid: int = 0x1234ABCD) -> bytes:
     header = bytearray(BOOTP_FIXED_HEADER_LENGTH)
     header[0] = op
     header[1] = 1  # Ethernet hardware type.
@@ -38,7 +38,7 @@ def test_decodes_request_header_and_requested_lease():
     )
     msg = parse_dhcpv4(_message(options=options))
     assert (msg.op, msg.htype, msg.hlen, msg.hops) == (1, 1, 6, 0)
-    assert msg.xid == 0xB06B35DB
+    assert msg.xid == 0x1234ABCD
     assert msg.flags == 0x8000
     assert msg.chaddr == bytes.fromhex("021122334455")
     assert msg.chaddr_padding == bytes(10)
