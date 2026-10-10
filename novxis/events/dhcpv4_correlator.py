@@ -65,8 +65,8 @@ class DHCPv4Correlator:
     """
 
     def __init__(self, max_age: Decimal = Decimal("10")) -> None:
-        if max_age <= 0:
-            raise ValueError("max_age must be greater than zero")
+        if not max_age.is_finite() or max_age <= 0:
+            raise ValueError("max_age must be finite and greater than zero")
         self._max_age = max_age
         self._pending: list[DHCPv4MessageObserved] = []
 
@@ -83,6 +83,17 @@ class DHCPv4Correlator:
 
         message = observation.message
         if message.op == 1 and message.message_type in (1, 3, 8):
+            if message.message_type == 3:
+                # A subsequent REQUEST closes the DISCOVER/OFFER stage; other
+                # offers cannot complete it after the client moves forward.
+                self._pending = [
+                    prior for prior in self._pending
+                    if not (
+                        prior.message.message_type == 1
+                        and prior.message.xid == message.xid
+                        and self._same_client(prior, observation)
+                    )
+                ]
             # Retransmissions may be observed more than once, but retain the
             # most recent copy to avoid synthesizing duplicate completions.
             for index, previous in enumerate(self._pending):
