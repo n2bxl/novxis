@@ -2,7 +2,6 @@
 
 from novxis.events.dhcpv4 import DHCPv4MessageObserved, observe_dhcpv4
 
-
 from novxis.events.arp import (
     ARPExchangeCompleted,
     ARPMessageObserved,
