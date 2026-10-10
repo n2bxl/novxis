@@ -40,15 +40,17 @@ def classify_dhcpv4_request(observation: DHCPv4MessageObserved) -> str:
     ciaddr_zero = message.ciaddr == bytes(4)
     requested = _unique_option(message, 50, 4)
     server = _unique_option(message, 54, 4)
+    server_absent = not message.option_values(54)
+    requested_absent = not message.option_values(50)
     if ciaddr_zero and requested is not None and server is not None:
         return "SELECTING"
     if (
-        ciaddr_zero and requested is not None and server is None
+        ciaddr_zero and requested is not None and server_absent
         and observation.ipv4.source == bytes(4)
         and observation.ipv4.destination == b"\xff" * 4
     ):
         return "INIT-REBOOT"
-    if not ciaddr_zero and requested is None and server is None:
+    if not ciaddr_zero and requested_absent and server_absent:
         if observation.ipv4.destination == b"\xff" * 4:
             return "REBINDING"
         return "RENEWING"
@@ -133,9 +135,14 @@ class DHCPv4Correlator:
         ):
             return False
         # Option 61 is opaque identity evidence, not necessarily an Ethernet MAC.
-        id_a = _unique_option(a, 61)
-        id_b = _unique_option(b, 61)
-        return id_a is None or id_b is None or id_a == id_b
+        # Repeated or malformed client IDs are ambiguous: do not match them.
+        ids_a = a.option_values(61)
+        ids_b = b.option_values(61)
+        if len(ids_a) > 1 or len(ids_b) > 1:
+            return False
+        if any(len(identifier) < 2 for identifier in (*ids_a, *ids_b)):
+            return False
+        return not ids_a or not ids_b or ids_a[0] == ids_b[0]
 
     @classmethod
     def _matches(
