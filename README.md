@@ -509,3 +509,56 @@ The two-Mac capture plan and packet-by-packet validation results are in
 larger than the expected two datagrams, because other matching UDP packets
 can exhaust the limit before the acknowledgment arrives.
 
+## DHCPv4 Message Observations and Offline Replay
+
+The DHCPv4 decoder now connects to the existing Ethernet → IPv4 → UDP path:
+
+```text
+CapturedFrame → EthernetFrame → IPv4Datagram → UDPDatagram
+              → DHCPv4Message → DHCPv4MessageObserved
+```
+
+The `DHCPv4EventPipeline` considers UDP datagrams only when **both** endpoint
+ports are DHCPv4 ports (67/68), including relay traffic on 67/67. It inherits
+the UDP pipeline's IPv4-fragment exclusion and payload-length validation. A
+DHCPv4 message retains its source `CapturedFrame`, decoded Ethernet/IPv4/UDP
+evidence, BOOTP fields, and ordered options. Invalid DHCP magic cookies or
+truncated options raise `DHCPv4ParseError` and are reported by the replay
+command without silently claiming a valid message.
+
+Replay a private capture with:
+
+```bash
+python -m novxis.cli.dhcpv4_replay /path/to/novxis-dhcp-lab2.pcap
+```
+
+After `python -m pip install -e ".[dev]"`, an equivalent entry point is:
+
+```bash
+novxis-dhcpv4-replay /path/to/novxis-dhcp-lab2.pcap
+```
+
+The console reports individual DHCP message types, transaction IDs, requested
+or assigned addresses, server identifiers, and single well-formed lease options.
+A DHCPREQUEST lease option is labeled `requested_lease`; a DHCPACK lease option
+is labeled `granted_lease`. All output is derived from packet bytes rather than
+assumptions about the host's configured state.
+
+A classic PCAP does not record the source interface, so the replay command uses
+`replay` as a fallback label. Set `--interface-label en0` if desired.
+`--count` limits the number of **captured frames**, not DHCP messages; zero
+replays all frames.
+
+The Oct 7 Intel Mac DHCP capture contains a matched REQUEST and ACK with the
+same transaction ID, a requested 90-day lease and granted 8-hour lease. That
+capture remains **private and is not committed** to the repository. This phase
+does not correlate requests and responses into exchanges, infer INIT-REBOOT
+from a single observation, manage lease state, or prove address/gateway/DNS
+reachability. DHCP option-overload decoding is also deferred.
+
+Validate with:
+
+```bash
+pytest -q tests/integration/test_dhcpv4_evidence.py tests/cli/test_dhcpv4_replay_cli.py
+pytest
+```
