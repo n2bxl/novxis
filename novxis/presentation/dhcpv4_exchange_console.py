@@ -30,13 +30,15 @@ def format_dhcpv4_acknowledgment(value: DHCPv4Acknowledgment) -> str:
         "infinite" if value.lease_seconds == 0xFFFFFFFF
         else f"{value.lease_seconds}s"
     )
+    renewal = value.renewal_seconds if value.renewal_seconds is not None else "not_observed"
+    rebinding = value.rebinding_seconds if value.rebinding_seconds is not None else "not_observed"
     routers = ",".join(format_ipv4_address(ip) for ip in value.routers) or "-"
     dns = ",".join(format_ipv4_address(ip) for ip in value.dns_servers) or "-"
     return (
         f"interface={value.interface} client_hw={client} "
         f"acknowledged_address={format_ipv4_address(value.address)} "
         f"server_identifier={_format_address(value.server_identifier)} "
-        f"acknowledged_lease={lease} "
+        f"acknowledged_lease={lease} t1={renewal} t2={rebinding} "
         f"mask={_format_address(value.subnet_mask)} "
         f"routers={routers} dns={dns} "
         f"request_pattern={value.request_pattern} "
