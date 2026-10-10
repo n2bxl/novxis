@@ -2,7 +2,6 @@
 
 from novxis.pipeline.dhcpv4 import DHCPv4EventPipeline
 
-
 from novxis.pipeline.arp import (
     ARPEventPipeline,
     ARPProcessingResult,
