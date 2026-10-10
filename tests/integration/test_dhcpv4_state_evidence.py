@@ -111,6 +111,8 @@ def test_init_reboot_request_ack_creates_ack_evidence_not_active_host():
         _opt(1, bytes((255, 255, 255, 0)))
         + _opt(3, SERVER_ADDRESS)
         + _opt(6, SERVER_ADDRESS + ANOTHER_SERVER)
+        + _opt(58, (14400).to_bytes(4, "big"))
+        + _opt(59, (25200).to_bytes(4, "big"))
     )
     result = pipe.process(_frame(5, timestamp="100.050", extra_ack_options=extra))
     assert result is not None and result.exchange is not None
@@ -126,6 +128,8 @@ def test_init_reboot_request_ack_creates_ack_evidence_not_active_host():
     assert record.address == CLIENT_ADDRESS
     assert record.server_identifier == SERVER_ADDRESS
     assert record.lease_seconds == GRANTED_8_HOURS
+    assert record.renewal_seconds == 14_400
+    assert record.rebinding_seconds == 25_200
     assert record.subnet_mask == bytes((255, 255, 255, 0))
     assert record.routers == (SERVER_ADDRESS,)
     assert record.dns_servers == (SERVER_ADDRESS, ANOTHER_SERVER)
@@ -266,3 +270,58 @@ def test_repeated_same_xid_from_different_clients_are_not_confused():
 def test_invalid_correlation_window_fails_fast():
     with pytest.raises(ValueError, match="greater than zero"):
         DHCPv4Correlator(max_age=Decimal("0"))
+
+def test_full_dora_sequence_produces_offer_then_ack_but_one_ack_snapshot():
+    pipe = DHCPv4StatePipeline()
+    discover = pipe.process(_frame(1, timestamp="100"))
+    offer = pipe.process(_frame(2, timestamp="100.1"))
+    request = pipe.process(_request(timestamp="100.2", selected_server=SERVER_ADDRESS))
+    ack = pipe.process(_frame(5, timestamp="100.3"))
+    assert discover is not None and discover.exchange is None
+    assert offer is not None and offer.exchange is not None
+    assert offer.exchange.result == "offer"
+    assert request is not None and request.exchange is None
+    assert request.observation.message.message_type == 3
+    assert ack is not None and ack.exchange is not None
+    assert ack.exchange.result == "ack"
+    assert ack.exchange.request_pattern == "SELECTING"
+    assert len(pipe.state.dhcpv4_acknowledgments) == 1
+    assert pipe.pending_requests == ()
+
+
+def test_dhcpnak_does_not_erase_earlier_ack_evidence():
+    pipe = DHCPv4StatePipeline()
+    pipe.process(_request(timestamp="100"))
+    pipe.process(_frame(5, timestamp="100.1"))
+    prior = pipe.state.dhcpv4_acknowledgments
+    pipe.process(_request(timestamp="200", xid=0xABCDEF01))
+    denied = pipe.process(_frame(6, timestamp="200.1", xid=0xABCDEF01))
+    assert denied is not None and denied.exchange is not None
+    assert denied.exchange.result == "nak"
+    assert denied.state_change is None
+    assert pipe.state.dhcpv4_acknowledgments == prior
+
+
+def test_malformed_client_identifier_does_not_match_a_valid_ack():
+    pipe = DHCPv4StatePipeline()
+    pipe.process(_request(client_id=b"\\x01"))
+    result = pipe.process(_frame(5, timestamp="100.1"))
+    assert result is not None and result.exchange is None
+
+
+def test_client_id_missing_on_response_can_match_identical_hardware_evidence():
+    pipe = DHCPv4StatePipeline()
+    pipe.process(_request())
+    result = pipe.process(_frame(5, timestamp="100.1", client_id=None))
+    assert result is not None and result.exchange is not None
+
+
+def test_state_rejects_older_ack_from_replayed_out_of_order_evidence():
+    pipe = DHCPv4StatePipeline()
+    pipe.process(_request(timestamp="100"))
+    pipe.process(_frame(5, timestamp="100.1"))
+    pipe.process(_request(timestamp="99", xid=0xF0000001))
+    old = pipe.process(_frame(5, timestamp="99.1", xid=0xF0000001))
+    assert old is not None and old.exchange is not None
+    assert old.state_change is None
+    assert pipe.state.dhcpv4_acknowledgments[0].last_seen == Decimal("100.1")
