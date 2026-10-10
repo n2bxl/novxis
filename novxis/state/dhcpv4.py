@@ -17,6 +17,8 @@ class DHCPv4Acknowledgment:
     address: bytes
     server_identifier: bytes | None
     lease_seconds: int
+    renewal_seconds: int | None
+    rebinding_seconds: int | None
     subnet_mask: bytes | None
     routers: tuple[bytes, ...]
     dns_servers: tuple[bytes, ...]
@@ -92,6 +94,11 @@ class DHCPv4AcknowledgmentState:
             identity,
         )
         previous = self._acknowledgments.get(key)
+        if previous is not None and exchange.reply.timestamp < previous.last_seen:
+            # Replayed out-of-order evidence must not replace a later ACK.
+            return None
+        renewal = _option(reply, 58, 4)
+        rebinding = _option(reply, 59, 4)
         current = DHCPv4Acknowledgment(
             interface=exchange.request.interface,
             hardware_type=request.htype,
@@ -100,6 +107,8 @@ class DHCPv4AcknowledgmentState:
             address=reply.yiaddr,
             server_identifier=_option(reply, 54, 4),
             lease_seconds=int.from_bytes(lease, "big"),
+            renewal_seconds=int.from_bytes(renewal, "big") if renewal is not None else None,
+            rebinding_seconds=int.from_bytes(rebinding, "big") if rebinding is not None else None,
             subnet_mask=_option(reply, 1, 4),
             routers=_ipv4_list(reply, 3),
             dns_servers=_ipv4_list(reply, 6),
