@@ -434,13 +434,11 @@ NETWORK STATE (currently ARP-derived bindings only)
 PRESENTATION
 ```
 
-Phase 1 currently maintains persistent network state only for ARP-derived
-address bindings. The protocol/event stack also supports IPv4 evidence, ICMP
-Echo correlation, ICMP Destination Unreachable / Time Exceeded error evidence,
-and individual UDP datagram observations. ICMP and UDP observations **do not**
-yet establish additional persistent network state or imply durable physical-host
-identity. The next planned protocol slice is DHCP over UDP to collect local
-network configuration evidence toward a conservative local subnet map.
+Phase 1 maintains ARP-derived address bindings and a separate, conservative
+snapshot of the latest **matched DHCPv4 ACK-derived configuration evidence**.
+These records represent what DHCP messages said at capture time, not a verified
+current lease, a physical-host identity, or a reachable host. ICMP/UDP remain
+independent evidence paths, and DHCP does not overwrite ARP-derived bindings.
 
 NOVXIS does not yet reassemble IPv4 fragments, validate UDP checksums, infer
 UDP sessions or application-layer identity from port numbers, or render a
@@ -562,3 +560,84 @@ Validate with:
 pytest -q tests/integration/test_dhcpv4_evidence.py tests/cli/test_dhcpv4_replay_cli.py
 pytest
 ```
+
+## DHCPv4 Exchange Correlation and ACK-Derived Network State
+
+The DHCPv4 protocol pipeline now also supports conservative exchange correlation:
+
+```text
+CapturedFrame
+  → Ethernet → IPv4 → UDP → DHCPv4MessageObserved
+  → DHCPv4Correlator
+  → DHCPv4ExchangeCompleted (DISCOVER/OFFER, REQUEST/ACK, REQUEST/NAK, INFORM/ACK)
+  → NetworkState.dhcpv4_acknowledgments (REQUEST/ACK with usable yiaddr and lease)
+```
+
+Correlation requires the same capture interface, transaction ID, compatible
+BOOTP hardware type/address, compatible DHCP client identifiers when both are
+present, a nonnegative response interval, and the configured finite window.
+It also compares requested/acknowledged addresses and selected/responding DHCP
+server identifiers when those fields are available. It does **not** match on
+`xid` alone. Unmatched replies do not create exchanges or address records.
+
+DISCOVER may receive offers from multiple servers. Subsequent DHCPREQUEST
+retire the pending DISCOVER stage; REQUEST/ACK and REQUEST/NAK complete their
+respective request stages. INFORM/ACK is tracked but **never** treated as an
+address lease. A DHCPRELEASE observation alone is not a server-confirmed
+release. An observed DHCPNAK is not retroactively treated as proof that an
+earlier ACK never happened.
+
+The request-pattern field can report `INIT-REBOOT`, `SELECTING`, `RENEWING`,
+or `REBINDING` when packet fields match the respective RFC 2131 patterns.
+These are **evidence-based classifications**, not assertions about the client's
+internal operating-system state. The correlator uses a configurable **10-second**
+default window; this is NOVXIS policy, not a DHCP standard timeout.
+
+`NetworkState.dhcpv4_acknowledgments` retains, per observed client/interface,
+the latest correlated DHCPREQUEST/DHCPACK's acknowledged IPv4 address, lease
+option, server identifier, subnet mask, router list, DNS server list, and
+explicit renewal/rebinding times (T1/T2) if present. Missing T1/T2 values
+remain missing; NOVXIS does not silently substitute default timers.
+
+**An ACK proves an ACK was captured, not that the client accepted it, installed
+the configuration, remains online, or can reach the gateway or Internet.**
+Similarly, replaying an old PCAP produces a historical observation snapshot,
+not current network inventory. No lease-expiration or active-host clock is
+inferred in this slice.
+
+Replay the **private local capture** (do not add it to the public repo):
+
+```bash
+python -m novxis.cli.dhcpv4_state_replay \
+  ~/Desktop/novxis-dhcp-lab2.pcap --correlation-window 10
+```
+
+Or after installing the editable package:
+
+```bash
+novxis-dhcpv4-state-replay ~/Desktop/novxis-dhcp-lab2.pcap
+```
+
+For the previously dissected private capture, expect 30 replayed frames, two
+DHCP observations, one correlated REQUEST/ACK with a response interval near
+50 milliseconds, one latest ACK configuration record, and no decode errors.
+These are validation expectations until confirmed by executing the command.
+The existing `dhcpv4_replay` command continues to output individual raw
+observations without correlation.
+
+Tests:
+
+```bash
+pytest -q tests/integration/test_dhcpv4_state_evidence.py \
+  tests/cli/test_dhcpv4_state_replay_cli.py
+pytest
+```
+
+Deferred beyond this DHCPv4 protocol slice: decoding DHCP option-overload fields
+and every vendor extension, IPv4 fragmentation/reassembly, real-time lease
+expiration, multiprotocol ARP/DHCP host correlation, graphical rendering, and
+DHCPv6 (which has a different wire format and behavior).
+
+Primary protocol references: [RFC 2131](https://www.rfc-editor.org/rfc/rfc2131.html),
+[RFC 2132](https://www.rfc-editor.org/rfc/rfc2132.html), and
+[IANA BOOTP/DHCP parameters](https://www.iana.org/assignments/bootp-dhcp-parameters).
