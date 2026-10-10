@@ -1,6 +1,12 @@
 """Network state derived from normalized NOVXIS events."""
 
 from novxis.events import ARPMessageObserved
+from novxis.events.dhcpv4_correlator import DHCPv4ExchangeCompleted
+from novxis.state.dhcpv4 import (
+    DHCPv4Acknowledgment,
+    DHCPv4AcknowledgmentState,
+    DHCPv4StateChange,
+)
 from novxis.state.arp import (
     ARPBinding,
     ARPBindingChanged,
@@ -17,6 +23,17 @@ class NetworkState:
 
     def __init__(self) -> None:
         self._arp_bindings: dict[ARPBindingKey, ARPBinding] = {}
+        self._dhcpv4 = DHCPv4AcknowledgmentState()
+
+    @property
+    def dhcpv4_acknowledgments(self) -> tuple[DHCPv4Acknowledgment, ...]:
+        """Latest matched DHCP ACKs, not proof of currently active leases."""
+        return self._dhcpv4.acknowledgments
+
+    def observe_dhcpv4_exchange(
+        self, exchange: DHCPv4ExchangeCompleted
+    ) -> DHCPv4StateChange | None:
+        return self._dhcpv4.observe_exchange(exchange)
 
     @property
     def arp_bindings(self) -> tuple[ARPBinding, ...]:
