@@ -51,6 +51,8 @@ def classify_dhcpv4_request(observation: DHCPv4MessageObserved) -> str:
     ):
         return "INIT-REBOOT"
     if not ciaddr_zero and requested_absent and server_absent:
+        if observation.ipv4.source != message.ciaddr:
+            return "UNKNOWN"
         if observation.ipv4.destination == b"\xff" * 4:
             return "REBINDING"
         return "RENEWING"
