@@ -641,3 +641,29 @@ DHCPv6 (which has a different wire format and behavior).
 Primary protocol references: [RFC 2131](https://www.rfc-editor.org/rfc/rfc2131.html),
 [RFC 2132](https://www.rfc-editor.org/rfc/rfc2132.html), and
 [IANA BOOTP/DHCP parameters](https://www.iana.org/assignments/bootp-dhcp-parameters).
+
+
+## DNS Wire Decoder (Phase 1A)
+
+The next local-map foundation begins with a bounded, capture-independent DNS
+message decoder in `novxis.protocols.dns`. `parse_dns(bytes)` decodes the DNS
+header, all question and resource-record sections, safe backward-only name
+compression, A/AAAA address values and NS/CNAME/PTR name values. Unknown record
+types and classes retain raw RDATA, and any bytes beyond declared sections are
+preserved rather than silently discarded.
+
+This first slice deliberately stops at **decoded evidence**. It does not yet
+dispatch UDP port-53 traffic, correlate questions/responses, assign host
+identity, infer cache validity, or perform active DNS requests. IPv4 fragment
+reassembly, DNS-over-TCP and mDNS remain separate follow-on work.
+
+For the parser's security and data-model boundaries, planned next slices and
+synthetic validation instructions, see
+[`docs/implementation/2026-10-11-dns-wire-decoder.md`](docs/implementation/2026-10-11-dns-wire-decoder.md).
+
+```bash
+python -m pytest tests/protocols/test_dns.py -q
+python -m pytest
+```
+
+Test execution and live capture validation are pending review.
