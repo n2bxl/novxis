@@ -1,7 +1,7 @@
 # DNS Phase 1A: Wire Decoder
 
 **Date:** 2026-10-11  
-**Status:** Proposed for review on feature branch; local test results pending
+**Status:** Local tests validated; feature branch pending review/merge
 
 ## Intent
 
@@ -95,10 +95,16 @@ Synthetic tests exercise header parsing, packet counts/sections, compressed
 question/record names, A/AAAA/CNAME/NS/PTR presentation, unknown record
 preservation, trailing bytes, and truncated or hostile compression input.
 
-**Validation status:** The code and tests have been committed, but this
-write-up does not claim they were executed locally or live-validated. The
-human coding sprint should record the actual test counts, failures/fixes,
-and merge SHA after running tests.
+**Validation status (2026-10-11, local M5 MacBook Air):**
+
+- Environment: macOS (Darwin), Python 3.14.6, pytest 9.1.1, pluggy 1.6.0.
+- Focused command: `python -m pytest tests/protocols/test_dns.py -q` — **24 passed in 0.02s**.
+- Full command: `python -m pytest` — **211 passed in 0.41s** (211 collected).
+- No failures reported by the local test run.
+
+This is synthetic/automated acceptance only; live DNS capture and independent
+packet validation are **not yet performed**. Record the squash-merge SHA when
+PR #20 is merged.
 
 ## References
 
