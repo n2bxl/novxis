@@ -31,6 +31,9 @@ novxis-udp-events = "novxis.cli.udp_events:main"
 novxis-dhcpv4-replay = "novxis.cli.dhcpv4_replay:main"
 novxis-dhcpv4-state-replay = "novxis.cli.dhcpv4_state_replay:main"
 
+novxis-dns-replay = "novxis.cli.dns_replay:main"
+novxis-dns-events = "novxis.cli.dns_events:main"
+
 [tool.setuptools.packages.find]
 include = ["novxis*"]
 
