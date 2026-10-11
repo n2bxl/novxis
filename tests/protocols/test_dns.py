@@ -133,12 +133,12 @@ def test_header_can_report_truncated_response_without_guessing_missing_data():
         (
             _header(q=0, a=1)
             + _rr(b"\x00", 12, b"\x03ab"),
-            "RDATA boundary",
+            "Truncated DNS label",
         ),
         (
             _header(q=0, a=1)
             + _rr(b"\x00", 5, b"\xc0"),
-            "RDATA boundary",
+            "Truncated DNS compression pointer",
         ),
         (
             _header() + b"".join(b"\x3f" + b"x" * 63 for _ in range(4)) + b"\x00",
