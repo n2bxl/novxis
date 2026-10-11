@@ -1,7 +1,7 @@
 # DNS Phase 1B: UDP Observation and Live Validation
 
 **Date:** 2026-10-11  
-**Status:** Implementation proposed on feature branch; local acceptance pending
+**Status:** Automated tests passed; live DNS capture not yet validated
 
 ## Implementation
 
@@ -54,8 +54,60 @@ Coverage includes:
 - Malformed port-53 payloads surfaced as errors
 - CLI provider parameters, counters, error reporting and cancellation
 
-Record test results here after local execution. The previous merged baseline
-for this branch was **211 tests passing** on Python 3.14.6.
+## Local acceptance results (2026-10-11)
+
+On an M5 MacBook Air, macOS/Darwin, Python 3.14.6, pytest 9.1.1:
+
+- **25/25 focused Phase 1B tests passed in 0.23s.**
+- **236/236 full regression tests passed in 0.24s.**
+- The previous merged Phase 1A baseline was 211 tests; no regression failures appeared.
+
+These are automated acceptance results, not proof of live traffic coverage.
+
+Initial live run:
+
+```text
+sudo .venv/bin/python -m novxis.cli.dns_events en0 --count 20 --timeout 60
+Capture complete. DNS observations: 0; decode errors: 0
+```
+
+This run did not yield a DNS observation. The current CLI reports successful
+observations and parsing errors, but **not a raw BPF-matching packet counter**,
+so the output alone does not prove no packets were captured. No full
+packet-by-packet tcpdump comparison has yet been supplied. The test operator
+also tried nslookup for google.com and 8.8.8.8, but transport path and whether
+those lookups happened during the capture remain unverified.
+
+### Targeted follow-up (two terminals)
+
+Confirm egress interface:
+
+```bash
+route -n get 8.8.8.8 | grep interface
+scutil --dns
+```
+
+Capture on that interface, e.g. `en0`, with NOVXIS while issuing a forced
+IPv4 classic DNS UDP query in a second terminal:
+
+```bash
+dig -4 @8.8.8.8 example.com A +notcp +tries=1 +time=3
+```
+
+If NOVXIS still reports zero observations, repeat the experiment with
+`sudo tcpdump -ni en0 'udp port 53'` and the same `dig` command.
+This distinguishes no visible matching traffic from an IPv4 parsing/capture
+problem. Do not assume that egress must be on en0 in VPN or multi-interface
+setups.
+
+Remember the BPF expression `udp port 53` can match IPv6 traffic but the
+present decoder pipeline handles only Ethernet/IPv4; such traffic is skipped
+without creating a DNS observation. TCP/53, mDNS/5353, DoH and DoT are outside
+Phase 1B's capture/interpretation scope. Explicit `dig -4` fixes the query
+transport address family and selects UDP by default in this case.
+
+Never publish unredacted DNS PCAPs, private internal DNS names or resolver
+credentials into the public repository.
 
 ## Finite passive capture (macOS)
 
@@ -103,8 +155,8 @@ provides a fallback for classic PCAP.
 
 ## Acceptance checklist
 
-- [ ] Focused tests pass
-- [ ] Full tests pass
+- [x] Focused tests pass
+- [x] Full tests pass
 - [ ] Live IPv4 UDP query and response recognized
 - [ ] Displayed DNS IDs, questions and A answers independently verified in PCAP
 - [ ] Unmatched/unsolicited observations remain uncorrelated (as designed)
