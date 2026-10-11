@@ -669,3 +669,49 @@ python -m pytest
 Local acceptance on 2026-10-11: **24/24 DNS tests** and **211/211 total tests** passed
 on macOS with Python 3.14.6 (pytest 9.1.1). Live DNS capture validation
 is still pending.
+
+
+## Phase 1B: DNS over UDP Observation Path
+
+The new `DNSEventPipeline` extends the existing Ethernet, IPv4, and UDP
+decoders with the DNS wire decoder from Phase 1A. The normalized
+`DNSMessageObserved` retains the original captured frame, timestamp,
+interface, and decoded Ethernet/IPv4/UDP/DNS evidence.
+
+Classic DNS UDP source or destination port 53 is accepted as candidate
+application traffic. Other ports, TCP, mDNS port 5353, and IPv4 fragments
+are not interpreted as classic DNS in this slice. Port 53 alone is not proof
+of valid DNS content; malformed candidate messages produce decode errors.
+
+Replay recorded traffic:
+
+```bash
+python -m novxis.cli.dns_replay /path/to/capture.pcapng
+```
+
+Passive live capture:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.dns_events en0 --count 20 --timeout 45
+```
+
+The live command captures at most 20 matching port-53 frames or waits until
+timeout. A capture can contain queries without replies if relevant packets
+are not visible from the capture interface. The command does not initiate
+DNS queries.
+
+Tests for the DNS evidence path:
+
+```bash
+python -m pytest tests/integration/test_dns_evidence.py tests/cli/test_dns_replay_cli.py tests/cli/test_dns_events_cli.py -q
+python -m pytest
+```
+
+Local acceptance (2026-10-11, Python 3.14.6): **25/25 focused tests**
+and **236/236 full-suite tests** passed. The initial zero-observation run
+targeted the wrong interface (`en0`); retesting on `en5` produced
+**8 live DNS observations (4 queries and 4 responses), 0 decode errors**.
+Reported DNS IDs, PTR/A results, TTLs and NXDOMAIN response agreed with
+`nslookup` and `dig`. These are individual observations, not a
+query-response correlator. See the Phase 1B validation plan for details.
+Correlation, name-to-address state, DNS-over-TCP, mDNS and DNS-SD remain separate.
