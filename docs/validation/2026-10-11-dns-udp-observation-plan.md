@@ -193,10 +193,11 @@ not automated exchange correlation (Phase 1C).
 | 14:46:01 | `0x82fb` | A `google.com` → six A records, response TTL 3s | ~5 ms |
 | 14:46:05 | `0xe05e` | A `8.8.8.8` → RCODE 3 / NXDOMAIN, no answers | ~5 ms |
 
-Observed client `192.168.4.106`, DNS resolver `216.167.161.37:53`,
-interface `en5`. Raw client IP and resolver may be replaced by placeholders
-in external/public writeups if these become sensitive. These are observed
-network-layer endpoints, not assertions of physical host ownership.
+Observed client address on a private `192.168.4.0/22` LAN, with an
+external resolver on UDP port 53, over interface `en5`. The exact endpoint
+addresses are omitted from this public validation note to minimize disclosure
+of personal network context. These are observed network-layer endpoints,
+not assertions of physical host ownership.
 
 ### Cross-check against user-side DNS command output
 
