@@ -707,8 +707,11 @@ python -m pytest tests/integration/test_dns_evidence.py tests/cli/test_dns_repla
 python -m pytest
 ```
 
-Local acceptance (2026-10-11, Python 3.14.6): **25/25 focused tests** and
-**236/236 full-suite tests** passed. A first live capture on `en0` reported
-zero DNS observations and zero decode errors; visibility/transport diagnosis
-remains in progress. See the Phase 1B validation plan for follow-up steps.
+Local acceptance (2026-10-11, Python 3.14.6): **25/25 focused tests**
+and **236/236 full-suite tests** passed. The initial zero-observation run
+targeted the wrong interface (`en0`); retesting on `en5` produced
+**8 live DNS observations (4 queries and 4 responses), 0 decode errors**.
+Reported DNS IDs, PTR/A results, TTLs and NXDOMAIN response agreed with
+`nslookup` and `dig`. These are individual observations, not a
+query-response correlator. See the Phase 1B validation plan for details.
 Correlation, name-to-address state, DNS-over-TCP, mDNS and DNS-SD remain separate.
