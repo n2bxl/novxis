@@ -666,4 +666,6 @@ python -m pytest tests/protocols/test_dns.py -q
 python -m pytest
 ```
 
-Test execution and live capture validation are pending review.
+Local acceptance on 2026-10-11: **24/24 DNS tests** and **211/211 total tests** passed
+on macOS with Python 3.14.6 (pytest 9.1.1). Live DNS capture validation
+is still pending.
