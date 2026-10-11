@@ -1,7 +1,7 @@
 # DNS Phase 1B: UDP Observation and Live Validation
 
 **Date:** 2026-10-11  
-**Status:** Automated tests passed; live DNS capture not yet validated
+**Status:** Automated tests and live IPv4 UDP DNS capture validated on en5; merge pending
 
 ## Implementation
 
@@ -64,7 +64,7 @@ On an M5 MacBook Air, macOS/Darwin, Python 3.14.6, pytest 9.1.1:
 
 These are automated acceptance results, not proof of live traffic coverage.
 
-Initial live run:
+Initial wrong-interface run:
 
 ```text
 sudo .venv/bin/python -m novxis.cli.dns_events en0 --count 20 --timeout 60
@@ -157,9 +157,9 @@ provides a fallback for classic PCAP.
 
 - [x] Focused tests pass
 - [x] Full tests pass
-- [ ] Live IPv4 UDP query and response recognized
-- [ ] Displayed DNS IDs, questions and A answers independently verified in PCAP
-- [ ] Unmatched/unsolicited observations remain uncorrelated (as designed)
+- [x] Live IPv4 UDP query and response recognized
+- [x] DNS IDs, questions, response codes and displayed A answers cross-checked against nslookup/dig (PCAP byte-level comparison optional)
+- [x] Observations remain uncorrelated (as designed); no automated pair matching
 - [ ] No private capture material committed
 - [ ] Review, squash merge, re-run `main` tests
 
@@ -169,3 +169,75 @@ Introduce conservative DNS query-response correlation using interface, IPv4
 endpoints and UDP ports (reversed), transaction ID, question identity and
 time window. Keep unmatched responses and ambiguous duplicates separate.
 Name/address evidence and TTL aging belong to a later state slice.
+## Live acceptance run: 2026-10-11 14:45–14:46 CDT
+
+**Status:** Real traffic successfully decoded on the correct capture interface,
+`en5`. Previous zero-observation run on `en0` resulted from selecting the
+wrong interface, not a demonstrated DNS parser or BPF defect.
+
+Command:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.dns_events en5 --count 20 --timeout 60
+```
+
+**Observed:** 8 `DNSMessageObserved` events (4 queries and 4 responses),
+0 decoding errors. The four transaction IDs, ports and source/destination
+address reversals are consistent with four pairs; this is **human analysis**,
+not automated exchange correlation (Phase 1C).
+
+| Time (CDT) | DNS ID | Query / observed outcome | Response interval |
+|---|---|---|---|
+| 14:45:45 | `0xabd2` | PTR `8.8.8.8.in-addr.arpa` → `dns.google`, TTL 82612s | ~5 ms |
+| 14:45:47 | `0xb3de` | A `google.com` → six A records, response TTL 204s | ~5 ms |
+| 14:46:01 | `0x82fb` | A `google.com` → six A records, response TTL 3s | ~5 ms |
+| 14:46:05 | `0xe05e` | A `8.8.8.8` → RCODE 3 / NXDOMAIN, no answers | ~5 ms |
+
+Observed client `192.168.4.106`, DNS resolver `216.167.161.37:53`,
+interface `en5`. Raw client IP and resolver may be replaced by placeholders
+in external/public writeups if these become sensitive. These are observed
+network-layer endpoints, not assertions of physical host ownership.
+
+### Cross-check against user-side DNS command output
+
+- `nslookup 8.8.8.8` shows reverse PTR `dns.google`, consistent with
+  transaction `0xabd2`.
+- `nslookup google.com` lists six A records, consistent with transaction
+  `0xb3de` (four printed explicitly by NOVXIS; its console says
+  `other_answers=2`).
+- `dig google.com` reports decimal DNS ID **33531** (= `0x82fb`),
+  six A records, TTL **3s**, EDNS OPT additional record, and a **5 ms**
+  query time. Its six addresses agree with the four shown explicitly and
+  the two remaining answer count in NOVXIS.
+- `dig 8.8.8.8` reports decimal DNS ID **57438** (= `0xe05e`),
+  **NXDOMAIN**, a single SOA authority record and EDNS OPT additional
+  record, and **5 ms** query time.
+- `dig 8.8.8.8` asks for an A record for the literal DNS name
+  `8.8.8.8`; it is **not** the same operation as the reverse lookup
+  performed by `nslookup 8.8.8.8`. `dig -x 8.8.8.8` is the
+  corresponding reverse-DNS operation.
+
+Both query and response traversed the chosen interface and were decoded
+successfully with consistent transaction IDs, endpoint reversal, counts,
+types, responses and timestamps. The `dig`/`nslookup` output provides an
+independent application-level cross-check; there was **no separate packet
+byte-by-byte Wireshark or PCAP comparison** in this run.
+
+The live capture proves this protocol observation path works for the tested
+IPv4 UDP port-53 traffic. It does **not** establish DNS response authenticity,
+query/response correlation inside NOVXIS, durable name/address state,
+DNS-over-TCP, mDNS or DNS encryption support.
+
+### Remaining work
+
+- [x] Focused Phase 1B tests (25 passed)
+- [x] Full regression suite (236 passed)
+- [x] Live IPv4 UDP port-53 query and response observed on `en5`
+- [x] Command-side `dig`/`nslookup` cross-check for IDs, questions,
+      response values, counts and response codes
+- [ ] Optional independent packet-level Wireshark/PCAP dissection
+- [ ] Squash-merge PR #21 and rerun tests on `main`
+
+Recommended observability improvement for a future slice: track BPF-matching
+captured frames separately from successfully decoded observations and errors,
+to make wrong-interface or unsupported-protocol tests easier to diagnose.
