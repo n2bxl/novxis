@@ -250,7 +250,7 @@ def test_out_of_order_replay_does_not_replace_newer_latest_RR():
         response_overrides={"answers": record},
     )[1].records[0]
     older = _exchange(
-        pipe, request_time="190", response_time="190.005",
+        pipe, request_time="198", response_time="198.005",
         request_overrides={"txid": 33},
         response_overrides={"txid": 33, "answers": record},
     )[1].records[0]
