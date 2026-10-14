@@ -48,9 +48,11 @@ from UDP source port 53. TCP DNS, mDNS, and DNS-over-HTTPS/TLS are not handled.
 - **Late response / out-of-order timestamps:** no completion if outside
   the response window or earlier than the request. A monotonic timestamp
   watermark prevents resurrection of stale requests during PCAP replay.
-- **Memory bounds:** the pending request list is capped (default 1,024);
-  oldest unmatched candidates are evicted if full. The ambiguity quarantine
-  has age-based expiry; see follow-up note for future bounded-cache hardening.
+- **Memory bounds:** the pending request list and ambiguity keys are capped
+  (default 1,024 each). Oldest pending candidates are evicted if full.
+  If ambiguity keys exceed capacity, the correlator clears pending state and
+  conservatively suppresses all pairings for one full window rather than
+  discarding an ambiguous key and potentially fabricating a match.
 - **Negative DNS answer:** an RCODE 3 / NXDOMAIN reply can still form a
   correlated exchange. This conveys an observed DNS result, not absence
   of a device or service.
