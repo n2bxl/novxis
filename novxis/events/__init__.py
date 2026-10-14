@@ -1,6 +1,7 @@
 """Normalized NOVXIS event models."""
 
 from novxis.events.dns import DNSMessageObserved, observe_dns
+from novxis.events.dns_correlator import DNSCorrelator, DNSExchangeCorrelated
 from novxis.events.dhcpv4 import DHCPv4MessageObserved, observe_dhcpv4
 from novxis.events.dhcpv4_correlator import (
     DHCPv4Correlator,
@@ -31,6 +32,8 @@ from novxis.events.udp import UDPDatagramObserved, observe_udp
 
 __all__ = [
     "DNSMessageObserved",
+    "DNSCorrelator",
+    "DNSExchangeCorrelated",
     "observe_dns",
     "DHCPv4MessageObserved",
     "DHCPv4Correlator",
