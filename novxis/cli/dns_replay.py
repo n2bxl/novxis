@@ -6,8 +6,10 @@ import sys
 
 from novxis.capture.frame import CapturedFrame
 from novxis.capture.pcap_replay import PcapReplayError, PcapReplayProvider
+from novxis.events.dns_correlator import DNSCorrelator
 from novxis.pipeline import DNSEventPipeline, UnsupportedLinkTypeError
 from novxis.presentation.dns_console import print_dns_observation
+from novxis.presentation.dns_exchange_console import print_dns_exchange
 from novxis.presentation.ipv4_console import format_timestamp
 from novxis.protocols.dns import DNSParseError
 from novxis.protocols.ethernet import EthernetParseError
@@ -23,7 +25,10 @@ _DECODE_ERRORS = (
 )
 
 
-def _build_handler(pipeline: DNSEventPipeline, counts: dict[str, int]):
+def _build_handler(
+    pipeline: DNSEventPipeline, counts: dict[str, int],
+    correlator: DNSCorrelator | None = None,
+):
     def handle(frame: CapturedFrame) -> None:
         try:
             observation = pipeline.process(frame)
@@ -39,6 +44,11 @@ def _build_handler(pipeline: DNSEventPipeline, counts: dict[str, int]):
         if observation is not None:
             counts["observations"] += 1
             print_dns_observation(observation)
+            if correlator is not None:
+                exchange = correlator.observe(observation)
+                if exchange is not None:
+                    counts["exchanges"] += 1
+                    print_dns_exchange(exchange)
 
     return handle
 
@@ -56,6 +66,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--interface-label", default="replay",
         help="Fallback interface label if the capture does not identify one.",
     )
+    parser.add_argument(
+        "--correlate", action="store_true",
+        help="Display conservative DNS query/response pairings in addition to raw observations.",
+    )
     return parser
 
 
@@ -69,6 +83,9 @@ def main() -> int:
 
     counts = {"observations": 0, "errors": 0}
     pipeline = DNSEventPipeline()
+    correlator = DNSCorrelator() if args.correlate else None
+    if args.correlate:
+        counts["exchanges"] = 0
     provider = PcapReplayProvider()
 
     print("NOVXIS DNS UDP replay")
@@ -80,7 +97,7 @@ def main() -> int:
     try:
         replayed = provider.replay(
             args.path,
-            _build_handler(pipeline, counts),
+            _build_handler(pipeline, counts, correlator),
             interface_label=args.interface_label,
             count=args.count,
         )
@@ -94,6 +111,9 @@ def main() -> int:
         f"DNS observations: {counts['observations']}; "
         f"decode errors: {counts['errors']}"
     )
+    if correlator is not None:
+        print(f"Correlated exchanges: {counts['exchanges']}; "
+              f"pending requests: {len(correlator.pending_requests)}")
     return 0 if counts["errors"] == 0 else 1
 
 
