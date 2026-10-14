@@ -750,4 +750,9 @@ python -m pytest
 
 See [Phase 1C implementation notes](docs/implementation/2026-10-13-dns-query-response-correlator.md)
 for matching rules, ambiguity/expiry safeguards, validation and known limits.
-**Local tests and live validation are pending on this feature branch.**
+**Local acceptance 2026-10-13:** 38/38 Phase 1C tests and 274/274
+full-suite tests passed on Python 3.14.6. A live capture on `en0`
+produced 20 DNS observations, 9 correlated exchanges, 2 pending
+requests at the capture cutoff, and 0 decode errors. IDs, response
+values, and timing were cross-checked against `dig` and `dig -x`.
+See the implementation notes for details and remaining boundaries.
