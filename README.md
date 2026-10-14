@@ -715,3 +715,39 @@ Reported DNS IDs, PTR/A results, TTLs and NXDOMAIN response agreed with
 `nslookup` and `dig`. These are individual observations, not a
 query-response correlator. See the Phase 1B validation plan for details.
 Correlation, name-to-address state, DNS-over-TCP, mDNS and DNS-SD remain separate.
+
+
+## Phase 1C: Conservative DNS Query/Response Correlation
+
+The optional `DNSCorrelator` groups only unambiguously related DNS-over-UDP
+messages by capture interface, reversed source/destination IP addresses and
+UDP ports, transaction ID, opcode, and complete DNS question identity
+(QNAME, QTYPE and QCLASS). DNS names are ASCII case-insensitive for comparison;
+original wire bytes remain unchanged. Repeated outstanding identical queries
+are quarantined rather than arbitrarily paired.
+
+Run passive live correlation on your **actual** capture interface:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.dns_events en5 --count 20 --timeout 60 --correlate
+```
+
+Or analyze a locally held capture:
+
+```bash
+python -m novxis.cli.dns_replay /path/to/capture.pcapng --correlate
+```
+
+Both consoles still print all individual observations; correlated pairings
+are **additional** output and never prove DNS response authenticity, device
+identity, or current reachability. Omit `--correlate` to retain Phase 1B
+observation-only behavior.
+
+```bash
+python -m pytest tests/events/test_dns_correlator.py tests/cli/test_dns_correlation_cli.py -q
+python -m pytest
+```
+
+See [Phase 1C implementation notes](docs/implementation/2026-10-13-dns-query-response-correlator.md)
+for matching rules, ambiguity/expiry safeguards, validation and known limits.
+**Local tests and live validation are pending on this feature branch.**
