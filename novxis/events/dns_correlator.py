@@ -92,6 +92,9 @@ class DNSCorrelator:
         self._max_pending = max_pending
         self._pending: list[DNSMessageObserved] = []
         self._ambiguous_until: dict[DNSExchangeKey, Decimal] = {}
+        # If too many keys become ambiguous, temporarily stop all pairings
+        # rather than silently dropping the ambiguity evidence.
+        self._overflow_until: Decimal | None = None
         self._watermark: Decimal | None = None
 
     @property
@@ -101,6 +104,11 @@ class DNSCorrelator:
     def _expire(self, timestamp: Decimal) -> None:
         if self._watermark is None or timestamp > self._watermark:
             self._watermark = timestamp
+        if (
+            self._overflow_until is not None
+            and self._watermark > self._overflow_until
+        ):
+            self._overflow_until = None
         cutoff = self._watermark - self._max_age
         self._pending = [
             request for request in self._pending
@@ -114,6 +122,9 @@ class DNSCorrelator:
     def observe(self, observation: DNSMessageObserved) -> DNSExchangeCorrelated | None:
         """Process one message; return a pairing only when unambiguous."""
         self._expire(observation.timestamp)
+        if self._overflow_until is not None:
+            # Fail closed while the ambiguity table was saturated.
+            return None
         if not _eligible(observation):
             return None
 
@@ -161,6 +172,10 @@ class DNSCorrelator:
             self._ambiguous_until[key] = max(
                 [observation.timestamp, *(item.timestamp for item in duplicates)]
             ) + self._max_age
+            if len(self._ambiguous_until) > self._max_pending:
+                self._pending.clear()
+                self._ambiguous_until.clear()
+                self._overflow_until = self._watermark + self._max_age
             return None
 
         self._pending.append(observation)
