@@ -1,6 +1,7 @@
 """Reusable NOVXIS interpretation pipelines."""
 
 from novxis.pipeline.dns import DNSEventPipeline
+from novxis.pipeline.dns_state import DNSStatePipeline, DNSStateProcessingResult
 from novxis.pipeline.dhcpv4 import DHCPv4EventPipeline
 from novxis.pipeline.dhcpv4_state import (
     DHCPv4StatePipeline,
@@ -22,6 +23,8 @@ from novxis.pipeline.udp import UDPEventPipeline
 
 __all__ = [
     "DNSEventPipeline",
+    "DNSStatePipeline",
+    "DNSStateProcessingResult",
     "DHCPv4EventPipeline",
     "DHCPv4StatePipeline",
     "DHCPv4StateProcessingResult",
