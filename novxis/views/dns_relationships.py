@@ -99,17 +99,20 @@ def project_dns_relationships(
         if record.observed_at <= as_of
     )
     if mode == "latest":
-        # The latest cache may outlive bounded event history. Include it for
-        # current snapshots while selecting older retained history when the
-        # caller requests an earlier as_of timestamp.
-        by_key = {}
-        for evidence in (*eligible, *state.latest_records):
-            if evidence.observed_at > as_of:
-                continue
-            previous = by_key.get(evidence.key)
-            if previous is None or evidence.observed_at >= previous.observed_at:
-                by_key[evidence.key] = evidence
-        evidence_rows = tuple(by_key.values())
+        # Respect the state layer's latest-record capacity at present/future
+        # timestamps. A past-time view reconstructs a best-effort snapshot
+        # from bounded retained history instead; evicted history cannot be
+        # reconstructed.
+        latest = state.latest_records
+        if not latest or as_of >= max(item.observed_at for item in latest):
+            evidence_rows = latest
+        else:
+            by_key = {}
+            for evidence in eligible:
+                previous = by_key.get(evidence.key)
+                if previous is None or evidence.observed_at >= previous.observed_at:
+                    by_key[evidence.key] = evidence
+            evidence_rows = tuple(by_key.values())
     else:
         evidence_rows = eligible
 
