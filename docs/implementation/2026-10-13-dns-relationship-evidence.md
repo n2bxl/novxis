@@ -1,7 +1,7 @@
 # Phase 1D-A: Timestamped DNS Relationship Evidence
 
 **Date:** 2026-10-13
-**Status:** Feature branch; local Python 3.14 tests pending
+**Status:** Automated validation passed on macOS Python 3.14.6; PR review/merge pending
 
 ## Why this slice exists
 
@@ -17,7 +17,7 @@ host ownership, actual connection to an IP, or that a device is alive.
 
 ## Data flow
 
-\`\`\`text
+```text
 CapturedFrame
     ↓
 DNSEventPipeline → DNSMessageObserved
@@ -29,11 +29,11 @@ DNSRelationshipState.observe_exchange()
 DNSRecordEvidence (one per supported answer RR)
     ↓
 bounded history / latest-per-scoped-RR / explicit-time freshness view
-\`\`\`
+```
 
-\`DNSStatePipeline\` composes these layers into one opt-in programmatic path
+`DNSStatePipeline` composes these layers into one opt-in programmatic path
 without changing Phase 1B's raw observation consoles or Phase 1C's optional
-\`--correlate\` mode. \`NetworkState\` exposes \`dns_relationships\` as a
+`--correlate` mode. `NetworkState` exposes `dns_relationships` as a
 separate state namespace; ARP/DHCP records do not inherit DNS identities.
 
 ## What creates a relationship
@@ -50,8 +50,8 @@ Eligible RR types are:
 | PTR (12) | reverse name → target name | Reverse-DNS assertion, not device reachability |
 
 Unknown/opaque records, unsupported DNS classes, authority and additional
-records are left in the source \`DNSMessageObserved\` but create no
-\`DNSRecordEvidence\`. We are not yet interpreting HTTPS RR type 65.
+records are left in the source `DNSMessageObserved` but create no
+`DNSRecordEvidence`. We are not yet interpreting HTTPS RR type 65.
 
 NXDOMAIN, SERVFAIL, NODATA (NOERROR without relevant answers) and truncated
 responses **do not** create positive A/CNAME/PTR/etc relationships.
@@ -61,8 +61,8 @@ does not establish that the device does not exist.
 ## Per-record TTL and freshness
 
 Every evidence record holds its own received TTL, response-capture timestamp,
-and \`expires_at = observed_at + Decimal(TTL)\`. The caller supplies
-\`as_of\` explicitly to \`fresh_records(as_of)\`; there is no implicit wall
+and `expires_at = observed_at + Decimal(TTL)`. The caller supplies
+`as_of` explicitly to `fresh_records(as_of)`; there is no implicit wall
 clock or background expiration process.
 
 TTL=0 still creates a historical record, but it never qualifies as fresh.
@@ -86,8 +86,8 @@ as fresh. Do not treat that as proof the destination IP changed.
 
 ## Provenance, identity and bounded memory
 
-Every \`DNSRecordEvidence\` points back to its original resource record and
-\`DNSExchangeCorrelated\` source. Latest-record keys are scoped by:
+Every `DNSRecordEvidence` points back to its original resource record and
+`DNSExchangeCorrelated` source. Latest-record keys are scoped by:
 
 - observed interface;
 - requester and replying resolver IPv4 addresses;
@@ -115,10 +115,10 @@ encrypted DNS, or persist across restarts.
 
 ## Run Phase 1D-A tests
 
-\`\`\`bash
+```bash
 python -m pytest tests/integration/test_dns_state_evidence.py -q
 python -m pytest
-\`\`\`
+```
 
 Test cases include full Ethernet/IPv4/UDP/DNS synthetic packets, a four-link
 CNAME/A chain with varying TTLs, A and AAAA answers, PTR, multi-A responses,
@@ -127,8 +127,17 @@ opaque/unsupported records, missing exchanges, repeated observations,
 out-of-order replay, scoping by interface/resolver/client, provenance,
 memory limits, and invalid configuration.
 
-**Do not merge until tests are reported passing on the developer's macOS
-Python 3.14 environment.**
+### Local acceptance (2026-10-13)
+
+- **22/22** focused DNS state/evidence integration tests passed in **0.04s**.
+- **296/296** full regression tests passed in **0.28s**.
+- Platform: macOS/Darwin, Python **3.14.6**, pytest **9.1.1**.
+- Previous Phase 1C baseline: 274 passing; **22 new tests, no failures**.
+
+This is automated validation of synthetic network evidence. The Phase 1D-A
+state layer is not yet exposed through a live relationship presentation
+console, so no live DNS state display is claimed or required for this PR.
+PR awaits human review and squash merge.
 
 ## Follow-up slice
 
