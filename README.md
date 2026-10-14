@@ -760,23 +760,25 @@ See the implementation notes for details and remaining boundaries.
 
 ## Phase 1D-A: DNS Relationship Evidence with Independent TTLs
 
-\`DNSStatePipeline\` composes existing packet decoding and conservative
-query/response correlation with new \`DNSRelationshipState\`. Only supported
+`DNSStatePipeline` composes existing packet decoding and conservative
+query/response correlation with new `DNSRelationshipState`. Only supported
 answer records from matched, non-truncated NOERROR responses create evidence:
 A, AAAA, CNAME and PTR. Each relationship preserves the original resource
 record, observed timestamp, received TTL and correlated exchange provenance.
 
-The bounded state provides \`history\`, \`latest_records\` and
-\`fresh_records(as_of)\`; freshness requires an explicit timestamp and is
+The bounded state provides `history`, `latest_records` and
+`fresh_records(as_of)`; freshness requires an explicit timestamp and is
 **not** a connectivity, DNS authenticity or physical-host assertion. CNAMEs
 are logical aliases, not router hops; TTL=0 answers are historical only.
 Multiple answers and different resolvers remain distinct.
 
-\`\`\`bash
+```bash
 python -m pytest tests/integration/test_dns_state_evidence.py -q
 python -m pytest
-\`\`\`
+```
 
 See [Phase 1D-A implementation and acceptance plan](docs/implementation/2026-10-13-dns-relationship-evidence.md).
-**Local testing pending** on this feature branch; console presentation will
-be a separate slice after the evidence engine passes acceptance.
+**Local acceptance 2026-10-13:** 22/22 focused tests and **296/296**
+full-suite tests passed on macOS Python 3.14.6. Phase 1D-A provides
+programmatic evidence state only; live relationship console presentation
+remains a follow-up slice. PR review and merge are pending.
