@@ -5,11 +5,12 @@ No UI rendering concerns enter capture, event interpretation, or NetworkState.
 """
 
 import argparse
+import math
 from decimal import Decimal
 from pathlib import Path
 import sys
 
-from novxis.capture.pcap_replay import PcapReplayError, PcapReplayProvider
+from novxis.capture.pcap_replay import PcapReplayProvider
 from novxis.capture.scapy_provider import ScapyCaptureProvider
 from novxis.pipeline.dns_state import DNSStatePipeline
 from novxis.pipeline.link import UnsupportedLinkTypeError
@@ -76,7 +77,7 @@ def _validate(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None
         parser.error("--correlation-window must be finite and positive")
     if args.as_of is not None and not args.as_of.is_finite():
         parser.error("--as-of must be a finite Unix timestamp")
-    if args.source == "live" and args.timeout <= 0:
+    if args.source == "live" and (not math.isfinite(args.timeout) or args.timeout <= 0):
         parser.error("--timeout must be greater than zero")
     if args.source == "replay" and not args.interface_label:
         parser.error("--interface-label must not be empty")
@@ -134,7 +135,7 @@ def main() -> int:
                 interface_label=args.interface_label,
                 count=args.count,
             )
-    except (OSError, PcapReplayError, ValueError, Exception) as exc:
+    except Exception as exc:
         # Display a clear error in this boundary only; never swallow
         # unexpected application failures as successful captures.
         print(f"DNS relationship capture/replay failed: {exc}", file=sys.stderr)
