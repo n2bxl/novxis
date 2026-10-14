@@ -116,7 +116,7 @@ def main() -> int:
         f"decode errors: {counts['errors']}"
     )
     if correlator is not None:
-        print(f"Correlated exchanges: {counts[\'exchanges\']}; "
+        print(f"Correlated exchanges: {counts['exchanges']}; "
               f"pending requests: {len(correlator.pending_requests)}")
     return 0 if counts["errors"] == 0 else 1
 
