@@ -7,6 +7,8 @@ from novxis.state.dhcpv4 import (
     DHCPv4AcknowledgmentState,
     DHCPv4StateChange,
 )
+from novxis.state.dns import DNSRecordEvidence, DNSRelationshipState
+from novxis.events.dns_correlator import DNSExchangeCorrelated
 from novxis.state.arp import (
     ARPBinding,
     ARPBindingChanged,
@@ -24,6 +26,7 @@ class NetworkState:
     def __init__(self) -> None:
         self._arp_bindings: dict[ARPBindingKey, ARPBinding] = {}
         self._dhcpv4 = DHCPv4AcknowledgmentState()
+        self._dns = DNSRelationshipState()
 
     @property
     def dhcpv4_acknowledgments(self) -> tuple[DHCPv4Acknowledgment, ...]:
@@ -34,6 +37,17 @@ class NetworkState:
         self, exchange: DHCPv4ExchangeCompleted
     ) -> DHCPv4StateChange | None:
         return self._dhcpv4.observe_exchange(exchange)
+
+    @property
+    def dns_relationships(self) -> DNSRelationshipState:
+        """Scoped DNS record evidence; never an inferred physical host list."""
+        return self._dns
+
+    def observe_dns_exchange(
+        self, exchange: DNSExchangeCorrelated
+    ) -> tuple[DNSRecordEvidence, ...]:
+        """Retain per-record response evidence from matched DNS exchanges."""
+        return self._dns.observe_exchange(exchange)
 
     @property
     def arp_bindings(self) -> tuple[ARPBinding, ...]:

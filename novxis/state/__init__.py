@@ -14,6 +14,7 @@ from novxis.state.dhcpv4 import (
     DHCPv4AcknowledgmentUpdated,
     DHCPv4StateChange,
 )
+from novxis.state.dns import DNSRecordEvidence, DNSRelationshipState
 from novxis.state.network import NetworkState
 
 __all__ = [
@@ -27,5 +28,7 @@ __all__ = [
     "DHCPv4AcknowledgmentState",
     "DHCPv4AcknowledgmentUpdated",
     "DHCPv4StateChange",
+    "DNSRecordEvidence",
+    "DNSRelationshipState",
     "NetworkState",
 ]
