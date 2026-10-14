@@ -1,7 +1,7 @@
 # Phase 1C: Conservative DNS Query/Response Correlation
 
 **Date:** 2026-10-13  
-**Status:** Feature branch implementation; local tests and live acceptance pending
+**Status:** Local automated tests and live capture validated; PR review/merge pending
 
 ## Scope and motivation
 
@@ -112,9 +112,51 @@ Synthetic test scenarios include:
 - Bounded pending request capacity and invalid configuration
 - Live/replay CLI opt-in vs default observation-only compatibility
 
-The last independently reported Phase 1B local regression baseline:
-**236/236 passing**. There is **no claim that Phase 1C tests have run**
-until the developer executes these commands locally.
+### Accepted locally on 2026-10-13
+
+On macOS (Darwin), Python 3.14.6, pytest 9.1.1:
+
+- Focused Phase 1C suite: **38 passed in 0.30s**.
+- Complete regression suite: **274 passed in 0.27s**.
+- Phase 1B baseline: 236 passed; 38 new tests and no regressions.
+
+### Successful live capture on en0
+
+```bash
+sudo .venv/bin/python -m novxis.cli.dns_events en0 --count 20 --timeout 60 --correlate
+```
+
+- **20 DNSMessageObserved** observations, **0 decode errors**.
+- **9 DNSExchangeCorrelated** pairs covering 18 observations.
+- **2 pending requests** at capture termination: the frame-count limit was
+  reached after two additional queries but before observing replies.
+  This alone does **not** indicate a failed resolver or missing response.
+- Correlator observed an A query with two answers and **30.092 ms** interval;
+  the corresponding standalone `dig` output reported the matching
+  transaction ID (hexadecimal/decimal), two A records and **30 ms**.
+- Correlator observed a PTR reverse query with one answer and **13.375 ms**
+  interval; standalone `dig -x` reported matching ID, PTR answer,
+  and **14 ms** query time.
+- Background traffic included parallel queries for the same name with
+  QTYPE=65 (HTTPS/SVCB) and QTYPE=1 (A), different ports and transaction IDs;
+  the correlator matched them separately. The type-65 exchange had RCODE=0
+  and zero answer records, which is not NXDOMAIN.
+- The original DNS observations still printed alongside the additional
+  correlation summary lines as designed.
+
+Application/service hostnames, the user's queried organization domain,
+the private client IP, and exact resolver address are deliberately omitted
+from this public acceptance document. Displayed IDs and timings are
+sufficient to document the correlations without publishing browsing history.
+
+**Caveat:** The captured interface for this run was `en0`, whereas an
+earlier run used `en5`. Interface names must be checked per session.
+The `--count 20` limit counts BPF-matching frames, not exchanges.
+
+**Acceptance conclusion:** Automated tests and live DNS correlation pass.
+This is correlation of observed packets, **not** DNS response
+authentication, reachability testing, or a DNS cache. The branch awaits
+review and squash merge.
 
 ## Later NOVXIS work
 
