@@ -189,6 +189,27 @@ def test_duplicate_pending_requests_quarantine_matching_key():
     assert paired is not None and paired.request is new_request
 
 
+def test_ambiguity_capacity_saturation_fails_closed_until_window_elapses():
+    matcher = DNSCorrelator(max_age=Decimal("1"), max_pending=1)
+    matcher.observe(_observed(txid=1, timestamp="100.000"))
+    matcher.observe(_observed(txid=1, timestamp="100.100"))
+    matcher.observe(_observed(txid=2, timestamp="100.200"))
+    matcher.observe(_observed(txid=2, timestamp="100.300"))
+
+    assert matcher.pending_requests == ()
+    matcher.observe(_observed(txid=3, timestamp="100.400"))
+    assert matcher.observe(_observed(
+        response=True, txid=3, timestamp="100.405",
+    )) is None
+
+    fresh = _observed(txid=4, timestamp="102.000")
+    matcher.observe(fresh)
+    pair = matcher.observe(_observed(
+        response=True, txid=4, timestamp="102.005",
+    ))
+    assert pair is not None and pair.request is fresh
+
+
 def test_request_older_than_window_is_not_matched():
     matcher = DNSCorrelator(max_age=Decimal("1"))
     matcher.observe(_observed(timestamp="100"))
