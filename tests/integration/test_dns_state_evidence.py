@@ -461,3 +461,25 @@ def test_projection_rejects_unknown_mode():
         project_dns_relationships(
             DNSRelationshipState(), as_of=Decimal("100"), mode="graph",
         )
+
+
+def test_latest_view_respects_state_capacity_when_history_has_more_records():
+    state = DNSRelationshipState(max_records=1, max_history=10)
+    pipe = DNSStatePipeline()
+    for index, value in enumerate(("192.0.2.1", "192.0.2.2")):
+        reply = _exchange(
+            pipe,
+            request_time=str(100 + index),
+            response_time=str(100.005 + index),
+            request_overrides={"txid": index + 1},
+            response_overrides={
+                "txid": index + 1,
+                "answers": (_record("launcher.example.test", 1, 60, value),),
+            },
+        )[1]
+        state.observe_exchange(reply.exchange)
+    latest = project_dns_relationships(state, as_of=Decimal("105"))
+    history = project_dns_relationships(state, as_of=Decimal("105"), mode="history")
+    assert len(latest.relationships) == 1
+    assert latest.relationships[0].target == "192.0.2.2"
+    assert len(history.relationships) == 2
