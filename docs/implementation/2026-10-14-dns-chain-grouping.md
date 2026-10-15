@@ -1,7 +1,7 @@
 # DNS Phase 1D-C — Grouped Naming Relationships
 
 **Date:** 2026-10-14  
-**Status:** Implemented on feature branch; local macOS validation pending
+**Status:** Automated macOS tests and live capture validated; PR review/squash merge pending
 
 ## Purpose
 
@@ -109,15 +109,71 @@ Test categories:
 - Deterministic results, conservation of every input record, empty captures
 - Optional live/replay `--group` while default CLI remains flat
 
-The last explicitly user-confirmed complete regression suite in this
-conversation was **296/296** for Phase 1D-A. Phase 1D-B's live capture was
-observed to work (34 frames, 17 exchanges, 48 answer records, 45 scoped
-relationships, 26 fresh/19 expired), but automated test results for the
-merged Phase 1D-B were not separately provided here. The new Phase 1D-C
-branch has **not** yet been locally tested.
+### Local acceptance (2026-10-14)
 
-Keep the feature branch open until the macOS Python 3.14 test suite is
-reported passing. Do not commit private DNS logs or identifiable PCAP files.
+On macOS/Darwin, Python **3.14.6**, pytest **9.1.1**:
+
+- Focused `test_dns_groups.py` + `test_dns_relationships_cli.py`: **27/27 passed in 0.24s**.
+- Complete regression suite: **335/335 passed in 0.29s**.
+- No regression failures reported.
+
+### Live passive grouped capture
+
+Command:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.dns_relationships live en0 --group --count 40 --timeout 60
+```
+
+| Metric | Observed |
+|---|---:|
+| Captured frames | 40 |
+| Decoded DNS messages | 40 |
+| Correlated exchanges | 18 |
+| Supported answer-record observations | 59 |
+| Latest distinct scoped relationships | 45 |
+| Naming groups | 7 |
+| Fresh latest relationships | 43 |
+| Expired latest relationships | 2 |
+| Pending requests at capture cutoff | 1 |
+| Decode errors | 0 |
+
+The difference between 59 record observations and 45 latest distinct
+relations is consistent with repeated observations of identical scoped
+record keys. The outstanding request at the finite 40-frame cutoff cannot
+by itself be interpreted as a DNS failure; not all other non-paired
+observations need have been correlated.
+
+Important real-world grouping cases (anonymized):
+
+1. Two separate service aliases each had CNAME chains converging on one
+   shared service target. NOVXIS displayed a **single 14-record forward
+   group with two roots**, preserving both independent naming chains and
+   two A answers at the shared target.
+2. One CDN returned a three-relationship chain where the long-lived
+   initial CNAME remained fresh while an intermediate CNAME and terminal
+   A record had expired by the snapshot timestamp (**1 fresh, 2 expired**).
+   The grouping retained all three records without declaring the CDN
+   unreachable.
+3. A plain A lookup produced two distinct address records in one group.
+   Its client-side `dig` transaction ID matched the NOVXIS hex ID
+   exactly after decimal-to-hex conversion. The two A values agreed.
+4. An independently executed `nslookup` showed the same logical
+   CNAME→CNAME→A chain that NOVXIS grouped for the CDN. This comparison
+   validates name-chain grouping, not an IP packet path or authoritative
+   resolver-cache state.
+
+The capture supports grouped projection, source provenance, TTL aging,
+and terminal rendering on real observed DNS data. Individual response
+authenticity, physical device identity, and networking routes remain
+outside scope.
+
+**Privacy:** Public notes intentionally omit organization-specific
+hostnames, browsing/service hostnames, private client IPs, resolver
+address, and raw capture logs. Do not commit raw private PCAP files.
+
+**Acceptance:** Local focused tests, full regression suite and live
+grouped capture passed. Review and squash merge are the remaining steps.
 
 ## Later visualization
 
