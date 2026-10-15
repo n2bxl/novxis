@@ -203,6 +203,10 @@ def group_dns_relationships(
         tuple[str, str, str], list[DNSRelationshipView]
     ] = defaultdict(list)
     for row in snapshot.relationships:
+        if row.relationship_kind not in ("ipv4", "ipv6", "alias", "reverse_name"):
+            raise ValueError(
+                f"Unsupported DNS relationship kind: {row.relationship_kind!r}"
+            )
         scopes[(row.interface, row.requester_ipv4, row.resolver_ipv4)].append(row)
 
     groups: list[DNSRelationshipGroup] = []
@@ -226,7 +230,8 @@ def group_dns_relationships(
     )
     # The projection is a partition: no input observation can disappear
     # or multiply when alias chains are grouped.
-    assert len(flattened) == len(snapshot.relationships)
+    if len(flattened) != len(snapshot.relationships):
+        raise RuntimeError("DNS grouping must preserve every input relationship")
     return DNSGroupedSnapshot(
         as_of=snapshot.as_of,
         mode=snapshot.mode,
