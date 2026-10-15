@@ -1,7 +1,7 @@
 # Phase 1D-B: UI-Neutral DNS Relationship View
 
 **Date:** 2026-10-13  
-**Status:** Feature branch, Mac regression and live/replay acceptance pending
+**Status:** Live read-only DNS relationship capture validated; Mac automated regressions and replay acceptance still pending
 
 ## Architecture decision
 
@@ -114,6 +114,42 @@ Focus covers:
 
 **No automated local test pass is claimed until validated on macOS Python 3.14.6.**
 Current merged baseline is **296 passed** from Phase 1D-A.
+
+## Live capture acceptance (reported 2026-10-14)
+
+Operator ran the passive finite live relationship command on the active Mac
+interface. The full private terminal log was reviewed, but only aggregate,
+non-identifying information is retained here for the public repository.
+
+| Metric | Observed result |
+|---|---:|
+| Captured frames | 34 |
+| DNS message observations | 34 |
+| Correlated query/response exchanges | 17 |
+| Supported resource-record observations | 48 |
+| Latest distinct scoped relationships | 45 |
+| Fresh relationships at captured end timestamp | 26 |
+| Expired relationships at captured end timestamp | 19 |
+| Pending requests | 0 |
+| Decode errors | 0 |
+
+The difference between 48 record observations and 45 latest relationships
+is consistent with repeated observations of the same scoped record key.
+The 19 expired entries represent **19 of 45 latest distinct relationships**,
+not 19 of 48 historical record observations.
+
+Observed behavior aligns with per-RR independent TTLs: some CDN aliases
+were still fresh when short-lived address records had already expired.
+A received TTL can already have been reduced by a recursive resolver.
+Expired observations do not prove unreachable hosts, invalid IP addresses,
+or changed routing. Multiple answer records do not mean multiple queries
+or physical devices.
+
+The aggregate snapshot was produced without parsing terminal output back
+into the evidence model. **The test run supports the live capture and
+text-rendering path; it does not replace focused and full automated tests.**
+Private client/resolver addresses, organization names, and browsing-related
+query hostnames are intentionally excluded.
 
 ## Next graphical integration
 
