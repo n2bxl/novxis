@@ -782,3 +782,41 @@ See [Phase 1D-A implementation and acceptance plan](docs/implementation/2026-10-
 full-suite tests passed on macOS Python 3.14.6. Phase 1D-A provides
 programmatic evidence state only; live relationship console presentation
 remains a follow-up slice. PR review and merge are pending.
+
+
+## Phase 1D-B: Renderer-neutral DNS Relationship Snapshots
+
+The immutable `DNSRelationshipSnapshot` and `DNSRelationshipView` models in
+`novxis.views` project DNS state into framework-independent, deterministic
+semantic relationships. They preserve alias/address/reverse-name relationship
+types, response provenance, independent TTLs, and explicit-time freshness.
+The console is an adapter that formats this data; **future GUI/cyberspace
+renderers consume the same typed snapshot, never parsed stdout**.
+
+Passive aggregated live view (select the active capture interface):
+
+```bash
+sudo .venv/bin/python -m novxis.cli.dns_relationships live en0 --count 40 --timeout 60
+```
+
+Read-only PCAP/PCAPNG replay:
+
+```bash
+python -m novxis.cli.dns_relationships replay /path/to/private-dns.pcapng
+```
+
+Use `--history` for individual retained observations instead of latest
+per-record snapshots. Use `--as-of UNIX_SECONDS` for deterministic
+historical freshness evaluation; otherwise the CLI uses the capture's latest
+frame timestamp (never the present wall clock for old replay files).
+The display is aggregated once at capture completion; existing DNS commands
+are unchanged. No active probes, invented device nodes, DNS cache assertions,
+or inferred physical connections.
+
+```bash
+python -m pytest tests/integration/test_dns_state_evidence.py tests/cli/test_dns_relationships_cli.py -q
+python -m pytest
+```
+
+See [Phase 1D-B UI-neutral view design](docs/implementation/2026-10-13-dns-relationship-view-adapter.md).
+**Local acceptance is pending** on this feature branch.

@@ -323,3 +323,163 @@ def test_nonfinite_freshness_time_is_rejected():
         pipe.state.dns_relationships.fresh_records(Decimal("NaN"))
     with pytest.raises(ValueError, match="finite"):
         reply.records[0].is_fresh(Decimal("Infinity"))
+
+
+# Phase 1D-B: framework-neutral relationship snapshots and console adapter.
+
+from novxis.views.dns_relationships import project_dns_relationships
+from novxis.presentation.dns_relationship_console import (
+    format_dns_relationship_snapshot,
+)
+
+
+def test_dns_projection_is_immutable_semantic_data_not_console_text():
+    pipe = DNSStatePipeline()
+    _exchange(pipe, response_overrides={"answers": CHAIN})
+    snapshot = project_dns_relationships(
+        pipe.state.dns_relationships, as_of=Decimal("100.500"),
+    )
+    assert snapshot.mode == "latest"
+    assert snapshot.fresh_count == 4
+    assert snapshot.expired_count == 0
+    assert len(snapshot.relationships) == 4
+    alias = next(row for row in snapshot.relationships
+                 if row.owner == "launcher.example.test")
+    assert alias.record_type == "CNAME"
+    assert alias.relationship_kind == "alias"
+    assert alias.target == "edge.example.test"
+    assert alias.ttl_seconds == 130
+    assert alias.remaining_seconds == Decimal("129.505")
+    assert alias.interface == "en0"
+    assert alias.resolver_ipv4 == "198.51.100.53"
+    assert alias.requester_ipv4 == "192.0.2.10"
+    assert alias.transaction_id == 0x1234
+    assert not hasattr(alias, "rendered_label")
+    from dataclasses import FrozenInstanceError
+    with pytest.raises(FrozenInstanceError):
+        alias.target = "changed.invalid"
+
+
+def test_projection_independently_ages_each_chain_link():
+    pipe = DNSStatePipeline()
+    _exchange(pipe, response_overrides={"answers": CHAIN})
+    snapshot = project_dns_relationships(
+        pipe.state.dns_relationships, as_of=Decimal("109"),
+    )
+    assert snapshot.fresh_count == 3
+    assert snapshot.expired_count == 1
+    a = next(row for row in snapshot.relationships if row.record_type == "A")
+    assert a.freshness == "expired"
+    assert a.remaining_seconds == Decimal(0)
+    assert {row.freshness for row in snapshot.relationships
+            if row.record_type == "CNAME"} == {"fresh"}
+
+
+def test_projection_retains_separate_addresses_without_choosing_host_identity():
+    pipe = DNSStatePipeline()
+    records = (
+        _record("service.example.test", 1, 20, "192.0.2.1"),
+        _record("service.example.test", 1, 20, "192.0.2.2"),
+    )
+    _exchange(pipe, request_overrides={"question": "service.example.test"},
+              response_overrides={"question": "service.example.test", "answers": records})
+    snapshot = project_dns_relationships(
+        pipe.state.dns_relationships, as_of=Decimal("105"),
+    )
+    assert {row.target for row in snapshot.relationships} == {"192.0.2.1", "192.0.2.2"}
+    assert all(row.relationship_kind == "ipv4" for row in snapshot.relationships)
+
+
+def test_latest_vs_history_projection_and_time_travel_from_retained_evidence():
+    pipe = DNSStatePipeline()
+    record = (_record("launcher.example.test", 1, 30, "192.0.2.26"),)
+    _exchange(pipe, response_overrides={"answers": record})
+    _exchange(
+        pipe, request_time="105", response_time="105.005",
+        request_overrides={"txid": 55},
+        response_overrides={"txid": 55, "answers": record},
+    )
+    state = pipe.state.dns_relationships
+    now = project_dns_relationships(state, as_of=Decimal("110"))
+    history = project_dns_relationships(
+        state, as_of=Decimal("110"), mode="history",
+    )
+    past = project_dns_relationships(state, as_of=Decimal("103"))
+    assert len(now.relationships) == 1
+    assert now.relationships[0].observed_at == Decimal("105.005")
+    assert len(history.relationships) == 2
+    assert past.relationships[0].observed_at == Decimal("100.005")
+    assert len(state.history) == 2  # Projection is a pure read.
+
+
+def test_no_future_evidence_leaks_into_as_of_snapshot():
+    pipe = DNSStatePipeline()
+    _exchange(pipe, response_overrides={"answers": CHAIN})
+    snapshot = project_dns_relationships(
+        pipe.state.dns_relationships, as_of=Decimal("100"),
+    )
+    assert snapshot.relationships == ()
+    assert snapshot.fresh_count == snapshot.expired_count == 0
+
+
+def test_projection_zero_ttl_and_exact_deadline_are_expired():
+    pipe = DNSStatePipeline()
+    answer = (_record("launcher.example.test", 1, 0, "192.0.2.26"),)
+    _exchange(pipe, response_overrides={"answers": answer})
+    now = project_dns_relationships(
+        pipe.state.dns_relationships, as_of=Decimal("100.005"),
+    )
+    assert now.relationships[0].freshness == "expired"
+    assert now.relationships[0].remaining_seconds == Decimal(0)
+
+
+def test_text_renderer_is_terminal_only_and_preserves_ttl_provenance():
+    pipe = DNSStatePipeline()
+    _exchange(pipe, response_overrides={"answers": CHAIN})
+    snapshot = project_dns_relationships(
+        pipe.state.dns_relationships, as_of=Decimal("109"),
+    )
+    text = format_dns_relationship_snapshot(snapshot)
+    assert "NOVXIS DNS relationship evidence" in text
+    assert "fresh=3 expired=1" in text
+    assert "[EXPIRED]" in text
+    assert "CNAME" in text
+    assert "ttl=8s" in text
+    assert "resolver=198.51.100.53" in text
+    assert "dns_id=0x1234" in text
+    assert "not a DNS cache" in text
+
+
+@pytest.mark.parametrize("as_of", [Decimal("NaN"), Decimal("Infinity"), 100])
+def test_projection_rejects_invalid_as_of(as_of):
+    with pytest.raises(ValueError, match="finite Decimal"):
+        project_dns_relationships(DNSRelationshipState(), as_of=as_of)
+
+
+def test_projection_rejects_unknown_mode():
+    with pytest.raises(ValueError, match="mode"):
+        project_dns_relationships(
+            DNSRelationshipState(), as_of=Decimal("100"), mode="graph",
+        )
+
+
+def test_latest_view_respects_state_capacity_when_history_has_more_records():
+    state = DNSRelationshipState(max_records=1, max_history=10)
+    pipe = DNSStatePipeline()
+    for index, value in enumerate(("192.0.2.1", "192.0.2.2")):
+        reply = _exchange(
+            pipe,
+            request_time=str(100 + index),
+            response_time=str(100.005 + index),
+            request_overrides={"txid": index + 1},
+            response_overrides={
+                "txid": index + 1,
+                "answers": (_record("launcher.example.test", 1, 60, value),),
+            },
+        )[1]
+        state.observe_exchange(reply.exchange)
+    latest = project_dns_relationships(state, as_of=Decimal("105"))
+    history = project_dns_relationships(state, as_of=Decimal("105"), mode="history")
+    assert len(latest.relationships) == 1
+    assert latest.relationships[0].target == "192.0.2.2"
+    assert len(history.relationships) == 2
