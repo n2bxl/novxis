@@ -154,3 +154,54 @@ def test_invalid_cli_parameters_are_rejected(monkeypatch, args):
     with pytest.raises(SystemExit) as exc:
         dns_relationships.main()
     assert exc.value.code == 2
+
+
+def test_optional_group_mode_consumes_projection_without_changing_pipeline(
+    monkeypatch, capsys,
+):
+    projections, flat_views = _patch(monkeypatch)
+    grouped_views = []
+    grouped_inputs = []
+
+    def group(snapshot):
+        grouped_inputs.append(snapshot)
+        return SimpleNamespace(marker="grouped")
+
+    monkeypatch.setattr(dns_relationships, "group_dns_relationships", group)
+    monkeypatch.setattr(
+        dns_relationships, "print_dns_grouped_snapshot", grouped_views.append,
+    )
+    monkeypatch.setattr(sys, "argv", [
+        "dns-relationships", "live", "en0",
+        "--group", "--count", "20",
+    ])
+    assert dns_relationships.main() == 0
+    assert len(projections) == 1
+    assert len(grouped_inputs) == 1
+    assert grouped_inputs[0].marker == "snapshot"
+    assert len(grouped_views) == 1
+    assert grouped_views[0].marker == "grouped"
+    assert flat_views == []
+    output = capsys.readouterr().out
+    assert "DNS observations: 2" in output
+    assert "correlated exchanges: 1" in output
+
+
+def test_group_mode_can_be_used_with_replay_and_history(monkeypatch):
+    projections, flat_views = _patch(monkeypatch)
+    grouped_views = []
+    monkeypatch.setattr(
+        dns_relationships, "group_dns_relationships",
+        lambda snapshot: SimpleNamespace(marker="replay-group"),
+    )
+    monkeypatch.setattr(
+        dns_relationships, "print_dns_grouped_snapshot", grouped_views.append,
+    )
+    monkeypatch.setattr(sys, "argv", [
+        "dns-relationships", "replay", "test.pcap",
+        "--group", "--history", "--as-of", "101",
+    ])
+    assert dns_relationships.main() == 0
+    assert projections[0][1:] == (Decimal("101"), "history")
+    assert [view.marker for view in grouped_views] == ["replay-group"]
+    assert flat_views == []

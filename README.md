@@ -820,3 +820,41 @@ python -m pytest
 
 See [Phase 1D-B UI-neutral view design](docs/implementation/2026-10-13-dns-relationship-view-adapter.md).
 **Local acceptance is pending** on this feature branch.
+
+
+## Phase 1D-C: Grouped DNS Naming Relationships
+
+An optional, immutable `DNSGroupedSnapshot` groups previously projected
+CNAME/A/AAAA records into scoped naming components, with PTR in separate
+reverse-name groups. Each input evidence record appears exactly once.
+Shared CNAME targets, multi-address answers, expired records, cycles and
+missing endpoints remain visible—never promoted to verified physical
+topology or live DNS cache state. The flat renderer remains the default.
+
+Use `--group` with existing live/replay relationship commands:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.dns_relationships live en0 --group --count 40 --timeout 60
+python -m novxis.cli.dns_relationships replay /path/to/private.pcapng --group --history
+```
+
+The grouping adapter is in `novxis.views.dns_groups`; the console-only
+formatting is in `novxis.presentation.dns_group_console`. Future graphical
+renderers consume the same immutable group objects rather than parsing text.
+
+```bash
+python -m pytest tests/views/test_dns_groups.py tests/cli/test_dns_relationships_cli.py -q
+python -m pytest
+```
+
+See [Phase 1D-C documentation](docs/implementation/2026-10-14-dns-chain-grouping.md).
+**Phase 1D-C local acceptance (2026-10-14):** 27/27 focused tests
+and **335/335** full regression tests passed on macOS Python 3.14.6.
+A passive 40-frame `en0` capture produced 18 correlated exchanges,
+59 eligible answer-record observations, **45 distinct relationships
+grouped into seven naming groups** (43 fresh, 2 expired),
+one pending request at capture cutoff, and zero decode errors.
+A two-root shared-target alias group and mixed-freshness CNAME→A
+chain validated grouping behavior against independent DNS lookups.
+See the implementation notes for anonymized acceptance findings.
+PR review/squash merge pending.
