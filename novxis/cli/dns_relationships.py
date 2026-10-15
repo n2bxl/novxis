@@ -14,6 +14,7 @@ from novxis.capture.pcap_replay import PcapReplayProvider
 from novxis.capture.scapy_provider import ScapyCaptureProvider
 from novxis.pipeline.dns_state import DNSStatePipeline
 from novxis.pipeline.link import UnsupportedLinkTypeError
+from novxis.presentation.dns_group_console import print_dns_grouped_snapshot
 from novxis.presentation.dns_relationship_console import (
     print_dns_relationship_snapshot,
 )
@@ -21,6 +22,7 @@ from novxis.protocols.dns import DNSParseError
 from novxis.protocols.ethernet import EthernetParseError
 from novxis.protocols.ipv4 import IPv4ParseError
 from novxis.protocols.udp import UDPParseError
+from novxis.views.dns_groups import group_dns_relationships
 from novxis.views.dns_relationships import project_dns_relationships
 
 _ERRORS = (
@@ -53,6 +55,10 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Fallback label if absent in the capture.")
 
     for sub in (live, replay):
+        sub.add_argument(
+            "--group", action="store_true",
+            help="Group forward CNAME/A/AAAA relationships and separate reverse PTR evidence.",
+        )
         sub.add_argument(
             "--history", action="store_true",
             help="Display each retained observation, not just the latest per record.",
@@ -151,7 +157,10 @@ def main() -> int:
             mode="history" if args.history else "latest",
         )
         print()
-        print_dns_relationship_snapshot(snapshot)
+        if args.group:
+            print_dns_grouped_snapshot(group_dns_relationships(snapshot))
+        else:
+            print_dns_relationship_snapshot(snapshot)
     print()
     print(
         f"Frames processed: {stats['frames']}; "
