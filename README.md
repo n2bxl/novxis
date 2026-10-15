@@ -848,4 +848,13 @@ python -m pytest
 ```
 
 See [Phase 1D-C documentation](docs/implementation/2026-10-14-dns-chain-grouping.md).
-**Phase 1D-C validation is pending** on the feature branch.
+**Phase 1D-C local acceptance (2026-10-14):** 27/27 focused tests
+and **335/335** full regression tests passed on macOS Python 3.14.6.
+A passive 40-frame `en0` capture produced 18 correlated exchanges,
+59 eligible answer-record observations, **45 distinct relationships
+grouped into seven naming groups** (43 fresh, 2 expired),
+one pending request at capture cutoff, and zero decode errors.
+A two-root shared-target alias group and mixed-freshness CNAME→A
+chain validated grouping behavior against independent DNS lookups.
+See the implementation notes for anonymized acceptance findings.
+PR review/squash merge pending.
