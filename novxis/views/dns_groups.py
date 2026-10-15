@@ -7,6 +7,7 @@ physical links. Each input relationship appears in exactly one group.
 
 from collections import defaultdict, deque
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Literal
 
 from novxis.views.dns_relationships import (
@@ -45,7 +46,7 @@ class DNSRelationshipGroup:
 class DNSGroupedSnapshot:
     """Immutable groups with the original snapshot's clock and totals."""
 
-    as_of: object
+    as_of: Decimal
     mode: DNSViewMode
     groups: tuple[DNSRelationshipGroup, ...]
     relationship_count: int
