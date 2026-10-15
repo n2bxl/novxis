@@ -3,6 +3,8 @@
 from dataclasses import replace
 from decimal import Decimal
 
+import pytest
+
 from novxis.presentation.dns_group_console import format_dns_grouped_snapshot
 from novxis.views.dns_groups import group_dns_relationships
 from novxis.views.dns_relationships import (
@@ -218,3 +220,12 @@ def test_console_preserves_provenance_per_record_and_scope():
     assert "requester=192.0.2.10" in rendered
     assert "dns_id=0x0100" in rendered
     assert "not physical topology" in rendered
+
+
+def test_future_unsupported_relationship_type_fails_loudly():
+    new_type = replace(
+        _row("example.test", "A", "192.0.2.1"),
+        relationship_kind="service",
+    )
+    with pytest.raises(ValueError, match="Unsupported DNS relationship kind"):
+        group_dns_relationships(_snapshot(new_type))
