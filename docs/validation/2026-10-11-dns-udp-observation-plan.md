@@ -1,7 +1,7 @@
 # DNS Phase 1B: UDP Observation and Live Validation
 
 **Date:** 2026-10-11  
-**Status:** Automated tests and live IPv4 UDP DNS capture validated on en5; merge pending
+**Status:** Live validated and merged via [PR #21](https://github.com/n2bxl/novxis/pull/21) (`1695814`).
 
 ## Implementation
 
@@ -161,7 +161,7 @@ provides a fallback for classic PCAP.
 - [x] DNS IDs, questions, response codes and displayed A answers cross-checked against nslookup/dig (PCAP byte-level comparison optional)
 - [x] Observations remain uncorrelated (as designed); no automated pair matching
 - [ ] No private capture material committed
-- [ ] Review, squash merge, re-run `main` tests
+- [x] Review and squash-merge completed; later `main` regression tests passed.
 
 ## Next: DNS Phase 1C
 
@@ -237,8 +237,8 @@ DNS-over-TCP, mDNS or DNS encryption support.
 - [x] Command-side `dig`/`nslookup` cross-check for IDs, questions,
       response values, counts and response codes
 - [ ] Optional independent packet-level Wireshark/PCAP dissection
-- [ ] Squash-merge PR #21 and rerun tests on `main`
+- [x] Squash-merge PR #21; later merged `main` passed 335/335 tests (2026-10-17).
 
-Recommended observability improvement for a future slice: track BPF-matching
+Historical observability improvement idea: track BPF-matching
 captured frames separately from successfully decoded observations and errors,
 to make wrong-interface or unsupported-protocol tests easier to diagnose.

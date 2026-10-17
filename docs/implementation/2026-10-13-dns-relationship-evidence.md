@@ -1,7 +1,7 @@
 # Phase 1D-A: Timestamped DNS Relationship Evidence
 
 **Date:** 2026-10-13
-**Status:** Automated validation passed on macOS Python 3.14.6; PR review/merge pending
+**Status:** Validated and merged via [PR #23](https://github.com/n2bxl/novxis/pull/23) (`ed2b4cf`).
 
 ## Why this slice exists
 
@@ -137,11 +137,11 @@ memory limits, and invalid configuration.
 This is automated validation of synthetic network evidence. The Phase 1D-A
 state layer is not yet exposed through a live relationship presentation
 console, so no live DNS state display is claimed or required for this PR.
-PR awaits human review and squash merge.
+PR #23 was squash-merged. Later merged-`main` tests passed 335/335 on 2026-10-17.
 
-## Follow-up slice
+## Follow-up outcome
 
-Add opt-in console presentation for DNS relationship evidence and freshness.
-Include aggregate summary rather than one pop-up per packet for the eventual
-NOVXIS visualization; preserve the distinction between "historically
-observed," "currently fresh by TTL," and "physically reachable."
+Phase 1D-B implemented the optional relationship console and immutable view
+snapshots; 1D-C added scoped name-chain grouping. They preserve the boundary
+between historical observation, TTL-relative freshness and reachability.
+See [milestone closeout](2026-10-17-classic-dns-milestone-closeout.md).

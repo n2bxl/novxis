@@ -1,7 +1,7 @@
 # Phase 1C: Conservative DNS Query/Response Correlation
 
 **Date:** 2026-10-13  
-**Status:** Local automated tests and live capture validated; PR review/merge pending
+**Status:** Validated and merged via [PR #22](https://github.com/n2bxl/novxis/pull/22) (`e6cce03`).
 
 ## Scope and motivation
 
@@ -155,13 +155,12 @@ The `--count 20` limit counts BPF-matching frames, not exchanges.
 
 **Acceptance conclusion:** Automated tests and live DNS correlation pass.
 This is correlation of observed packets, **not** DNS response
-authentication, reachability testing, or a DNS cache. The branch awaits
-review and squash merge.
+authentication, reachability testing, or a DNS cache. PR #22 was squash-merged; later merged-`main` tests passed 335/335 on 2026-10-17.
 
 ## Later NOVXIS work
 
-- Phase 1D: independent timestamped DNS name/address evidence, per-RR TTL
-  freshness and conflict handling; no physical device inference from DNS alone
+- Phase 1D-A through 1D-C completed: per-record TTL evidence, immutable
+  presentation-independent snapshots and scoped DNS chain grouping.
 - Differentiate decoded CNAME logical links from observed communication paths
 - Surface ambiguity and raw BPF-match counts in user-facing telemetry
 - Separate interpretation of HTTPS/SVCB record type 65 and mDNS/DNS-SD

@@ -1,7 +1,7 @@
 # Phase 1D-B: UI-Neutral DNS Relationship View
 
 **Date:** 2026-10-13  
-**Status:** Live read-only DNS relationship capture validated; Mac automated regressions and replay acceptance still pending
+**Status:** Merged via [PR #24](https://github.com/n2bxl/novxis/pull/24) (`d62acbf`). Live tested; later merged-`main` regression suite passed 335/335 (2026-10-17). A separate real-PCAP replay acceptance report remains unavailable.
 
 ## Architecture decision
 
@@ -112,8 +112,10 @@ Focus covers:
 - Live/replay CLI aggregation, explicit replay timestamps and zero-frame input
 - Validation of invalid capture/clock parameters
 
-**No automated local test pass is claimed until validated on macOS Python 3.14.6.**
-Current merged baseline is **296 passed** from Phase 1D-A.
+**Historical note:** No stand-alone Phase 1D-B pytest report was provided at
+PR acceptance. The complete merged-`main` suite including Phase 1D-B tests
+subsequently passed **335/335** on macOS Python 3.14.6 (2026-10-17).
+Dedicated real-PCAP replay validation is not reported.
 
 ## Live capture acceptance (reported 2026-10-14)
 
@@ -161,6 +163,6 @@ Animation/interpolation, rendering cadence and Q/E menu navigation belong
 in the future UI layer, not the protocol or state layer.
 
 No DNS answer should be promoted to a physical device without independent
-network evidence. Future follow-up options: snapshot delta model for
-animations, frontend transport serialization, evidence grouping and
-nonblocking state update distribution.
+network evidence. Phase 1D-C subsequently implemented DNS grouping. Other optional future
+work includes snapshot deltas for animation, UI serialization and
+nonblocking event distribution; these are not current commitments.

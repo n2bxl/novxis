@@ -1,7 +1,7 @@
 # DNS Phase 1A: Wire Decoder
 
 **Date:** 2026-10-11  
-**Status:** Local tests validated; feature branch pending review/merge
+**Status:** Implemented, validated and merged via [PR #20](https://github.com/n2bxl/novxis/pull/20) (`8977efd`).
 
 ## Intent
 
@@ -102,9 +102,9 @@ preservation, trailing bytes, and truncated or hostile compression input.
 - Full command: `python -m pytest` — **211 passed in 0.41s** (211 collected).
 - No failures reported by the local test run.
 
-This is synthetic/automated acceptance only; live DNS capture and independent
-packet validation are **not yet performed**. Record the squash-merge SHA when
-PR #20 is merged.
+The Phase 1A acceptance above covered synthetic parser tests. Later phases
+added live capture and independent application-level checks. PR #20 was
+squash-merged; see [DNS milestone closeout](2026-10-17-classic-dns-milestone-closeout.md).
 
 ## References
 

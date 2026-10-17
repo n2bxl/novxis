@@ -1,7 +1,7 @@
 # DNS Phase 1D-C — Grouped Naming Relationships
 
 **Date:** 2026-10-14  
-**Status:** Automated macOS tests and live capture validated; PR review/squash merge pending
+**Status:** Validated and merged via [PR #25](https://github.com/n2bxl/novxis/pull/25) (`6d21823`). Merged `main`: 335/335 passing (2026-10-17).
 
 ## Purpose
 
@@ -172,8 +172,9 @@ outside scope.
 hostnames, browsing/service hostnames, private client IPs, resolver
 address, and raw capture logs. Do not commit raw private PCAP files.
 
-**Acceptance:** Local focused tests, full regression suite and live
-grouped capture passed. Review and squash merge are the remaining steps.
+**Acceptance:** Focused tests, full suite and live grouped capture passed.
+PR #25 was squash-merged. Merged-`main` tests passed **335/335** on 2026-10-17.
+See [milestone closeout](2026-10-17-classic-dns-milestone-closeout.md).
 
 ## Later visualization
 
