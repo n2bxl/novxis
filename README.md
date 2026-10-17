@@ -8,6 +8,22 @@ Phase 0 established the console-first ARP vertical slice: NOVXIS can capture or 
 
 Phase 1 begins the network-state layer that turns a stream of observations into a conservative current view of what NOVXIS has actually learned.
 
+
+## Current DNS Milestone Status (2026-10-17)
+
+**Classic DNS over IPv4/UDP port 53 is complete for the current NOVXIS
+visualization scope.** DNS wire decoding, live/replay observation,
+conservative query/response correlation, per-RR TTL evidence, immutable
+presentation-independent snapshots and CNAME/A/AAAA/PTR grouping have all
+been merged via PRs #20–#25. The merged `main` suite passes **335/335**.
+
+Start with the [DNS milestone closeout and scope/roadmap](docs/implementation/2026-10-17-classic-dns-milestone-closeout.md).
+Detailed, time-stamped implementation notes remain below as historical
+records. **Next:** mDNS/DNS-SD passive local discovery and local
+interface/subnet/route evidence. Later DNS extensions (TCP, HTTPS/SVCB
+record decoding, EDNS, IPv6 and encrypted-transport limitations) are
+**deferred**, not unimplemented blockers for this milestone.
+
 ## Phase 0 Development Environment
 
 The initial development baseline is Python 3.14.
@@ -666,9 +682,9 @@ python -m pytest tests/protocols/test_dns.py -q
 python -m pytest
 ```
 
-Local acceptance on 2026-10-11: **24/24 DNS tests** and **211/211 total tests** passed
-on macOS with Python 3.14.6 (pytest 9.1.1). Live DNS capture validation
-is still pending.
+Phase 1A local acceptance (2026-10-11): **24/24 focused DNS tests** and
+**211/211 full-suite tests** passed. Live capture was completed in Phase 1B;
+the full classic DNS milestone is now merged.
 
 
 ## Phase 1B: DNS over UDP Observation Path
@@ -778,10 +794,9 @@ python -m pytest
 ```
 
 See [Phase 1D-A implementation and acceptance plan](docs/implementation/2026-10-13-dns-relationship-evidence.md).
-**Local acceptance 2026-10-13:** 22/22 focused tests and **296/296**
-full-suite tests passed on macOS Python 3.14.6. Phase 1D-A provides
-programmatic evidence state only; live relationship console presentation
-remains a follow-up slice. PR review and merge are pending.
+**Phase 1D-A acceptance (2026-10-13):** 22/22 focused tests and **296/296**
+full-suite tests passed on macOS Python 3.14.6. PR #23 merged; live
+relationship console presentation followed in 1D-B.
 
 
 ## Phase 1D-B: Renderer-neutral DNS Relationship Snapshots
@@ -819,7 +834,9 @@ python -m pytest
 ```
 
 See [Phase 1D-B UI-neutral view design](docs/implementation/2026-10-13-dns-relationship-view-adapter.md).
-**Local acceptance is pending** on this feature branch.
+Phase 1D-B merged via PR #24. Live relationship-view capture was validated;
+the full merged-`main` regression suite later passed **335/335** on
+2026-10-17. No separate 1D-B-specific full-suite result was reported.
 
 
 ## Phase 1D-C: Grouped DNS Naming Relationships
@@ -857,4 +874,6 @@ one pending request at capture cutoff, and zero decode errors.
 A two-root shared-target alias group and mixed-freshness CNAME→A
 chain validated grouping behavior against independent DNS lookups.
 See the implementation notes for anonymized acceptance findings.
-PR review/squash merge pending.
+PR #25 was squash-merged. The full test suite was subsequently rerun on
+merged `main` on 2026-10-17: **335/335 passed** in **0.40s** on
+macOS Python 3.14.6.
