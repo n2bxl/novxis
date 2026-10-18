@@ -8,14 +8,15 @@ it never alters DNSName.labels, evidence keys or parser behavior.
 from novxis.protocols.dns import DNSName
 
 
-def format_dns_name_display(name: DNSName, *, quoted: bool = False) -> str:
+def format_dns_name_display(name: DNSName) -> str:
     """Render ASCII spaces naturally; escape separators and unsafe bytes.
 
     DNS label boundaries are encoded by literal dots; a dot *inside*
     a label remains \x2e. Backslashes, double quotes, control bytes
     and bytes outside printable ASCII remain \xNN so quoted fields cannot
     inject newline text or appear to contain extra key/value fields.
-    This is a display string, not a wire-format serializer.
+    Values with ASCII spaces are double-quoted to keep key/value fields
+    unambiguous. This is a display string, not a wire-format serializer.
     """
     if not name.labels:
         rendered = "."
@@ -28,4 +29,4 @@ def format_dns_name_display(name: DNSName, *, quoted: bool = False) -> str:
             )
             for label in name.labels
         )
-    return f'"{rendered}"' if quoted else rendered
+    return f'"{rendered}"' if any(b" " in label for label in name.labels) else rendered
