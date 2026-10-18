@@ -916,7 +916,7 @@ slice. Real UDP/5353 capture/replay is Phase 1M-B; DNS-SD SRV/TXT semantics
 and service grouping follow in Phase 1M-C.
 
 
-## Phase 1M-B: Passive Dual-Stack mDNS Observation (Under Review)
+## Phase 1M-B: Passive Dual-Stack mDNS Observation (Merged)
 
 This feature branch extends Phase 1M-A's capture-neutral mDNS message parser
 with a separate, immutable IPv4/IPv6 observation path:
@@ -969,7 +969,72 @@ Ethernet: IPv4=19, IPv6=21, 27 queries / 13 responses.
 An operator-controlled application relaunch on a separate Mac coincided
 with IPv4/IPv6 mDNS Spotify Connect searches and advertisements from
 two network endpoints. This is discovery evidence, not proven playback
-transfer or process attribution. PR review/squash merge pending.
+transfer or process attribution. [PR #28](https://github.com/n2bxl/novxis/pull/28)
+was squash-merged as `69e65a8`. No separately reported post-merge
+full-suite run is claimed in this acceptance record.
 
 See [Phase 1M-B implementation and real-capture acceptance notes](
 docs/implementation/2026-10-18-mdns-dual-stack-observation.md).
+
+
+## Phase 1M-C: Native DNS-SD Service Evidence (Under Review)
+
+The third mDNS vertical slice uses **network-native service names**
+rather than an OSINT/application-brand dictionary. With `--services`,
+NOVXIS renders opt-in, per-response DNS-SD evidence:
+
+```text
+_service._tcp.local     (PTR owner / observed service type)
+  → Instance._service._tcp.local  (PTR target / instance)
+  → host.local:4070    (same-response SRV target and port)
+  → 192.0.2.25         (same-response A or AAAA address claim)
+```
+
+These are *advertised relationships*, not verified reachability,
+process identity or physical links. The source packet's sender address
+remains distinct from the SRV target. Query-side known-answer records
+never produce service advertisements. Unmatched PTRs remain partial.
+
+```bash
+python -m novxis.cli.mdns_replay "/path/to/private.pcapng" --services
+python -m novxis.cli.mdns_replay "/path/to/private.pcapng" --services --summary-only
+sudo .venv/bin/python -m novxis.cli.mdns_events en5 --services --count 40 --timeout 60
+```
+
+SRV target names are decoded with DNS message-relative compression;
+TXT strings remain length-delimited **raw bytes** without fingerprint
+lookups or assumed encoding. DNS-SD PTR, SRV, TXT and A/AAAA records
+retain independent TTL and class/section/source provenance. Service
+associations in this slice are scoped to **one response message**,
+not inferred from later packets. Subtype PTR relationships, cross-message
+state, grouping and device fusion remain later work.
+
+```bash
+python -m pytest tests/protocols/test_dnssd.py \
+  tests/views/test_mdns_services.py \
+  tests/cli/test_dnssd_cli.py -q
+python -m pytest
+```
+
+**Real private-PCAPNG replay accepted (2026-10-18):** Both captures
+replayed successfully in `--services` mode: **30 and 87 DNS-SD PTR
+advertisement observations**, **zero decode errors**. The detailed second
+capture contains **five native service types and seven distinct service
+instance names**, despite 87 repeated observations. NOVXIS preserved
+partial advertisements and two TTL=0 goodbye candidates without
+inventing service targets or offline-device status.
+
+**Phase 1M-C automated acceptance passed (2026-10-18):**
+**32/32 focused tests** in **0.21s** and **422/422 full regression tests**
+in **0.32s** on macOS Python 3.14.6, with no observed regressions.
+Offline real-PCAPNG service projection also passed (30 + 87 DNS-SD PTR
+observations, zero errors). PR review/squash merge pending.
+
+**Future idea, not implemented:** Optional lexical-affinity display hints
+may compare tokens and character prefixes within *raw service types*
+(e.g., `_googlecast._tcp.local` / `_googlerpc._tcp.local`).
+These guesses must never merge canonical service identities, endpoint
+addresses, or records; full native service names remain authoritative
+presentation evidence. See the
+[Phase 1M-C acceptance and lexical-affinity design note](
+docs/implementation/2026-10-18-mdns-dnssd-service-evidence.md).

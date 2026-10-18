@@ -213,6 +213,24 @@ def _read_rr(
     ), end
 
 
+
+def read_dns_name_rdata(
+    message: bytes, *, start: int, end: int
+) -> DNSName:
+    """Decode exactly one bounded RDATA name using message-wide compression.
+
+    SRV targets, like PTR targets, may use DNS compression pointers into
+    earlier sections. Decoding record.rdata alone would lose pointer context.
+    The returned name preserves original label bytes and spelling.
+    """
+    if not (DNS_HEADER_LENGTH <= start < end <= len(message)):
+        raise DNSParseError("Invalid DNS RDATA name boundaries.")
+    name, consumed = _read_name(message, start, wire_limit=end)
+    if consumed != end:
+        raise DNSParseError("DNS name RDATA has unexpected extra bytes.")
+    return name
+
+
 def parse_dns(
     data: bytes, *, interpret_mdns_class_bit: bool = False
 ) -> DNSMessage:

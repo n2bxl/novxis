@@ -19,6 +19,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Maximum capture duration in seconds.")
     parser.add_argument("--summary-only", action="store_true",
                         help="Print aggregate counts without individual packets.")
+    parser.add_argument("--services", action="store_true",
+                        help="Show only raw DNS-SD service advertisements.")
     return parser
 
 
@@ -42,7 +44,8 @@ def main() -> int:
         provider.start(
             args.interface,
             _build_handler(MDNSEventPipeline(), counts,
-                           summary_only=args.summary_only),
+                           summary_only=args.summary_only,
+                           show_services=args.services),
             bpf_filter="udp port 5353",
             count=args.count,
             timeout=args.timeout,
@@ -61,7 +64,9 @@ def main() -> int:
         f"\nCapture complete. mDNS observations: {counts['observations']} "
         f"(IPv4={counts['ipv4']}, IPv6={counts['ipv6']}; "
         f"queries={counts['queries']}, responses={counts['responses']}); "
-        f"decode errors: {counts['errors']}"
+        + (f"DNS-SD advertised PTRs: {counts['service_ads']}; "
+           if args.services else "")
+        + f"decode errors: {counts['errors']}"
     )
     return 0 if counts["errors"] == 0 else 1
 

@@ -1,7 +1,7 @@
 # Phase 1M-B: Passive IPv4/IPv6 mDNS Observation, Live Capture and Replay
 
 **Date:** 2026-10-18  
-**Status:** Focused/full regression tests, two private real-PCAPNG replays, and passive live capture on both Wi-Fi and Ethernet interfaces validated on macOS; PR review/squash merge pending.  
+**Status:** Focused/full regression tests, two private real-PCAPNG replays, and passive live capture on both Wi-Fi and Ethernet interfaces validated on macOS; [PR #28](https://github.com/n2bxl/novxis/pull/28) squash-merged as `69e65a8`. No separate post-merge pytest result is claimed.  
 **Scope:** Decode Ethernet II → IPv4/IPv6 → UDP/5353 → mDNS message evidence;
 console-only, no active queries or service-inventory inference.
 
