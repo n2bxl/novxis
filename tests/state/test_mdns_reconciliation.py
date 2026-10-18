@@ -253,3 +253,27 @@ def test_srv_rdata_with_bad_pointer_is_rejected_not_guessed():
     assert source is not None
     with pytest.raises(DNSParseError):
         state.observe_message(source)
+
+
+def test_later_ttl_zero_standalone_srv_withdraws_fresh_same_value():
+    state = MDNSServiceReconciliation()
+    _observe(state, "100", _ptr(), _srv(ttl=500))
+    assert len(_snap(state, "101")[0].snapshot.fresh_targets) == 1
+    _observe(state, "110", _srv(ttl=0))
+    joined, = _snap(state, "110")
+    assert joined.snapshot.has_fresh_ptr
+    assert joined.snapshot.fresh_targets == ()
+    latest_srv = [
+        r for r in joined.snapshot.latest_records if r.kind == "SRV"
+    ]
+    assert len(latest_srv) == 1
+    assert latest_srv[0].record.goodbye_candidate
+    assert latest_srv[0].observed_at == Decimal("110")
+
+
+def test_explicit_snapshot_does_not_retroactively_include_future_orphans():
+    state = MDNSServiceReconciliation()
+    _observe(state, "100", _ptr())
+    _observe(state, "120", _srv())
+    with pytest.raises(ValueError, match="precedes"):
+        _snap(state, "110")
