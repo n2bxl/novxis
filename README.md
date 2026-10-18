@@ -1169,11 +1169,21 @@ instances**: a Companion Link TXT, a Google Cast A, and Google RPC
 SRV+A. A later standalone A observation refreshed address evidence
 independently of SRV TTL.
 
-**Remaining acceptance:** Validate `--reconcile --after 200` and
-inspect one newly linked standalone RR in the original capture
-to confirm its response owner/source and TTL in Wireshark. This
-has not yet been reported. PR review/merge pending; no private
-endpoint identifiers committed.
+**TTL-aging validation passed (2026-10-18):** At `--reconcile
+--after 200`, the same seven instances and 87 PTR observations
+were retained, but fresh PTR instances declined **6 → 2** and
+additional fresh RR associations declined **4 → 1**. The single
+remaining added association was a fresh Companion Link TXT claim.
+All **19** buffered standalone observations remained in bounded
+history and there were **zero decode errors**. Missing PTR freshness
+prevented other associations; it does not prove every underlying
+orphan record's individual TTL expired.
+
+**Remaining acceptance:** Inspect one newly linked standalone RR
+in the original PCAPNG (mDNS response, matching owner name and
+original TTL) in Wireshark. No independent packet-level verification
+has yet been reported. PR review/merge pending; no private endpoint
+identifiers committed.
 
 See [Phase 1M-D-B implementation and limits](
 docs/implementation/2026-10-18-mdns-cross-message-reconciliation.md).
