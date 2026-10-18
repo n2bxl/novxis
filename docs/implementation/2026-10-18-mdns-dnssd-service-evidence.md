@@ -1,8 +1,7 @@
 # Phase 1M-C: Native DNS-SD Service Type and Per-Response Evidence
 
 **Date:** 2026-10-18  
-**Status:** Feature branch ready for local Python 3.14.6 test acceptance;
-not yet merged or validated on private captures.  
+**Status:** Both private PCAPNG captures have passed opt-in service projection with zero decode errors. Focused/full automated tests not shown in the provided acceptance log; PR not merged.  
 **Scope:** Interpret DNS-SD PTR → SRV/TXT → A/AAAA evidence **within each
 observed mDNS response**. No application fingerprint database, automatic
 name translation, or network inventory heuristics.
@@ -121,8 +120,10 @@ answers not treated as advertisements, exact target/address matching,
 TTL=0 goodbye candidates, immutable projections and opt-in live/replay
 CLI controls.
 
-**Acceptance is pending.** No test pass or successful private-PCAP
-projection is claimed until the user's MacBook checks the branch.
+**Automated test acceptance is still pending confirmation.** The submitted
+MacBook output includes successful private capture replay, but **does not
+include the focused or full pytest results** for this Phase 1M-C branch.
+Do not claim those tests passed or merge on replay evidence alone.
 
 ## Private lab capture experiments (after tests pass)
 
@@ -150,6 +151,66 @@ and time. This slice does not aggregate those into unique discovered
 devices or service instances. Compare the output against the captured
 PTR/SRV/TXT/A/AAAA records in Wireshark rather than assuming one
 network packet equals one unique service.
+
+## Private PCAPNG service-projection validation — 2026-10-18
+
+The user's M5 MacBook Air ran the new `--services` projection against
+both existing private Spotify captures.
+
+| Metric | Capture 1 | Capture 2 |
+| --- | ---: | ---: |
+| Frames replayed | 2,766 | 1,188 |
+| mDNS message observations | 115 | 215 |
+| IPv4 mDNS messages | 50 | 119 |
+| IPv6 mDNS messages | 65 | 96 |
+| DNS-SD service PTR advertisement observations | **30** | **87** |
+| Decode errors | **0** | **0** |
+
+Across these runs, NOVXIS produced **117 service PTR observations** with
+zero decode errors. This is the count of *advertisement observations*,
+not distinct services, endpoints, hosts or verified running software.
+
+The second capture's full per-advertisement console lines show:
+
+| Raw DNS-SD type | Advertisements | Distinct instance names in this capture |
+| --- | ---: | ---: |
+| `_spotify-connect._tcp.local` | 71 | 2 |
+| `_apple-mobdev2._tcp.local` | 8 | 1 |
+| `_companion-link._tcp.local` | 4 | 1 |
+| `_googlecast._tcp.local` | 3 | 2 |
+| `_googlerpc._tcp.local` | 1 | 1 |
+| **Total** | **87** | **7** |
+
+The first capture was run with `--summary-only`, so its individual
+service-type/instance distribution is **not** inferred from its output.
+
+Important evidence examples from the second capture:
+
+- Two different Spotify Connect instance names were observed repeatedly,
+  with SRV-advertised target ports 4070 and 45528 and per-response matching
+  address claims. Multi-address IPv4/IPv6 advertisements must not be
+  promoted to distinct physical devices.
+- The same service type appeared repeatedly over time and IP families;
+  the 71 Spotify Connect observations represent only **two observed
+  instance names** in this capture.
+- Four Companion Link PTR advertisements had **no matching SRV target
+  in their individual responses**. These remained explicitly incomplete.
+- Two Apple mobile-device service PTR records carried **TTL=0** and
+  were marked `goodbye-candidate`, not `offline`. These PTR-only
+  goodbye observations also lacked same-message target claims.
+- SRV record TTLs and service PTR TTLs may differ; preserve each record's
+  independent freshness rather than inheriting the longer PTR lifetime
+  for a host/port relationship.
+
+The original addresses, private local hostnames, instance UUIDs, raw TXT
+content and entire capture traces stay outside the public repository.
+These test observations support *typed per-response evidence extraction*,
+not process attribution, runtime reachability, or physical-device mapping.
+
+**Next acceptance still needed:** focused Phase 1M-C pytest tests and
+the complete regression suite on the feature branch. An additional
+live `--services` capture can provide evidence of the optional console
+path, but offline replay already validates its real-packet output.
 
 ## Next slice (1M-D)
 
