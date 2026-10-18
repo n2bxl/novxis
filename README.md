@@ -1016,6 +1016,16 @@ python -m pytest tests/protocols/test_dnssd.py \
 python -m pytest
 ```
 
-**Local acceptance pending.** See the
-[Phase 1M-C implementation and service-evidence design](
+**Real private-PCAPNG replay accepted (2026-10-18):** Both captures
+replayed successfully in `--services` mode: **30 and 87 DNS-SD PTR
+advertisement observations**, **zero decode errors**. The detailed second
+capture contains **five native service types and seven distinct service
+instance names**, despite 87 repeated observations. NOVXIS preserved
+partial advertisements and two TTL=0 goodbye candidates without
+inventing service targets or offline-device status.
+
+**Automated acceptance pending:** The provided log contains real replay
+output but does not include focused or full Phase 1M-C pytest results.
+PR review/squash merge remain pending. See the
+[Phase 1M-C service-evidence design and private replay results](
 docs/implementation/2026-10-18-mdns-dnssd-service-evidence.md).
