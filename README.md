@@ -973,3 +973,47 @@ transfer or process attribution. PR review/squash merge pending.
 
 See [Phase 1M-B implementation and real-capture acceptance notes](
 docs/implementation/2026-10-18-mdns-dual-stack-observation.md).
+
+
+## Phase 1M-C: Native DNS-SD Service Evidence (Under Review)
+
+The third mDNS vertical slice uses **network-native service names**
+rather than an OSINT/application-brand dictionary. With `--services`,
+NOVXIS renders opt-in, per-response DNS-SD evidence:
+
+```text
+_service._tcp.local     (PTR owner / observed service type)
+  → Instance._service._tcp.local  (PTR target / instance)
+  → host.local:4070    (same-response SRV target and port)
+  → 192.0.2.25         (same-response A or AAAA address claim)
+```
+
+These are *advertised relationships*, not verified reachability,
+process identity or physical links. The source packet's sender address
+remains distinct from the SRV target. Query-side known-answer records
+never produce service advertisements. Unmatched PTRs remain partial.
+
+```bash
+python -m novxis.cli.mdns_replay "/path/to/private.pcapng" --services
+python -m novxis.cli.mdns_replay "/path/to/private.pcapng" --services --summary-only
+sudo .venv/bin/python -m novxis.cli.mdns_events en5 --services --count 40 --timeout 60
+```
+
+SRV target names are decoded with DNS message-relative compression;
+TXT strings remain length-delimited **raw bytes** without fingerprint
+lookups or assumed encoding. DNS-SD PTR, SRV, TXT and A/AAAA records
+retain independent TTL and class/section/source provenance. Service
+associations in this slice are scoped to **one response message**,
+not inferred from later packets. Subtype PTR relationships, cross-message
+state, grouping and device fusion remain later work.
+
+```bash
+python -m pytest tests/protocols/test_dnssd.py \
+  tests/views/test_mdns_services.py \
+  tests/cli/test_dnssd_cli.py -q
+python -m pytest
+```
+
+**Local acceptance pending.** See the
+[Phase 1M-C implementation and service-evidence design](
+docs/implementation/2026-10-18-mdns-dnssd-service-evidence.md).
