@@ -165,7 +165,9 @@ def _read_question(data: bytes, position: int) -> tuple[DNSQuestion, int]:
     return result, position + 4
 
 
-def _read_rr(data: bytes, position: int) -> tuple[DNSResourceRecord, int]:
+def _read_rr(
+    data: bytes, position: int, *, interpret_mdns_class_bit: bool = False
+) -> tuple[DNSResourceRecord, int]:
     name, position = _read_name(data, position)
     if position + 10 > len(data):
         raise DNSParseError("Truncated DNS resource-record fields.")
@@ -181,7 +183,11 @@ def _read_rr(data: bytes, position: int) -> tuple[DNSResourceRecord, int]:
     rdata = data[rdata_offset:end]
     decoded: str | None = None
 
-    if rclass == DNS_CLASS_IN:
+    # mDNS reuses the high bit of RRCLASS for its cache-flush indication.
+    # Keep rclass unchanged as wire evidence; only its *interpretation* differs.
+    # Classic DNS must not silently mask this bit.
+    effective_class = rclass & 0x7FFF if interpret_mdns_class_bit else rclass
+    if effective_class == DNS_CLASS_IN:
         if rtype == 1:  # A
             if rdlength != 4:
                 raise DNSParseError("DNS A record must contain four octets.")
@@ -207,12 +213,16 @@ def _read_rr(data: bytes, position: int) -> tuple[DNSResourceRecord, int]:
     ), end
 
 
-def parse_dns(data: bytes) -> DNSMessage:
+def parse_dns(
+    data: bytes, *, interpret_mdns_class_bit: bool = False
+) -> DNSMessage:
     """Decode bounded DNS questions and resource records from raw bytes.
 
     The caller must already have isolated the DNS payload from UDP. This
     decoder makes no claim about response authenticity, active cache entries,
-    current host identity, or DNS-over-TCP stream framing.
+    current host identity, or DNS-over-TCP stream framing. When called by the
+    separate mDNS interpreter, interpret_mdns_class_bit allows the mDNS
+    cache-flush bit on resource-record classes while preserving raw RRCLASS.
     """
     if len(data) < DNS_HEADER_LENGTH:
         raise DNSParseError(
@@ -242,7 +252,10 @@ def parse_dns(data: bytes) -> DNSMessage:
     ):
         records: list[DNSResourceRecord] = []
         for _ in range(count):
-            record, position = _read_rr(data, position)
+            record, position = _read_rr(
+                data, position,
+                interpret_mdns_class_bit=interpret_mdns_class_bit,
+            )
             records.append(record)
         sections.append(tuple(records))
 
