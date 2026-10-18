@@ -1075,7 +1075,7 @@ display volume; `--max-instances`, `--max-records-per-instance`,
 and `--max-history` bound retention.
 
 ```bash
-python -m pytest tests/state/test_mdns_services.py \
+python -m pytest tests/state/test_mdns_service_state.py \
   tests/cli/test_mdns_state_replay_cli.py -q
 python -m pytest
 ```
