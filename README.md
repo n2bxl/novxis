@@ -1076,16 +1076,36 @@ and `--max-history` bound retention.
 
 ```bash
 python -m pytest tests/state/test_mdns_service_state.py \
-  tests/cli/test_mdns_state_replay_cli.py -q
+  tests/cli/test_mdns_state_replay_cli.py \
+  tests/presentation/test_dns_names.py -q
 python -m pytest
 ```
 
-**New-branch tests and real replay acceptance pending.** Earlier
-post-merge `main` baseline: **422/422 tests passed in 0.44s** on
-Python 3.14.6. Per-message PTR-backed projections only: standalone
+**Real state replay validated (2026-10-18):** On the second
+private Spotify capture, **1,188 frames / 215 mDNS messages** produced
+**87 PTR observations consolidated into seven retained service
+instances**, with **zero decode errors**. At capture end,
+six instances had fresh PTR evidence; at **+200s**, only two did,
+and one longer-lived service PTR had already outlasted its SRV
+target evidence. TTL=0 candidates and incomplete Companion Link
+advertisements remained historical or partial evidence—not device
+offline verdicts.
+
+**Automated tests:** After resolving the duplicate pytest test-module
+basename, the user reported the feature-branch test suite clean;
+the exact full count was not supplied. Subsequent presentation-only
+DNS-name rendering tests **have not yet been run** on the MacBook.
+
+**Presentation improvement:** Spaces in DNS-SD instance names render
+naturally, using quotes around labels containing spaces; the raw
+`DNSName.text` escape representation, canonical identifiers, and
+record matching remain unchanged. Other potentially ambiguous or
+unsafe bytes remain escaped.
+
+Only per-message PTR-backed projections are aggregated; standalone
 SRV/TXT/A/AAAA responses are *not yet* safely reconciled across
-packets; full Bonjour cache-flush and subtype semantics are future
-work. Lexical service-name similarity is an optional future
+packets. Full Bonjour cache-flush and subtype semantics are future
+work. Lexical service-name similarity remains an optional future
 presentation hint, **not** an identity-scoring engine.
 
 See [Phase 1M-D-A design and acceptance notes](
