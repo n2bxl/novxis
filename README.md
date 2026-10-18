@@ -962,8 +962,14 @@ on macOS Python 3.14.6. Both private Spotify PCAPNG files replayed
 successfully, matching the independent mDNS reference counts exactly:
 **115 observations (IPv4=50, IPv6=65; 76 queries/39 responses)** and
 **215 observations (IPv4=119, IPv6=96; 109 queries/106 responses)**,
-with **zero decode errors**. The live-interface capture path is
-**not yet validated**; PR review/squash merge remains pending.
+with **zero decode errors**. **Live passive capture also passed** on both `en0` and `en5`,
+each with 40 observed UDP/5353 packets and **zero decode errors**.
+Wi-Fi: IPv4=23, IPv6=17, 16 queries / 24 responses.
+Ethernet: IPv4=19, IPv6=21, 27 queries / 13 responses.
+An operator-controlled application relaunch on a separate Mac coincided
+with IPv4/IPv6 mDNS Spotify Connect searches and advertisements from
+two network endpoints. This is discovery evidence, not proven playback
+transfer or process attribution. PR review/squash merge pending.
 
 See [Phase 1M-B implementation and real-capture acceptance notes](
 docs/implementation/2026-10-18-mdns-dual-stack-observation.md).
