@@ -913,3 +913,47 @@ on macOS Python 3.14.6, with no observed regressions. This validates
 message interpretation only; real UDP/5353 capture/replay still awaits
 Phase 1M-B. PR review/squash merge pending. Next: passive IPv4/IPv6 mDNS
 capture/replay, then DNS-SD PTR/SRV/TXT relationships and grouping.
+
+
+## Phase 1M-B: Passive Dual-Stack mDNS Observation (Under Review)
+
+This feature branch extends Phase 1M-A's capture-neutral mDNS message parser
+with a separate, immutable IPv4/IPv6 observation path:
+`Ethernet II → IPv4/IPv6 → UDP/5353 → MDNSMessageObserved`.
+The new bounded IPv6 fixed-header decoder retains original 128-bit addresses,
+hop limit, length, flow label and payload provenance.
+
+**Offline private PCAP/PCAPNG replay:**
+
+```bash
+python -m novxis.cli.mdns_replay "/path/to/spotify.pcapng" --summary-only
+python -m novxis.cli.mdns_replay "/path/to/spotify 2.pcapng" --summary-only
+```
+
+**Passive live capture:**
+
+```bash
+sudo .venv/bin/python -m novxis.cli.mdns_events en0 --count 40 --timeout 60
+```
+
+Use the interface carrying the actual traffic; the live command is **passive**
+and uses `udp port 5353` BPF. Omit `--summary-only` to inspect
+individual packet observations. The replay command's `--count` counts
+*all file frames*; the live command's count applies to captured matching
+frames. No device classification, service inventory, or active probes.
+
+**Current boundaries:** Ethernet II only; no tagged VLAN encapsulation,
+IPv4 fragments or IPv6 extension/fragment traversal; IPv6 direct UDP only.
+Checksums are preserved, not verified. SRV/TXT DNS-SD interpretation and
+service relationships remain Phase 1M-C. Classic DNS UDP/53 is unchanged.
+
+```bash
+python -m pytest tests/protocols/test_ipv6.py \
+  tests/integration/test_mdns_evidence.py \
+  tests/cli/test_mdns_cli.py -q
+python -m pytest
+```
+
+**Local acceptance pending.** See
+[Phase 1M-B implementation plan and privacy-safe replay instructions](
+docs/implementation/2026-10-18-mdns-dual-stack-observation.md).
