@@ -9,7 +9,7 @@ from novxis.protocols.dns import DNSName
 
 
 def format_dns_name_display(name: DNSName) -> str:
-    """Render ASCII spaces naturally; escape separators and unsafe bytes.
+    r"""Render ASCII spaces naturally; escape separators and unsafe bytes.
 
     DNS label boundaries are encoded by literal dots; a dot *inside*
     a label remains \x2e. Backslashes, double quotes, control bytes
