@@ -86,6 +86,8 @@ def main() -> int:
             if observed is None:
                 return
             advertisements = project_dnssd_advertisements(observed)
+            if args.reconcile:
+                state.observe_message(observed, advertisements)
         except _DECODE_ERRORS as exc:
             counts["errors"] += 1
             print(
@@ -95,9 +97,7 @@ def main() -> int:
             )
             return
         counts["mdns"] += 1
-        if args.reconcile:
-            state.observe_message(observed, advertisements)
-        else:
+        if not args.reconcile:
             for advertisement in advertisements:
                 state.observe(observed, advertisement)
         counts["ads"] += len(advertisements)
