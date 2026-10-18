@@ -1038,3 +1038,55 @@ addresses, or records; full native service names remain authoritative
 presentation evidence. See the
 [Phase 1M-C acceptance and lexical-affinity design note](
 docs/implementation/2026-10-18-mdns-dnssd-service-evidence.md).
+
+
+## Phase 1M-D-A: Bounded DNS-SD Service Evidence State (Under Review)
+
+The prior phases decoded mDNS and DNS-SD service advertisements, including
+native names like `_spotify-connect._tcp.local`. This slice groups
+*repeated advertisement observations* into bounded, time-aware service
+instance evidence without inventing physical-device identities.
+
+```text
+Raw PTR owner/instance + source interface  (canonical service key)
+  → latest typed PTR, SRV, TXT, A, AAAA observations
+  → independent per-record TTL freshness at capture time
+  → an immutable service-instance snapshot, with source provenance
+```
+
+Repeated IPv4/IPv6 advertisements with the **same native service type
+and instance on one capture interface** accumulate one observation
+count. Independent interfaces remain separate. A TTL=0 PTR is a
+*goodbye candidate*, not proof of an offline device. A long-lived PTR
+does not extend the freshness of a shorter-lived SRV/target or IP
+address claim.
+
+**Offline replay of local private PCAPNG files:**
+
+```bash
+python -m novxis.cli.mdns_state_replay "$HOME/Documents/spotify 2.pcapng"
+python -m novxis.cli.mdns_state_replay "$HOME/Documents/spotify 2.pcapng" --after 200
+python -m novxis.cli.mdns_state_replay "$HOME/Documents/spotify 2.pcapng" --after 5000
+```
+
+`--after` takes a finite number of seconds *after the capture's last
+frame timestamp*, not after the current clock. `--limit` controls
+display volume; `--max-instances`, `--max-records-per-instance`,
+and `--max-history` bound retention.
+
+```bash
+python -m pytest tests/state/test_mdns_services.py \
+  tests/cli/test_mdns_state_replay_cli.py -q
+python -m pytest
+```
+
+**New-branch tests and real replay acceptance pending.** Earlier
+post-merge `main` baseline: **422/422 tests passed in 0.44s** on
+Python 3.14.6. Per-message PTR-backed projections only: standalone
+SRV/TXT/A/AAAA responses are *not yet* safely reconciled across
+packets; full Bonjour cache-flush and subtype semantics are future
+work. Lexical service-name similarity is an optional future
+presentation hint, **not** an identity-scoring engine.
+
+See [Phase 1M-D-A design and acceptance notes](
+docs/implementation/2026-10-18-mdns-service-state-aggregation.md).
