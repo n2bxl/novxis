@@ -9,6 +9,9 @@ from novxis.capture.pcap_replay import PcapReplayError, PcapReplayProvider
 from novxis.pipeline.mdns import MDNSEventPipeline
 from novxis.pipeline.link import UnsupportedLinkTypeError
 from novxis.presentation.mdns_console import print_mdns_observation
+from novxis.presentation.mdns_service_console import print_dnssd_advertisement
+from novxis.protocols.dnssd import DNSSDParseError
+from novxis.views.mdns_services import project_dnssd_advertisements
 from novxis.presentation.ipv4_console import format_timestamp
 from novxis.protocols.dns import DNSParseError
 from novxis.protocols.ethernet import EthernetParseError
@@ -18,14 +21,14 @@ from novxis.protocols.udp import UDPParseError
 
 _DECODE_ERRORS = (
     DNSParseError, EthernetParseError, IPv4ParseError, IPv6ParseError,
-    UDPParseError, UnsupportedLinkTypeError,
+    UDPParseError, UnsupportedLinkTypeError, DNSSDParseError,
 )
 
 
 def _make_counts() -> dict[str, int]:
     return {
         "observations": 0, "ipv4": 0, "ipv6": 0,
-        "queries": 0, "responses": 0, "errors": 0,
+        "queries": 0, "responses": 0, "service_ads": 0, "errors": 0,
     }
 
 
@@ -34,10 +37,15 @@ def _build_handler(
     counts: dict[str, int],
     *,
     summary_only: bool = False,
+    show_services: bool = False,
 ):
     def handle(frame: CapturedFrame) -> None:
         try:
             observed = pipeline.process(frame)
+            service_ads = (
+                project_dnssd_advertisements(observed)
+                if show_services and observed is not None else ()
+            )
         except _DECODE_ERRORS as exc:
             counts["errors"] += 1
             print(
@@ -51,7 +59,12 @@ def _build_handler(
         counts["observations"] += 1
         counts["ipv4" if observed.ip_version == 4 else "ipv6"] += 1
         counts["responses" if observed.message.is_response else "queries"] += 1
-        if not summary_only:
+        if show_services:
+            counts["service_ads"] += len(service_ads)
+            if not summary_only:
+                for ad in service_ads:
+                    print_dnssd_advertisement(observed, ad)
+        elif not summary_only:
             print_mdns_observation(observed)
     return handle
 
@@ -67,6 +80,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Fallback name if file metadata lacks interface.")
     parser.add_argument("--summary-only", action="store_true",
                         help="Count observations without printing individual packets.")
+    parser.add_argument("--services", action="store_true",
+                        help="Show only raw DNS-SD service advertisements (no fingerprint names).")
     return parser
 
 
@@ -87,7 +102,8 @@ def main() -> int:
         emitted = PcapReplayProvider().replay(
             args.path,
             _build_handler(MDNSEventPipeline(), counts,
-                           summary_only=args.summary_only),
+                           summary_only=args.summary_only,
+                           show_services=args.services),
             count=args.count, interface_label=args.interface_label,
         )
     except (OSError, PcapReplayError, ValueError) as exc:
@@ -99,7 +115,9 @@ def main() -> int:
         f"mDNS observations: {counts['observations']} "
         f"(IPv4={counts['ipv4']}, IPv6={counts['ipv6']}; "
         f"queries={counts['queries']}, responses={counts['responses']}); "
-        f"decode errors: {counts['errors']}"
+        + (f"DNS-SD advertised PTRs: {counts['service_ads']}; "
+           if args.services else "")
+        + f"decode errors: {counts['errors']}"
     )
     return 0 if counts["errors"] == 0 else 1
 
