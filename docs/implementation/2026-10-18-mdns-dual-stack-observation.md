@@ -1,7 +1,7 @@
 # Phase 1M-B: Passive IPv4/IPv6 mDNS Observation, Live Capture and Replay
 
 **Date:** 2026-10-18  
-**Status:** Feature branch proposed; local Mac tests and real-PCAP replay **pending**.  
+**Status:** Focused/full regression tests and two private real-PCAPNG replays validated on macOS; PR review/squash merge pending. Live capture remains untested.  
 **Scope:** Decode Ethernet II → IPv4/IPv6 → UDP/5353 → mDNS message evidence;
 console-only, no active queries or service-inventory inference.
 
@@ -103,7 +103,20 @@ query/response handling; normalized frame provenance; IPv4 fragment
 exclusion; IPv6 extension-header non-interpretation; malformed message
 errors; and offline/live CLI error/summary behavior.
 
-**Tests and live capture have not yet been run on this branch.**
+### Local acceptance — 2026-10-18
+
+On M5 MacBook Air, macOS/Darwin, Python **3.14.6**, pytest **9.1.1**:
+
+- Focused IPv6, mDNS integration, synthetic PCAP replay, and CLI suites: **37/37 passed in 0.27s**.
+- Complete regression suite: **390/390 passed in 0.32s**.
+- Previous merged-`main` baseline: 353 passing tests. The feature branch adds **37 tests** with no observed regressions.
+
+The focused suites include a synthetic on-disk PCAP replay test; the
+separate private real-PCAPNG results are recorded below.
+
+**Live capture has not yet been run** as part of this acceptance. A
+passing mocked live-CLI test validates its command contract, not actual
+interface access.
 
 ## Private real-capture acceptance
 
@@ -116,14 +129,32 @@ python -m novxis.cli.mdns_replay "/path/to/spotify.pcapng" --summary-only
 python -m novxis.cli.mdns_replay "/path/to/spotify 2.pcapng" --summary-only
 ```
 
-Expected broad characteristics to verify against Wireshark (not
-claimed results from the *new* NOVXIS path): the first private capture
-previously showed **115** mDNS messages and the second **215**; each
-had both IPv4 and IPv6 observations. Counts may legitimately diverge
-if the PCAP contains unsupported link types, VLANs, truncated packets,
-extension headers or packets marked as mDNS by Wireshark outside this
-slice's strict UDP/5353 gate. Investigate differences, do not adjust
-the expected result blindly.
+### Real private PCAPNG replay acceptance — 2026-10-18
+
+The MacBook ran the new NOVXIS replay CLI against **both local private
+captures** using `--summary-only`. The resulting counts **exactly matched**
+the independent Wireshark/frame-level reference for both files:
+
+| Metric | First Spotify capture | Second Spotify capture |
+| --- | ---: | ---: |
+| Frames replayed | 2,766 | 1,188 |
+| mDNS observations | 115 | 215 |
+| IPv4 mDNS | 50 | 119 |
+| IPv6 mDNS | 65 | 96 |
+| Queries | 76 | 109 |
+| Responses | 39 | 106 |
+| Decode errors | **0** | **0** |
+
+Combined: **330 observed mDNS packets** (169 IPv4, 161 IPv6),
+**185 queries and 145 responses**, and **zero decode errors**.
+These are results produced by NOVXIS on private captures, not merely
+expected values. Per-packet text and service relationships are separate
+future review topics; matching these counts does not establish that the
+software observed all traffic on the local network or that any Spotify
+playback handoff occurred.
+
+No private filesystem path, MAC/IP list, service identifiers or raw PCAP
+data has been committed to this public repository.
 
 Inspect a bounded subset without printing hundreds of records:
 
