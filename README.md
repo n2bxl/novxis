@@ -907,9 +907,69 @@ python -m pytest
 
 See [Phase 1M-A implementation and acceptance plan](
 docs/implementation/2026-10-18-mdns-message-semantics.md).
-**Local Phase 1M-A acceptance (2026-10-18):** **42/42 focused tests**
-passed in 0.04s and **353/353 full regression tests** passed in 0.44s
-on macOS Python 3.14.6, with no observed regressions. This validates
-message interpretation only; real UDP/5353 capture/replay still awaits
-Phase 1M-B. PR review/squash merge pending. Next: passive IPv4/IPv6 mDNS
-capture/replay, then DNS-SD PTR/SRV/TXT relationships and grouping.
+**Phase 1M-A accepted and merged:** **42/42 focused tests** passed on
+2026-10-18, with **353/353 full-suite tests** on the feature branch.
+[PR #27](https://github.com/n2bxl/novxis/pull/27) was squash-merged as
+`cc48f4a`; the post-merge local `main` run passed **353/353 in 0.36s**
+on Python 3.14.6. Message interpretation was the only capability in this
+slice. Real UDP/5353 capture/replay is Phase 1M-B; DNS-SD SRV/TXT semantics
+and service grouping follow in Phase 1M-C.
+
+
+## Phase 1M-B: Passive Dual-Stack mDNS Observation (Under Review)
+
+This feature branch extends Phase 1M-A's capture-neutral mDNS message parser
+with a separate, immutable IPv4/IPv6 observation path:
+`Ethernet II → IPv4/IPv6 → UDP/5353 → MDNSMessageObserved`.
+The new bounded IPv6 fixed-header decoder retains original 128-bit addresses,
+hop limit, length, flow label and payload provenance.
+
+**Offline private PCAP/PCAPNG replay:**
+
+```bash
+python -m novxis.cli.mdns_replay "/path/to/spotify.pcapng" --summary-only
+python -m novxis.cli.mdns_replay "/path/to/spotify 2.pcapng" --summary-only
+```
+
+**Passive live capture:**
+
+```bash
+sudo .venv/bin/python -m novxis.cli.mdns_events en0 --count 40 --timeout 60
+```
+
+Use the interface carrying the actual traffic; the live command is **passive**
+and uses `udp port 5353` BPF. Omit `--summary-only` to inspect
+individual packet observations. The replay command's `--count` counts
+*all file frames*; the live command's count applies to captured matching
+frames. No device classification, service inventory, or active probes.
+
+**Current boundaries:** Ethernet II only; no tagged VLAN encapsulation,
+IPv4 fragments or IPv6 extension/fragment traversal; IPv6 direct UDP only.
+Checksums are preserved, not verified. SRV/TXT DNS-SD interpretation and
+service relationships remain Phase 1M-C. Classic DNS UDP/53 is unchanged.
+
+```bash
+python -m pytest tests/protocols/test_ipv6.py \
+  tests/integration/test_mdns_evidence.py \
+  tests/integration/test_mdns_pcap_replay.py \
+  tests/cli/test_mdns_cli.py -q
+python -m pytest
+```
+
+**Local Phase 1M-B acceptance (2026-10-18):** **37/37 focused tests**
+passed in 0.27s, and **390/390 full regression tests** passed in 0.32s
+on macOS Python 3.14.6. Both private Spotify PCAPNG files replayed
+successfully, matching the independent mDNS reference counts exactly:
+**115 observations (IPv4=50, IPv6=65; 76 queries/39 responses)** and
+**215 observations (IPv4=119, IPv6=96; 109 queries/106 responses)**,
+with **zero decode errors**. **Live passive capture also passed** on both `en0` and `en5`,
+each with 40 observed UDP/5353 packets and **zero decode errors**.
+Wi-Fi: IPv4=23, IPv6=17, 16 queries / 24 responses.
+Ethernet: IPv4=19, IPv6=21, 27 queries / 13 responses.
+An operator-controlled application relaunch on a separate Mac coincided
+with IPv4/IPv6 mDNS Spotify Connect searches and advertisements from
+two network endpoints. This is discovery evidence, not proven playback
+transfer or process attribution. PR review/squash merge pending.
+
+See [Phase 1M-B implementation and real-capture acceptance notes](
+docs/implementation/2026-10-18-mdns-dual-stack-observation.md).

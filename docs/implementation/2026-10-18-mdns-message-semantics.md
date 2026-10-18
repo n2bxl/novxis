@@ -1,7 +1,7 @@
 # mDNS Phase 1M-A — Capture-Neutral Message Semantics
 
 **Date:** 2026-10-18  
-**Status:** Focused and complete regression tests passed on macOS; PR review and squash merge pending  
+**Status:** Implemented, tested and squash-merged via [PR #27](https://github.com/n2bxl/novxis/pull/27) (`cc48f4a`); post-merge `main` tests passed 353/353 (2026-10-18).  
 **Scope:** Passive **wire-message interpretation only**; no capture provider,
 IPv6 parser, service inventory, GUI, active multicast queries, or state.
 
@@ -104,8 +104,9 @@ pytest **9.1.1** and pluggy **1.6.0**:
   traffic, which belongs to Phase 1M-B.
 
 **Acceptance conclusion:** Focused and full automated tests passed.
-The PR is ready for human review and squash merge. No mDNS live capture
-or DNS-SD service discovery capability is claimed for this slice.
+PR #27 was squash-merged. Subsequent local `main` testing reported
+**353/353 passed in 0.36s**. Live observation/replay and DNS-SD service
+semantics remain separate follow-on slices.
 
 ## Next slices (deliberately separate)
 

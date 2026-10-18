@@ -34,6 +34,8 @@ novxis-dhcpv4-state-replay = "novxis.cli.dhcpv4_state_replay:main"
 novxis-dns-replay = "novxis.cli.dns_replay:main"
 novxis-dns-events = "novxis.cli.dns_events:main"
 novxis-dns-relationships = "novxis.cli.dns_relationships:main"
+novxis-mdns-replay = "novxis.cli.mdns_replay:main"
+novxis-mdns-events = "novxis.cli.mdns_events:main"
 
 [tool.setuptools.packages.find]
 include = ["novxis*"]
