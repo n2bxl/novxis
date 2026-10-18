@@ -4,14 +4,13 @@ from novxis.capture.frame import CapturedFrame
 from novxis.events.mdns import MDNSMessageObserved
 from novxis.pipeline.link import validate_ethernet_link_type
 from novxis.protocols.ethernet import (
-    ETHERTYPE_IPV4, EthernetFrame, parse_ethernet,
+    ETHERTYPE_IPV4, ETHERTYPE_IPV6, EthernetFrame, parse_ethernet,
 )
 from novxis.protocols.ipv4 import parse_ipv4
 from novxis.protocols.ipv6 import parse_ipv6, IPV6_NEXT_HEADER_UDP
 from novxis.protocols.mdns import MDNS_UDP_PORT, parse_mdns
 from novxis.protocols.udp import parse_udp
 
-ETHERTYPE_IPV6 = 0x86DD
 IP_PROTOCOL_UDP = 17
 IPV4_MORE_FRAGMENTS = 0b001
 
