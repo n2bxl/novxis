@@ -916,7 +916,7 @@ slice. Real UDP/5353 capture/replay is Phase 1M-B; DNS-SD SRV/TXT semantics
 and service grouping follow in Phase 1M-C.
 
 
-## Phase 1M-B: Passive Dual-Stack mDNS Observation (Under Review)
+## Phase 1M-B: Passive Dual-Stack mDNS Observation (Merged)
 
 This feature branch extends Phase 1M-A's capture-neutral mDNS message parser
 with a separate, immutable IPv4/IPv6 observation path:
@@ -969,7 +969,9 @@ Ethernet: IPv4=19, IPv6=21, 27 queries / 13 responses.
 An operator-controlled application relaunch on a separate Mac coincided
 with IPv4/IPv6 mDNS Spotify Connect searches and advertisements from
 two network endpoints. This is discovery evidence, not proven playback
-transfer or process attribution. PR review/squash merge pending.
+transfer or process attribution. [PR #28](https://github.com/n2bxl/novxis/pull/28)
+was squash-merged as `69e65a8`. No separately reported post-merge
+full-suite run is claimed in this acceptance record.
 
 See [Phase 1M-B implementation and real-capture acceptance notes](
 docs/implementation/2026-10-18-mdns-dual-stack-observation.md).
