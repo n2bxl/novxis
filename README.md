@@ -1112,3 +1112,52 @@ presentation hint, **not** an identity-scoring engine.
 
 See [Phase 1M-D-A design and acceptance notes](
 docs/implementation/2026-10-18-mdns-service-state-aggregation.md).
+
+
+## Phase 1M-D-B: Opt-In Cross-Message DNS-SD Reconstruction (Under Review)
+
+DNS-SD records may be advertised in **separate response packets**.
+The established Phase 1M-D-A replay remains the default. Add
+`--reconcile` to use a bounded overlay that relates standalone
+SRV/TXT/A/AAAA claims to previously observed service instances:
+
+```text
+fresh PTR  → native DNS-SD service instance name
+fresh SRV  → same instance owner → target hostname and port
+fresh A/AAAA → exact SRV target hostname → address claim
+TXT        → same instance owner → raw metadata evidence
+```
+
+These relationships are scoped to one capture interface and evaluated
+at an explicit capture timestamp. Each original record retains its
+own source packet, TTL and wire bytes. Orphan responses can precede
+the PTR as long as their record TTL remains fresh at snapshot time.
+
+```bash
+# Keep the original, validated behavior:
+python -m novxis.cli.mdns_state_replay "$HOME/Documents/spotify 2.pcapng"
+
+# Explicitly enable cross-response name matching:
+python -m novxis.cli.mdns_state_replay "$HOME/Documents/spotify 2.pcapng" --reconcile
+python -m novxis.cli.mdns_state_replay "$HOME/Documents/spotify 2.pcapng" --reconcile --after 200
+
+# Validate branch:
+python -m pytest tests/state/test_mdns_reconciliation.py \
+  tests/cli/test_mdns_reconciliation_cli.py -q
+python -m pytest
+```
+
+The optional display adds `separately-observed-RRs-linked=N` for
+each service instance. This is **not** a device count, application
+identification, vendor label or authenticated ownership claim.
+An A/AAAA record joins only through a fresh exact SRV target name,
+not via packet sender IP, name resemblance or keyword scoring.
+
+Bounded orphan evidence (`--max-unassociated`, default 2048) is drawn
+only from response packets with **no PTR-backed service projection**.
+Mixed-response extraction, mDNS cache-flush grace behavior, service
+subtypes, and active verification are deferred. **New branch tests and
+private capture reconciliation acceptance pending.**
+
+See [Phase 1M-D-B implementation and limits](
+docs/implementation/2026-10-18-mdns-cross-message-reconciliation.md).
