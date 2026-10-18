@@ -1,7 +1,7 @@
 # Phase 1M-D-A: Bounded mDNS/DNS-SD Service Evidence State
 
 **Date:** 2026-10-18  
-**Status:** Feature branch prepared for macOS validation; not merged.
+**Status:** MacBook reported a clean test suite after the pytest collection-file rename; real second-capture aggregation and +200s aging accepted. Additional presentation-only tests and first-capture/+5000s validation pending; PR not merged.
 **Baseline:** Phase 1M-C squash-merged as `c590908`; user's local
 post-merge full suite **422/422 passed in 0.44s** on Python 3.14.6.
 
@@ -121,12 +121,19 @@ wrongly labeled universally expired.
 
 ```bash
 python -m pytest tests/state/test_mdns_service_state.py \
-  tests/cli/test_mdns_state_replay_cli.py -q
+  tests/cli/test_mdns_state_replay_cli.py \
+  tests/presentation/test_dns_names.py -q
 python -m pytest
 ```
 
-**Tests not yet run on this feature branch.** Baseline 422/422 refers
-to previously merged `main`.
+**Test status:** First MacBook run passed **30 focused tests** but full-suite
+collection stopped because new `tests/state/test_mdns_services.py` had
+the same module basename as existing `tests/views/test_mdns_services.py`.
+The file was renamed to `tests/state/test_mdns_service_state.py`, and
+the user subsequently reported clean pytest testing on this branch.
+The exact post-fix full-suite count was not provided. The additional
+presentation-only formatting tests added afterward have not yet been
+run on the MacBook. Baseline 422/422 refers to merged `main`.
 
 Then replay the two existing private Spotify captures **locally**:
 
@@ -156,14 +163,65 @@ and fresh matching addresses where they can be supported.
 
 ## Interpretation and acceptance
 
-The second private capture's earlier service-only output included:
-five distinct raw service types, seven distinct service-instance
-names, 87 advertisement observations, two TTL=0 goodbye candidate
-observations. The new command should retain approximately that
-relationship structure, but exact counts must be **reported from
-this new command** before marking this phase accepted. Boundedness,
-capture timestamps and repeated same-interface advertisements can
-affect the precise number of retained service-instance views.
+### Actual second-private-capture acceptance (2026-10-18)
+
+The user ran the new state replay on the existing second Spotify capture
+on the MacBook's feature branch:
+
+| Metric | Capture end | Capture end +200 seconds |
+| --- | ---: | ---: |
+| Frames replayed | 1,188 | 1,188 |
+| mDNS messages decoded | 215 | 215 |
+| PTR-backed advertisement observations | **87** | **87** |
+| Retained service instances | **7** | **7** |
+| Fresh PTR instances | **6** | **2** |
+| No fresh PTR | **1** | **5** |
+| Decode errors | **0** | **0** |
+
+The seven instance names are distributed across **five native DNS-SD
+service types**. Repeated observations were consolidated under
+case-insensitive service-type/instance labels on `en5`. Two Spotify
+Connect instances accounted for 52 and 19 observations respectively.
+No private source IPs, hardware identifiers or full instance names are
+reproduced in this public document.
+
+At capture end, one mobile-device service instance had **no fresh
+PTR**, following previously observed TTL-zero goodbye candidates, but
+its original observation history remained visible. Four Companion
+Link advertisements consolidated under one **PTR-fresh instance with
+no matching SRV target evidence**.
+
+After +200 seconds, short-lived Google Cast, Google RPC and one Spotify
+Connect instance had no fresh PTR. The longer-lived Spotify Connect
+instance still had a fresh PTR but **no fresh SRV target**. This
+confirms correct per-record TTL separation; no "device offline"
+claim was made.
+
+These are actual validation results, not merely expectation targets.
+The other private capture's aggregation, and the optional +5000-second
+experiment, have **not yet been reported**.
+
+### Readable DNS label presentation (fix after validation)
+
+The user also noticed that canonical protocol formatting shows literal
+spaces as `\\x20`, e.g. a Mac's advertised Companion Link instance
+name. That is safe wire-oriented syntax but less usable in a console.
+
+A separate `novxis.presentation.dns_names.format_dns_name_display`
+now prints ASCII spaces literally and **quotes display fields that
+contain spaces**, while preserving escaped interior label periods,
+backslashes, double quotes, control bytes and nonprintable bytes.
+The original `DNSName.text` still uses wire-safe escaping; no
+state key, DNS parser, observation or service identity changes.
+
+For example, an entirely **synthetic** label becomes:
+`instance="Test Desk Mac._companion-link._tcp.local"`.
+
+This presentation change applies to both the state and per-message
+service-only consoles. New focused tests cover readable spaces,
+quoted fields, malicious control bytes and preservation of original
+DNSName label bytes. **Rerun pytest after pulling these formatting
+changes before merging.**
 
 The new CLI does **not** perform DNS-SD multicast queries or check
 open ports. Physical devices, vendors, software identity and media
