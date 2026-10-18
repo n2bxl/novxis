@@ -1,7 +1,7 @@
 # mDNS Phase 1M-A — Capture-Neutral Message Semantics
 
 **Date:** 2026-10-18  
-**Status:** Proposed feature branch, awaiting local macOS acceptance  
+**Status:** Focused and complete regression tests passed on macOS; PR review and squash merge pending  
 **Scope:** Passive **wire-message interpretation only**; no capture provider,
 IPv6 parser, service inventory, GUI, active multicast queries, or state.
 
@@ -89,9 +89,23 @@ address/PTR decoding with high RRCLASS bit, classic DNS regression
 behavior, unknown types, raw SRV/TXT preservation, and hostile or
 incomplete messages.
 
-**Acceptance pending:** After fetching this feature branch, verify focused
-and full regression tests on local macOS/Python 3.14.6. Do not merge until
-the run is confirmed and any failures are addressed.
+### Local acceptance — 2026-10-18
+
+On M5 MacBook Air, macOS (Darwin), Python **3.14.6**,
+pytest **9.1.1** and pluggy **1.6.0**:
+
+- Focused tests: `tests/protocols/test_mdns.py` and
+  `tests/protocols/test_dns.py`: **42/42 passed in 0.04s**.
+- Full regression suite: **353/353 passed in 0.44s**.
+- Previous merged-`main` baseline: **335/335**. This adds
+  **18 tests** with no observed regressions.
+- Only capture-neutral synthetic parsing semantics have been validated;
+  the new mDNS path has **not** yet been exercised with live or replayed
+  traffic, which belongs to Phase 1M-B.
+
+**Acceptance conclusion:** Focused and full automated tests passed.
+The PR is ready for human review and squash merge. No mDNS live capture
+or DNS-SD service discovery capability is claimed for this slice.
 
 ## Next slices (deliberately separate)
 
