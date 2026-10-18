@@ -1024,8 +1024,17 @@ instance names**, despite 87 repeated observations. NOVXIS preserved
 partial advertisements and two TTL=0 goodbye candidates without
 inventing service targets or offline-device status.
 
-**Automated acceptance pending:** The provided log contains real replay
-output but does not include focused or full Phase 1M-C pytest results.
-PR review/squash merge remain pending. See the
-[Phase 1M-C service-evidence design and private replay results](
+**Phase 1M-C automated acceptance passed (2026-10-18):**
+**32/32 focused tests** in **0.21s** and **422/422 full regression tests**
+in **0.32s** on macOS Python 3.14.6, with no observed regressions.
+Offline real-PCAPNG service projection also passed (30 + 87 DNS-SD PTR
+observations, zero errors). PR review/squash merge pending.
+
+**Future idea, not implemented:** Optional lexical-affinity display hints
+may compare tokens and character prefixes within *raw service types*
+(e.g., `_googlecast._tcp.local` / `_googlerpc._tcp.local`).
+These guesses must never merge canonical service identities, endpoint
+addresses, or records; full native service names remain authoritative
+presentation evidence. See the
+[Phase 1M-C acceptance and lexical-affinity design note](
 docs/implementation/2026-10-18-mdns-dnssd-service-evidence.md).
