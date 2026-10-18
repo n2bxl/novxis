@@ -1,5 +1,6 @@
 """Conservative terminal summaries for aggregated, TTL-aware DNS-SD facts."""
 
+from novxis.presentation.dns_names import format_dns_name_display
 from novxis.state.mdns_services import MDNSServiceInstanceSnapshot
 from novxis.protocols.dnssd import DNSSDSRV
 
@@ -14,7 +15,8 @@ def format_mdns_service_snapshot(snapshot: MDNSServiceInstanceSnapshot) -> str:
     s = snapshot
     ptr_fresh = "fresh-advertisement" if s.has_fresh_ptr else "no-fresh-ptr"
     lines = [
-        f"service={s.service_type.text} instance={s.instance.text}",
+        f"service={format_dns_name_display(s.service_type)} "
+        f"instance={format_dns_name_display(s.instance)}",
         f"  interface={s.interface} observations={s.observation_count}"
         f" status={ptr_fresh} last_seen={s.last_seen}",
     ]
@@ -31,7 +33,7 @@ def format_mdns_service_snapshot(snapshot: MDNSServiceInstanceSnapshot) -> str:
             assert isinstance(target.value, DNSSDSRV)
             srv = target.value
             lines.append(
-                f"  target={srv.target.text}:{srv.port}"
+                f"  target={format_dns_name_display(srv.target)}:{srv.port}"
                 f" srv_ttl_remaining={_remaining(target.expires_at, s.as_of)}"
             )
             ips = [
