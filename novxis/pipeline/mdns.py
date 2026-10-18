@@ -41,9 +41,18 @@ class MDNSEventPipeline:
         else:
             return None
 
-        udp = parse_udp(ip.payload)
-        if MDNS_UDP_PORT not in (udp.source_port, udp.destination_port):
+        # Replay may contain large amounts of unrelated UDP traffic. Gate on
+        # the two port fields *before* parsing the whole datagram, so a
+        # malformed non-mDNS UDP frame is not reported as an mDNS error.
+        if len(ip.payload) < 4:
             return None
+        ports = (
+            int.from_bytes(ip.payload[:2], "big"),
+            int.from_bytes(ip.payload[2:4], "big"),
+        )
+        if MDNS_UDP_PORT not in ports:
+            return None
+        udp = parse_udp(ip.payload)
 
         return MDNSMessageObserved(
             captured=frame,
