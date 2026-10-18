@@ -1,7 +1,7 @@
 # Phase 1M-D-A: Bounded mDNS/DNS-SD Service Evidence State
 
 **Date:** 2026-10-18  
-**Status:** MacBook reported a clean test suite after the pytest collection-file rename; real second-capture aggregation and +200s aging accepted. Additional presentation-only tests and first-capture/+5000s validation pending; PR not merged.
+**Status:** Phase 1M-D-A focused/full automated tests, readability presentation, second-capture aggregation and +200s aging validated on macOS. First-capture/+5000s checks optional and not yet reported; PR open for review.
 **Baseline:** Phase 1M-C squash-merged as `c590908`; user's local
 post-merge full suite **422/422 passed in 0.44s** on Python 3.14.6.
 
@@ -126,14 +126,22 @@ python -m pytest tests/state/test_mdns_service_state.py \
 python -m pytest
 ```
 
-**Test status:** First MacBook run passed **30 focused tests** but full-suite
-collection stopped because new `tests/state/test_mdns_services.py` had
-the same module basename as existing `tests/views/test_mdns_services.py`.
-The file was renamed to `tests/state/test_mdns_service_state.py`, and
-the user subsequently reported clean pytest testing on this branch.
-The exact post-fix full-suite count was not provided. The additional
-presentation-only formatting tests added afterward have not yet been
-run on the MacBook. Baseline 422/422 refers to merged `main`.
+**Automated acceptance (2026-10-18):** On macOS with Python **3.14.6**,
+pytest **9.1.1**, and pluggy **1.6.0**, the user ran the final feature
+branch including the display-formatting change:
+
+- **36/36 focused tests passed in 0.07s**, including the new
+  `test_dns_names.py`, `test_mdns_service_state.py`, and
+  `test_mdns_state_replay_cli.py` test modules.
+- **458/458 full regression tests passed in 0.32s**.
+- The prior merged Phase 1M-C baseline had **422 tests**, so the
+  feature branch adds **36 tests** without observed regressions.
+
+An earlier first test run passed 30 focused tests but stopped on a
+pytest collection-module basename collision. Renaming the new
+state test to `test_mdns_service_state.py` resolved that issue.
+The subsequent complete 458-test run included both the existing
+service view tests and the new service state tests.
 
 Then replay the two existing private Spotify captures **locally**:
 
@@ -219,9 +227,14 @@ For example, an entirely **synthetic** label becomes:
 
 This presentation change applies to both the state and per-message
 service-only consoles. New focused tests cover readable spaces,
-quoted fields, malicious control bytes and preservation of original
-DNSName label bytes. **Rerun pytest after pulling these formatting
-changes before merging.**
+quoted fields, control bytes and preservation of original DNSName
+label bytes. **Both the focused tests and full regression suite passed
+after the presentation changes.** The final private state replay also
+rendered the space-containing Companion Link name naturally as a
+quoted field while preserving the same seven instances, 87
+advertisement observations, six fresh PTR instances, one non-fresh
+PTR instance and zero decode errors. The actual private hostname
+and instance text are intentionally not included in public docs.
 
 The new CLI does **not** perform DNS-SD multicast queries or check
 open ports. Physical devices, vendors, software identity and media
