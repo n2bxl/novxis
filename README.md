@@ -1156,8 +1156,24 @@ not via packet sender IP, name resemblance or keyword scoring.
 Bounded orphan evidence (`--max-unassociated`, default 2048) is drawn
 only from response packets with **no PTR-backed service projection**.
 Mixed-response extraction, mDNS cache-flush grace behavior, service
-subtypes, and active verification are deferred. **New branch tests and
-private capture reconciliation acceptance pending.**
+subtypes, and active verification are deferred.
+
+**Phase 1M-D-B initial Mac acceptance (2026-10-18):**
+**20/20 focused tests** passed in **0.08s** and **478/478 full tests**
+passed in **0.36s** on macOS Python 3.14.6. Replaying the second
+private Spotify capture with and without `--reconcile` retained the same
+**87 PTR observations, seven instances and zero decode errors**.
+Reconciliation buffered **19 standalone response RRs** and linked
+**four fresh additional RR values across three native service
+instances**: a Companion Link TXT, a Google Cast A, and Google RPC
+SRV+A. A later standalone A observation refreshed address evidence
+independently of SRV TTL.
+
+**Remaining acceptance:** Validate `--reconcile --after 200` and
+inspect one newly linked standalone RR in the original capture
+to confirm its response owner/source and TTL in Wireshark. This
+has not yet been reported. PR review/merge pending; no private
+endpoint identifiers committed.
 
 See [Phase 1M-D-B implementation and limits](
 docs/implementation/2026-10-18-mdns-cross-message-reconciliation.md).
