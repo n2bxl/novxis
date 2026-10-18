@@ -951,6 +951,7 @@ service relationships remain Phase 1M-C. Classic DNS UDP/53 is unchanged.
 ```bash
 python -m pytest tests/protocols/test_ipv6.py \
   tests/integration/test_mdns_evidence.py \
+  tests/integration/test_mdns_pcap_replay.py \
   tests/cli/test_mdns_cli.py -q
 python -m pytest
 ```
