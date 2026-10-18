@@ -1,7 +1,7 @@
 # Phase 1M-C: Native DNS-SD Service Type and Per-Response Evidence
 
 **Date:** 2026-10-18  
-**Status:** Both private PCAPNG captures have passed opt-in service projection with zero decode errors. Focused/full automated tests not shown in the provided acceptance log; PR not merged.  
+**Status:** Private PCAPNG service projection and focused/full automated tests passed on macOS; PR review/squash merge pending.  
 **Scope:** Interpret DNS-SD PTR → SRV/TXT → A/AAAA evidence **within each
 observed mDNS response**. No application fingerprint database, automatic
 name translation, or network inventory heuristics.
@@ -120,10 +120,23 @@ answers not treated as advertisements, exact target/address matching,
 TTL=0 goodbye candidates, immutable projections and opt-in live/replay
 CLI controls.
 
-**Automated test acceptance is still pending confirmation.** The submitted
-MacBook output includes successful private capture replay, but **does not
-include the focused or full pytest results** for this Phase 1M-C branch.
-Do not claim those tests passed or merge on replay evidence alone.
+### Automated acceptance — 2026-10-18
+
+On M5 MacBook Air running macOS (Darwin), Python **3.14.6**,
+pytest **9.1.1**, pluggy **1.6.0**:
+
+- Focused `test_dnssd.py`, `test_mdns_services.py` and
+  `test_dnssd_cli.py` suites: **32/32 passed in 0.21s**.
+- Full project regression suite: **422/422 passed in 0.32s**.
+- Previous merged baseline: **390/390**, so this feature branch adds
+  **32 tests** without observed regressions.
+
+Combined with the two earlier private PCAPNG replay validations
+(**30 + 87** observed service PTR advertisements, **zero errors**),
+Phase 1M-C automated and offline replay acceptance is complete.
+The PR remains open for review and squash merge. Live `--services`
+capture has not been separately run, although dual-stack live transport
+was validated in Phase 1M-B.
 
 ## Private lab capture experiments (after tests pass)
 
@@ -207,10 +220,34 @@ content and entire capture traces stay outside the public repository.
 These test observations support *typed per-response evidence extraction*,
 not process attribution, runtime reachability, or physical-device mapping.
 
-**Next acceptance still needed:** focused Phase 1M-C pytest tests and
-the complete regression suite on the feature branch. An additional
-live `--services` capture can provide evidence of the optional console
-path, but offline replay already validates its real-packet output.
+**Acceptance conclusion:** Focused and full automated tests have passed,
+and the service projection has replayed both private captures with zero
+decode errors. Optional future live `--services` output testing is not
+required to claim offline replay acceptance.
+
+## Design parking lot — optional service-name lexical affinity
+
+During acceptance, a possible *presentation grouping* was proposed:
+tokenize a raw DNS-SD service type's first label by explicit separators
+(`_`, `-`) and compare remaining strings with a common-prefix or
+character-n-gram sliding-window method. For instance,
+`_googlecast._tcp.local` and `_googlerpc._tcp.local` share the literal
+prefix `google` even though no separator marks it.
+
+**Not implemented in 1M-C.** If introduced later, this is a
+`lexical_affinity` visualization hint only, not evidence that services
+share an application, vendor, host, or physical device. Preserve full
+raw DNS-SD names, never rename/collapse them, and never let similarity
+modify canonical service identity, TTL aging, or verified record links.
+Require minimum-length support and multiple meaningful hits; cap scores
+to avoid false matches on generic fragments, suffixes or random instance
+IDs. Exclude PTR instance labels, hostnames and TXT values from automatic
+lexical scoring by default.
+
+Canonical grouping and freshness must remain protocol-based:
+`(service_type, service_instance, SRV target, port, record evidence)`.
+Similarity can merely suggest a secondary visual grouping for a human
+to inspect, clearly annotated as a heuristic.
 
 ## Next slice (1M-D)
 
