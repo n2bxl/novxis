@@ -274,3 +274,16 @@ def test_snapshots_immutable_and_include_provenance():
     assert snap.latest_records[0].record is ads[0].ptr_record
     with pytest.raises(FrozenInstanceError):
         snap.observation_count = 12
+
+
+def test_snapshot_display_spaces_are_readable_without_changing_raw_name():
+    state = MDNSServiceEvidenceState()
+    wire_instance = _name("Test Desk Mac", "_demo", "_tcp", "local")
+    _observe(state, at="100", instance=wire_instance)
+    snapshot, = _snapshot(state)
+    assert snapshot.instance.labels[0] == b"Test Desk Mac"
+    assert snapshot.instance.text == r"Test\x20Desk\x20Mac._demo._tcp.local"
+    assert 'instance="Test Desk Mac._demo._tcp.local"' in (
+        format_mdns_service_snapshot(snapshot)
+    )
+    assert snapshot.observation_count == 1
