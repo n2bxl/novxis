@@ -3,6 +3,7 @@
 from ipaddress import ip_address
 
 from novxis.events.mdns import MDNSMessageObserved
+from novxis.presentation.dns_names import format_dns_name_display
 from novxis.presentation.ipv4_console import format_timestamp
 from novxis.views.mdns_services import DNSSDServiceAdvertisement
 
@@ -16,8 +17,8 @@ def format_dnssd_advertisement(
         "DNSSDServiceAdvertised",
         f"interface={observed.interface}",
         f"sender={ip_address(observed.ip.source)}",
-        f"service={ad.service_type.text}",
-        f"instance={ad.instance.text}",
+        f"service={format_dns_name_display(ad.service_type)}",
+        f"instance={format_dns_name_display(ad.instance)}",
         f"ptr_ttl={ad.ptr_record.wire.ttl}s",
         f"ptr_section={ad.ptr_record.section}",
     ]
@@ -32,7 +33,7 @@ def format_dnssd_advertisement(
             if address.wire.decoded_data is not None
         ) or "not-observed-in-this-message"
         parts.append(
-            f"target={target.srv.target.text}:{target.srv.port}"
+            f"target={format_dns_name_display(target.srv.target)}:{target.srv.port}"
             f"(srv_ttl={target.srv_record.wire.ttl}s;"
             f"addresses={addresses})"
         )
