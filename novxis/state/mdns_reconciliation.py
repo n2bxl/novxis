@@ -88,6 +88,9 @@ class MDNSServiceReconciliation:
                 self.state.observe(source, advertisement)
             return len(advertisements)
 
+        # Decode the whole message first: a malformed later RR must not
+        # leave earlier RRs from the same message partially committed.
+        staged: list[MDNSServiceRecordEvidence] = []
         for record in source.message.records:
             if record.record_class != 1:
                 continue
@@ -103,10 +106,11 @@ class MDNSServiceReconciliation:
                 if wire.decoded_data is None:
                     continue
                 value = wire.decoded_data
-            self._unassociated.append(MDNSServiceRecordEvidence(
+            staged.append(MDNSServiceRecordEvidence(
                 kind=kind, record=record, value=value,
                 observed_at=source.timestamp, source=source,
             ))
+        self._unassociated.extend(staged)
         return 0
 
     def snapshots(
