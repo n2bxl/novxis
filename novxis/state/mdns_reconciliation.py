@@ -147,7 +147,10 @@ class MDNSServiceReconciliation:
                 r for r in self._unassociated
                 if r.source.interface == base.interface
                 and r.observed_at <= as_of
-                and r.expires_at > as_of
+                and (
+                    r.expires_at > as_of
+                    or (r.record.wire.ttl == 0 and r.observed_at >= base.first_seen)
+                )
                 and _name_key(r.record.wire.name) == _name_key(base.instance)
                 and r.kind in ("SRV", "TXT")
             ]
@@ -167,12 +170,20 @@ class MDNSServiceReconciliation:
                     record.kind not in ("A", "AAAA")
                     or record.source.interface != base.interface
                     or record.observed_at > as_of
-                    or record.expires_at <= as_of
+                    or (
+                        record.expires_at <= as_of
+                        and not (
+                            record.record.wire.ttl == 0
+                            and record.observed_at >= base.first_seen
+                        )
+                    )
                     or _name_key(record.record.wire.name) not in target_names
                 ):
                     continue
                 try_add(record)
 
+            # TTL=0 exact-value assertions can supersede older positive
+            # evidence for that semantic key but never become fresh.
             # Never promote an expired or zero-TTL record to a fresh fact.
             # Preserve base records as history; newly reconstructed RRs
             # remain separately marked in the immutable wrapper.
