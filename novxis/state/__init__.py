@@ -16,6 +16,12 @@ from novxis.state.dhcpv4 import (
 )
 from novxis.state.dns import DNSRecordEvidence, DNSRelationshipState
 from novxis.state.network import NetworkState
+from novxis.state.mdns_services import (
+    MDNSServiceEvidenceState,
+    MDNSServiceInstanceSnapshot,
+    MDNSServiceObservation,
+    MDNSServiceRecordEvidence,
+)
 
 __all__ = [
     "ARPBinding",
@@ -31,4 +37,8 @@ __all__ = [
     "DNSRecordEvidence",
     "DNSRelationshipState",
     "NetworkState",
+    "MDNSServiceEvidenceState",
+    "MDNSServiceInstanceSnapshot",
+    "MDNSServiceObservation",
+    "MDNSServiceRecordEvidence",
 ]

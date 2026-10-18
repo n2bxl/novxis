@@ -36,6 +36,7 @@ novxis-dns-events = "novxis.cli.dns_events:main"
 novxis-dns-relationships = "novxis.cli.dns_relationships:main"
 novxis-mdns-replay = "novxis.cli.mdns_replay:main"
 novxis-mdns-events = "novxis.cli.mdns_events:main"
+novxis-mdns-state-replay = "novxis.cli.mdns_state_replay:main"
 
 [tool.setuptools.packages.find]
 include = ["novxis*"]
