@@ -907,5 +907,9 @@ python -m pytest
 
 See [Phase 1M-A implementation and acceptance plan](
 docs/implementation/2026-10-18-mdns-message-semantics.md).
-**Local macOS acceptance pending**; next steps are passive IPv4/IPv6 mDNS
+**Local Phase 1M-A acceptance (2026-10-18):** **42/42 focused tests**
+passed in 0.04s and **353/353 full regression tests** passed in 0.44s
+on macOS Python 3.14.6, with no observed regressions. This validates
+message interpretation only; real UDP/5353 capture/replay still awaits
+Phase 1M-B. PR review/squash merge pending. Next: passive IPv4/IPv6 mDNS
 capture/replay, then DNS-SD PTR/SRV/TXT relationships and grouping.
