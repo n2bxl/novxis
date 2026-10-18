@@ -1,7 +1,7 @@
 # Phase 1M-B: Passive IPv4/IPv6 mDNS Observation, Live Capture and Replay
 
 **Date:** 2026-10-18  
-**Status:** Focused/full regression tests and two private real-PCAPNG replays validated on macOS; PR review/squash merge pending. Live capture remains untested.  
+**Status:** Focused/full regression tests, two private real-PCAPNG replays, and passive live capture on both Wi-Fi and Ethernet interfaces validated on macOS; PR review/squash merge pending.  
 **Scope:** Decode Ethernet II → IPv4/IPv6 → UDP/5353 → mDNS message evidence;
 console-only, no active queries or service-inventory inference.
 
@@ -114,9 +114,10 @@ On M5 MacBook Air, macOS/Darwin, Python **3.14.6**, pytest **9.1.1**:
 The focused suites include a synthetic on-disk PCAP replay test; the
 separate private real-PCAPNG results are recorded below.
 
-**Live capture has not yet been run** as part of this acceptance. A
-passing mocked live-CLI test validates its command contract, not actual
-interface access.
+The mocked live-CLI tests validate the command contract. Subsequent
+**real live captures on both Wi-Fi and Ethernet also passed**; see the
+observations below. These runs validate passive capture on the tested
+interfaces only, not other link types or routed subnets.
 
 ## Private real-capture acceptance
 
@@ -172,6 +173,64 @@ sudo .venv/bin/python -m novxis.cli.mdns_events en0 --count 40 --timeout 60
 `en0` is an example; your Wi-Fi/Ethernet routing and interface assignment
 can change between sessions. Opening Spotify on a different device is a
 possible test trigger, not a requirement for decoding.
+
+## Real passive live-capture acceptance — 2026-10-18
+
+The MacBook ran `sudo .venv/bin/python -m novxis.cli.mdns_events`
+with `--count 40 --timeout 60` on **both `en0` (Wi-Fi)** and
+**`en5` (Ethernet)**. Each stopped after forty captured matching
+frames and completed with **zero decoder errors**.
+
+| Metric | Wi-Fi (en0) | Ethernet (en5) |
+| --- | ---: | ---: |
+| mDNS observations | **40** | **40** |
+| IPv4 | 23 | 19 |
+| IPv6 | 17 | 21 |
+| Queries | 16 | 27 |
+| Responses | 24 | 13 |
+| Decode errors | **0** | **0** |
+
+The raw console log demonstrated **QU and QM questions**, **known-answer
+lists attached to queries**, **probe-like Authority Section assertions**,
+**multicast and unicast destinations**, **cache-flush bits** in response
+records, and **PTR/TXT/SRV/A/AAAA records** carried in answers or additional
+sections. The console intentionally leaves SRV/TXT details raw in this
+slice; TYPE47/NSEC was observed as uninterpreted RDATA.
+
+### Controlled application relaunch observation
+
+During the `en5` capture, the operator relaunched a media application
+on a second local Mac. That Mac sent an mDNS PTR query for **Google Cast**,
+then sent IPv4 and IPv6 PTR queries for **Spotify Connect**.
+Two *different network addresses* subsequently advertised Spotify Connect
+instances about **189 ms** and **228 ms** after the first observed IPv4
+Spotify Connect query. Follow-on searches for another Spotify-named
+service type were also observed.
+
+This supports the observation that **local service discovery coincided
+with the known relaunch event**, not a claim that any particular process
+emitted each packet, that an advertised endpoint is currently reachable,
+or that media playback was transferred. A separate service type is not
+proof of an active listening session.
+
+Wi-Fi traffic additionally showed independent local-device advertisements
+and queries containing known answers. Addressing across both Mac
+interfaces must **not** be counted as distinct physical devices without
+explicit identity evidence. No hostname, IP address, UUID, raw capture
+or personally identifying instance label is copied to this public note.
+
+### Acceptance interpretation
+
+- This validates **both** transport families and the actual live Scapy
+  capture adapter in addition to offline PCAPNG replay.
+- Aggregate counts are **packet observations**, not counts of distinct
+  services or hosts; a 40-frame BPF capture limit does not represent all
+  traffic during the full 60-second timeout.
+- The same service may be advertised on IPv4 and IPv6 and repeated over
+  time. Do not create a new node per packet or infer identities from
+  matching names alone.
+- SRV target/port and TXT parsing, NSEC meaning and service graph
+  construction are intentionally not implemented here.
 
 ## Exit criteria
 
