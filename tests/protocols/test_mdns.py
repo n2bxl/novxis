@@ -200,7 +200,7 @@ def test_does_not_assume_no_question_response_is_unsolicited():
 
 def test_srv_and_txt_remain_raw_until_dns_sd_semantic_decoder_is_added():
     srv = b"\x00\x00\x00\x00\x0f\xe6" + HOST
-    txt = b"\x0aCPath=/zc"
+    txt = b"\x09CPath=/zc"
     msg = parse_mdns(
         _header(response=True, answers=2)
         + _rr(INSTANCE, 33, srv, cls=0x8001)
