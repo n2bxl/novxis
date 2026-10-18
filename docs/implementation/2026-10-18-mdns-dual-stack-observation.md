@@ -1,0 +1,164 @@
+# Phase 1M-B: Passive IPv4/IPv6 mDNS Observation, Live Capture and Replay
+
+**Date:** 2026-10-18  
+**Status:** Feature branch proposed; local Mac tests and real-PCAP replay **pending**.  
+**Scope:** Decode Ethernet II → IPv4/IPv6 → UDP/5353 → mDNS message evidence;
+console-only, no active queries or service-inventory inference.
+
+## Why this slice
+
+In Phase 1M-A the capture-independent `parse_mdns()` interpreter learned
+mDNS-specific QU questions, known answers, query Authority records,
+responder cache-flush and zero-TTL goodbye candidate semantics. It passed
+353/353 tests on merged `main` as of 2026-10-18.
+
+The next requirement is to see the **real packets** that support eventual
+network visualization, while preserving network family, source/destination,
+captured interface and original bytes. Prior private Spotify experiment
+captures included substantial IPv6 mDNS activity; restricting observation
+to our existing IPv4-only UDP pipeline would miss those packets.
+
+## New capture-neutral components
+
+- `novxis.protocols.ipv6.IPv6Datagram` and `parse_ipv6`: strict fixed
+  40-byte header; traffic class, flow label, declared length, next header,
+  hop limit and 128-bit addresses; preserves trailing evidence.
+- `ETHERTYPE_IPV6 = 0x86DD` in `novxis.protocols.ethernet`.
+- `novxis.pipeline.mdns.MDNSEventPipeline`: reuses owned Ethernet,
+  IPv4, UDP and mDNS parsers, plus the new IPv6 parser. Routes by
+  EtherType; gates on UDP source or destination port 5353 before parsing
+  candidate datagrams; ignores unrelated UDP/TCP and unsupported link types
+  without inventing DNS messages.
+- `novxis.events.mdns.MDNSMessageObserved`: immutable aggregate of
+  `CapturedFrame`, decoded Ethernet, IPv4/IPv6, UDP and `MDNSMessage`.
+- `novxis.presentation.mdns_console`: human-readable, bounded observation
+  formatter distinguishing queries, responses, QU, known answers,
+  responder cache-flush flags and TTLs.
+- `novxis.cli.mdns_replay`: PCAP/PCAPNG replay and per-family/query/response
+  counts; option `--summary-only`.
+- `novxis.cli.mdns_events`: finite, passive live capture with
+  `udp port 5353` BPF; same interpretation and counters as replay.
+
+The existing classic DNS UDP/53 decoder, correlator and evidence state
+remain unchanged. Neither CLI emits discovery requests.
+
+```text
+Scapy capture (live) / Raw PCAP reader (offline)
+                   ↓
+              CapturedFrame
+                   ↓
+             Ethernet II
+                ↙     ↘
+          IPv4          IPv6 fixed header
+                ↘     ↙
+                 UDP/5353
+                   ↓
+              parse_mdns()
+                   ↓
+             MDNSMessageObserved
+                   ↓
+              console view
+```
+
+## Explicit boundaries
+
+- Ethernet **DLT_EN10MB** frames only. Other known link types fail
+  explicitly; VLAN-tagged frames and interface-specific encapsulations
+  are not handled in this slice.
+- IPv4 fragments are skipped. For IPv6, the parser preserves fixed-header
+  `next_header` and this pipeline only decodes direct UDP (17).
+  Extension headers, fragment reassembly and IPv6 jumbograms are **not**
+  supported. A later implementation must traverse extension headers
+  safely rather than searching arbitrary payload bytes for UDP ports.
+- IPv4 TTL and IPv6 hop limit are preserved as observed, not treated as
+  definitive source authentication. IPv6 source/destination addresses
+  remain byte-accurate, and 5353 may be unicast or multicast.
+- UDP checksum values are carried but **not validated** against an IP
+  pseudo-header. No claim of authenticated, successful or trustworthy
+  mDNS advertisement follows from a decoded packet.
+- mDNS records' PTR, A and AAAA interpretation is available from 1M-A,
+  but **SRV target/port and TXT semantics remain raw** until Phase 1M-C.
+- The observation layer does not invent device identities or match a
+  query with one chosen response. Multiple responders and unsolicited
+  announcements are normal mDNS behavior.
+- The CLI `--count` applies to captured BPF-matching frames (live) or
+  **all** input frames (replay), not the number of decoded mDNS records.
+- Replay does not contact the network. A capture from one Ethernet
+  interface is not a complete inventory of switched traffic.
+
+## Synthetic validation (required before merge)
+
+```bash
+python -m pytest tests/protocols/test_ipv6.py \
+  tests/integration/test_mdns_evidence.py \
+  tests/cli/test_mdns_cli.py -q
+
+python -m pytest
+```
+
+Coverage includes IPv6 version/length bounds, addresses, flow label,
+trailing evidence and unsupported next headers; dual-stack UDP/5353
+query/response handling; normalized frame provenance; IPv4 fragment
+exclusion; IPv6 extension-header non-interpretation; malformed message
+errors; and offline/live CLI error/summary behavior.
+
+**Tests and live capture have not yet been run on this branch.**
+
+## Private real-capture acceptance
+
+Keep the `spotify.pcapng` and `spotify 2.pcapng` files **outside** the
+public repo. From your NOVXIS virtual environment, use paths to your
+own local files:
+
+```bash
+python -m novxis.cli.mdns_replay "/path/to/spotify.pcapng" --summary-only
+python -m novxis.cli.mdns_replay "/path/to/spotify 2.pcapng" --summary-only
+```
+
+Expected broad characteristics to verify against Wireshark (not
+claimed results from the *new* NOVXIS path): the first private capture
+previously showed **115** mDNS messages and the second **215**; each
+had both IPv4 and IPv6 observations. Counts may legitimately diverge
+if the PCAP contains unsupported link types, VLANs, truncated packets,
+extension headers or packets marked as mDNS by Wireshark outside this
+slice's strict UDP/5353 gate. Investigate differences, do not adjust
+the expected result blindly.
+
+Inspect a bounded subset without printing hundreds of records:
+
+```bash
+python -m novxis.cli.mdns_replay "/path/to/spotify 2.pcapng" --count 100
+```
+
+For new passive live traffic, select the interface that actually carries
+the multicast packets:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.mdns_events en0 --count 40 --timeout 60
+```
+
+`en0` is an example; your Wi-Fi/Ethernet routing and interface assignment
+can change between sessions. Opening Spotify on a different device is a
+possible test trigger, not a requirement for decoding.
+
+## Exit criteria
+
+- Focused new tests and full regression suite pass on macOS Python 3.14.6.
+- Both local PCAPNG files replay without unexpected errors.
+- NOVXIS IPv4/IPv6 mDNS counts and representative queries/answers can be
+  independently compared to Wireshark.
+- No application behavior, user action, unique physical device or playback
+  transfer is inferred from discovery traffic.
+- Documentation records actual results, discrepancies and any limitations.
+
+## Next work
+
+Phase 1M-C: safe DNS-SD SRV/TXT decoding, service type→instance→
+host/port/address semantics, then bounded evidence and renderer-independent
+groups. Do not implement a Spotify-specific fingerprinting engine.
+
+References:
+- [Phase 1M-A message semantics](2026-10-18-mdns-message-semantics.md)
+- [RFC 8200: IPv6](https://www.rfc-editor.org/rfc/rfc8200.html)
+- [RFC 6762: mDNS](https://www.rfc-editor.org/rfc/rfc6762.html)
+- [RFC 6763: DNS-SD](https://www.rfc-editor.org/rfc/rfc6763.html)
