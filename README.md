@@ -907,12 +907,13 @@ python -m pytest
 
 See [Phase 1M-A implementation and acceptance plan](
 docs/implementation/2026-10-18-mdns-message-semantics.md).
-**Local Phase 1M-A acceptance (2026-10-18):** **42/42 focused tests**
-passed in 0.04s and **353/353 full regression tests** passed in 0.44s
-on macOS Python 3.14.6, with no observed regressions. This validates
-message interpretation only; real UDP/5353 capture/replay still awaits
-Phase 1M-B. PR review/squash merge pending. Next: passive IPv4/IPv6 mDNS
-capture/replay, then DNS-SD PTR/SRV/TXT relationships and grouping.
+**Phase 1M-A accepted and merged:** **42/42 focused tests** passed on
+2026-10-18, with **353/353 full-suite tests** on the feature branch.
+[PR #27](https://github.com/n2bxl/novxis/pull/27) was squash-merged as
+`cc48f4a`; the post-merge local `main` run passed **353/353 in 0.36s**
+on Python 3.14.6. Message interpretation was the only capability in this
+slice. Real UDP/5353 capture/replay is Phase 1M-B; DNS-SD SRV/TXT semantics
+and service grouping follow in Phase 1M-C.
 
 
 ## Phase 1M-B: Passive Dual-Stack mDNS Observation (Under Review)
