@@ -956,6 +956,14 @@ python -m pytest tests/protocols/test_ipv6.py \
 python -m pytest
 ```
 
-**Local acceptance pending.** See
-[Phase 1M-B implementation plan and privacy-safe replay instructions](
+**Local Phase 1M-B acceptance (2026-10-18):** **37/37 focused tests**
+passed in 0.27s, and **390/390 full regression tests** passed in 0.32s
+on macOS Python 3.14.6. Both private Spotify PCAPNG files replayed
+successfully, matching the independent mDNS reference counts exactly:
+**115 observations (IPv4=50, IPv6=65; 76 queries/39 responses)** and
+**215 observations (IPv4=119, IPv6=96; 109 queries/106 responses)**,
+with **zero decode errors**. The live-interface capture path is
+**not yet validated**; PR review/squash merge remains pending.
+
+See [Phase 1M-B implementation and real-capture acceptance notes](
 docs/implementation/2026-10-18-mdns-dual-stack-observation.md).
