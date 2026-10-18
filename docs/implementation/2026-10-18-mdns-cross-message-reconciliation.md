@@ -1,7 +1,7 @@
 # Phase 1M-D-B — Optional Cross-Message DNS-SD Evidence Reconstruction
 
 **Date:** 2026-10-18  
-**Status:** Focused/full macOS tests passed and initial second-private-capture opt-in reconciliation demonstrated four additional fresh RR associations across three instances, with zero decode errors. The +200s follow-up and independent packet-level Wireshark verification are pending; PR not merged.  
+**Status:** Focused/full macOS tests, initial second-capture reconciliation, and +200-second TTL-aging replay all passed with zero decode errors. Independent Wireshark verification of one linked record is still pending; PR not merged.  
 **Baseline:** Phase 1M-D-A merged to `main` as `71c7320`, after which the user's macOS/Python 3.14.6 environment passed **458/458** tests in 0.40s.
 
 ## Purpose
@@ -168,11 +168,42 @@ The user's interactive zsh printed `command not found: #` when pasted
 shell comment lines were interpreted as commands; actual replay
 commands executed successfully. This is not a NOVXIS error.
 
-**Still pending:** The `--reconcile --after 200` aging experiment
-and independent Wireshark inspection of at least one previously
-standalone response RR. The latter is needed to close our stated
-packet-level provenance acceptance criterion; do not claim it passed
-until reported.
+### Capture-clock TTL-aging validation (+200 seconds)
+
+The user subsequently replayed the second private capture with
+`--reconcile --after 200`. These are **actual output values**:
+
+| Metric | Reconciled at capture end | Reconciled at +200s |
+| --- | ---: | ---: |
+| Frames replayed | 1,188 | 1,188 |
+| mDNS observations | 215 | 215 |
+| DNS-SD PTR observations | **87** | **87** |
+| Retained service instances | **7** | **7** |
+| Fresh PTR instances | **6** | **2** |
+| No-fresh-PTR instances | 1 | 5 |
+| Orphan response RRs retained | **19** | **19** |
+| Fresh extra RR associations | **4** | **1** |
+| Decode errors | **0** | **0** |
+
+At +200 seconds, only the companion-link service and one Spotify
+Connect service still had fresh PTR claims. Exactly one additional
+cross-message TXT association remained fresh for the companion-link
+service, even though its SRV target was still not freshly observed.
+The long-lived Spotify Connect PTR still outlived its SRV target
+evidence and acquired **no** new cross-message RR in this run.
+
+The other three extra associations from capture end were no longer
+presented because the relevant service instances did not have fresh
+PTRs. **This is a prerequisite/gating result:** it does *not*
+independently prove that every underlying SRV/A record had itself
+expired. Previously observed RRs remain historical evidence subject
+to bounded retention, and no offline-device conclusion is made.
+
+**Still pending:** Independent Wireshark inspection of at least one
+previously standalone response RR. Verify that it is a response
+record with exactly matching DNS labels on the correct capture
+interface and confirm its original TTL. Do not claim the packet-level
+verification has happened until the user reports it.
 
 **Important:** Phase 1M-D-B remains opt-in; Phase 1M-D-A results and
 default CLI output are unchanged.
