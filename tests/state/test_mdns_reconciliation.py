@@ -277,3 +277,13 @@ def test_explicit_snapshot_does_not_retroactively_include_future_orphans():
     _observe(state, "120", _srv())
     with pytest.raises(ValueError, match="precedes"):
         _snap(state, "110")
+
+
+def test_malformed_later_rr_does_not_partially_commit_earlier_packet_records():
+    state = MDNSServiceReconciliation()
+    packet = _frame("100", (_addr(), _srv(target=b"\xc0\xff")))
+    source = MDNSEventPipeline().process(packet)
+    assert source is not None
+    with pytest.raises(DNSParseError):
+        state.observe_message(source)
+    assert state.unassociated_count == 0
