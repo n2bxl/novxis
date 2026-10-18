@@ -1,7 +1,7 @@
 # Phase 1M-D-B — Optional Cross-Message DNS-SD Evidence Reconstruction
 
 **Date:** 2026-10-18  
-**Status:** Feature branch submitted for user MacBook validation. Neither focused/full tests nor real PCAPNG replay have yet been run against this new branch.  
+**Status:** Focused/full macOS tests passed and initial second-private-capture opt-in reconciliation demonstrated four additional fresh RR associations across three instances, with zero decode errors. The +200s follow-up and independent packet-level Wireshark verification are pending; PR not merged.  
 **Baseline:** Phase 1M-D-A merged to `main` as `71c7320`, after which the user's macOS/Python 3.14.6 environment passed **458/458** tests in 0.40s.
 
 ## Purpose
@@ -118,11 +118,64 @@ records held. `N` is the number of **fresh, separately observed**
 semantic RR values contributing to this snapshot, not the number of
 network devices, application processes, or packet connections.
 
-In the existing private second capture, previously accepted baseline
-counts were **87 PTR observations → seven service instances**. The
-new reconciling mode must not manufacture additional PTR instances;
-whether it finds extra independently advertised SRV/TXT/A/AAAA
-relationships remains subject to real replay evidence.
+## MacBook acceptance results — 2026-10-18
+
+The user checked out the Phase 1M-D-B feature branch on the M5 MacBook
+Air with macOS, Python **3.14.6**, pytest **9.1.1**, pluggy **1.6.0**.
+
+- **20/20 focused tests passed in 0.08s**.
+- **478/478 full regression tests passed in 0.36s** — up from
+  the Phase 1M-D-A merged baseline **458/458**.
+- The second private Spotify PCAPNG was replayed both with and without
+  `--reconcile` (same capture-time snapshot).
+
+| Captured metric | Baseline | `--reconcile` |
+| --- | ---: | ---: |
+| Frames replayed | 1,188 | 1,188 |
+| mDNS observations | 215 | 215 |
+| DNS-SD PTR observations | **87** | **87** |
+| Retained service instances | **7** | **7** |
+| Fresh PTR instances | 6 | 6 |
+| No-fresh-PTR instances | 1 | 1 |
+| Decode errors | **0** | **0** |
+| Standalone RR evidence buffered | n/a | **19** |
+| Additional fresh RR associations | n/a | **4** |
+
+The seven native service instances remain unchanged. Four separately
+observed RRs contributed fresh matches, distributed across three
+instances:
+
+| Native service type | Additional evidence |
+| --- | --- |
+| `_companion-link._tcp.local` | 1 TXT RR |
+| `_googlecast._tcp.local` | 1 newer A RR refresh |
+| `_googlerpc._tcp.local` | 1 SRV and 1 A RR |
+
+The Companion Link instance gained **TXT evidence** while remaining
+without a fresh SRV target. The associated A record of one Google
+Cast instance now has approximately **113.8s** of freshness at capture
+end versus approximately **65.5s** in the baseline, due to a later
+standalone A observation. The Google RPC instance gained an independently
+observed SRV claim and matching address evidence.
+
+These are **reconstruction results from the program output**, not
+claims that the underlying services are reachable, owned by particular
+software, or tied to verified physical devices. No raw private IPs,
+hostnames, MAC addresses, TXT contents or instance identifiers were
+committed.
+
+The user's interactive zsh printed `command not found: #` when pasted
+shell comment lines were interpreted as commands; actual replay
+commands executed successfully. This is not a NOVXIS error.
+
+**Still pending:** The `--reconcile --after 200` aging experiment
+and independent Wireshark inspection of at least one previously
+standalone response RR. The latter is needed to close our stated
+packet-level provenance acceptance criterion; do not claim it passed
+until reported.
+
+**Important:** Phase 1M-D-B remains opt-in; Phase 1M-D-A results and
+default CLI output are unchanged.
 
 ## Acceptance plan
 
