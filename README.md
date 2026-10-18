@@ -1028,7 +1028,8 @@ inventing service targets or offline-device status.
 **32/32 focused tests** in **0.21s** and **422/422 full regression tests**
 in **0.32s** on macOS Python 3.14.6, with no observed regressions.
 Offline real-PCAPNG service projection also passed (30 + 87 DNS-SD PTR
-observations, zero errors). PR review/squash merge pending.
+observations, zero errors). Phase 1M-C was squash-merged as
+`c590908` in PR #29.
 
 **Future idea, not implemented:** Optional lexical-affinity display hints
 may compare tokens and character prefixes within *raw service types*
@@ -1091,16 +1092,17 @@ target evidence. TTL=0 candidates and incomplete Companion Link
 advertisements remained historical or partial evidence—not device
 offline verdicts.
 
-**Automated tests:** After resolving the duplicate pytest test-module
-basename, the user reported the feature-branch test suite clean;
-the exact full count was not supplied. Subsequent presentation-only
-DNS-name rendering tests **have not yet been run** on the MacBook.
+**Automated acceptance passed (2026-10-18):** **36/36 focused tests**
+in **0.07s** and **458/458 full regression tests** in **0.32s** on
+macOS, Python 3.14.6. Both suites include the presentation-only
+DNS-name formatting changes and the service-state test rename.
 
-**Presentation improvement:** Spaces in DNS-SD instance names render
-naturally, using quotes around labels containing spaces; the raw
-`DNSName.text` escape representation, canonical identifiers, and
-record matching remain unchanged. Other potentially ambiguous or
-unsafe bytes remain escaped.
+**Presentation improvement validated on the private PCAPNG replay:**
+Spaces in DNS-SD instance names now render naturally, using quotes
+around values containing spaces. The raw `DNSName.text` escaped
+representation, canonical identifiers and record matching are unchanged.
+Ambiguous or unsafe bytes remain escaped. Retested replay retained
+**87 PTR observations → seven instances; six fresh PTRs; zero errors**.
 
 Only per-message PTR-backed projections are aggregated; standalone
 SRV/TXT/A/AAAA responses are *not yet* safely reconciled across
