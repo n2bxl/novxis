@@ -877,3 +877,39 @@ See the implementation notes for anonymized acceptance findings.
 PR #25 was squash-merged. The full test suite was subsequently rerun on
 merged `main` on 2026-10-17: **335/335 passed** in **0.40s** on
 macOS Python 3.14.6.
+
+
+## Phase 1M-A: mDNS Message Semantics (First Local-Discovery Slice)
+
+mDNS shares the classic DNS wire format, but **its message sections and class
+bits are not interchangeable with conventional DNS**. The new
+capture-independent `novxis.protocols.mdns.parse_mdns(bytes)` interprets
+mDNS questions (QU/QM), responder cache-flush bits, query Answer Section
+known-answer hints, Authority records, response sections and zero-TTL
+goodbye candidates. Raw DNS message bytes/classes, unknown records and
+per-record TTLs remain accessible.
+
+The underlying `parse_dns()` has a keyword-only mDNS class-bit option
+that defaults **off**, so classic UDP/53 DNS interpretation is unchanged.
+mDNS data structures are immutable and suitable for future normalized
+capture observations and renderer-independent service views.
+
+This first feature branch contains **message interpretation only**.
+It does **not** yet capture or replay UDP/5353, process IPv6 packets,
+decode SRV/TXT into DNS-SD service semantics, create a service inventory,
+or transmit discovery queries. Existing classic DNS query/response
+correlation is **not** reused for mDNS.
+
+```bash
+python -m pytest tests/protocols/test_mdns.py tests/protocols/test_dns.py -q
+python -m pytest
+```
+
+See [Phase 1M-A implementation and acceptance plan](
+docs/implementation/2026-10-18-mdns-message-semantics.md).
+**Local Phase 1M-A acceptance (2026-10-18):** **42/42 focused tests**
+passed in 0.04s and **353/353 full regression tests** passed in 0.44s
+on macOS Python 3.14.6, with no observed regressions. This validates
+message interpretation only; real UDP/5353 capture/replay still awaits
+Phase 1M-B. PR review/squash merge pending. Next: passive IPv4/IPv6 mDNS
+capture/replay, then DNS-SD PTR/SRV/TXT relationships and grouping.
