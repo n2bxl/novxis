@@ -12,6 +12,7 @@ from novxis.pipeline.mdns import MDNSEventPipeline
 from novxis.presentation.ipv4_console import format_timestamp
 from novxis.presentation.mdns_state_console import format_mdns_service_snapshot
 from novxis.state.mdns_services import MDNSServiceEvidenceState
+from novxis.state.mdns_reconciliation import MDNSServiceReconciliation
 from novxis.views.mdns_services import project_dnssd_advertisements
 
 
@@ -34,6 +35,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Maximum retained typed record variants per instance.")
     p.add_argument("--max-history", type=int, default=4096,
                    help="Maximum original advertisement observations retained.")
+    p.add_argument("--reconcile", action="store_true",
+                   help="Also relate standalone response SRV/TXT/A/AAAA records by DNS names.")
+    p.add_argument("--max-unassociated", type=int, default=2048,
+                   help="Max standalone typed response records retained (with --reconcile).")
     return p
 
 
@@ -50,14 +55,23 @@ def main() -> int:
         parser.error("--after must be a finite nonnegative number")
     if not after.is_finite() or after < 0:
         parser.error("--after must be a finite nonnegative number")
-    for name in ("max_instances", "max_records_per_instance", "max_history"):
+    for name in (
+        "max_instances", "max_records_per_instance", "max_history",
+        "max_unassociated",
+    ):
         if getattr(args, name) <= 0:
             parser.error(f"--{name.replace('_', '-')} must be positive")
 
-    state = MDNSServiceEvidenceState(
+    kwargs = dict(
         max_instances=args.max_instances,
         max_records_per_instance=args.max_records_per_instance,
         max_history=args.max_history,
+    )
+    state = (
+        MDNSServiceReconciliation(
+            **kwargs, max_unassociated=args.max_unassociated,
+        )
+        if args.reconcile else MDNSServiceEvidenceState(**kwargs)
     )
     pipeline = MDNSEventPipeline()
     counts = {"mdns": 0, "ads": 0, "errors": 0}
@@ -72,6 +86,8 @@ def main() -> int:
             if observed is None:
                 return
             advertisements = project_dnssd_advertisements(observed)
+            if args.reconcile:
+                state.observe_message(observed, advertisements)
         except _DECODE_ERRORS as exc:
             counts["errors"] += 1
             print(
@@ -81,8 +97,9 @@ def main() -> int:
             )
             return
         counts["mdns"] += 1
-        for advertisement in advertisements:
-            state.observe(observed, advertisement)
+        if not args.reconcile:
+            for advertisement in advertisements:
+                state.observe(observed, advertisement)
         counts["ads"] += len(advertisements)
 
     print("NOVXIS passive mDNS service state replay")
@@ -101,18 +118,29 @@ def main() -> int:
     # PCAPs are historic, so wall-clock evaluation would expire everything.
     as_of = (last_frame if last_frame is not None else Decimal(0)) + after
     snapshots = state.snapshots(as_of)
-    fresh = sum(1 for s in snapshots if s.has_fresh_ptr)
+    fresh = sum(
+        1 for item in snapshots
+        if (item.snapshot if args.reconcile else item).has_fresh_ptr
+    )
     print(
         f"\nFrames replayed: {frames}; mDNS messages: {counts['mdns']}; "
         f"DNS-SD PTR observations: {counts['ads']}; "
         f"instances retained: {len(snapshots)}; "
         f"fresh PTR instances: {fresh}; "
         f"no-fresh-PTR: {len(snapshots) - fresh}; "
-        f"decode errors: {counts['errors']}"
+        + (f"unassociated RRs retained: {state.unassociated_count}; "
+           if args.reconcile else "")
+        + f"decode errors: {counts['errors']}"
     )
     print(f"Snapshot as_of={as_of} (capture time, not wall clock)")
-    for snapshot in snapshots[:args.limit or None]:
+    for item in snapshots[:args.limit or None]:
+        snapshot = item.snapshot if args.reconcile else item
         print(format_mdns_service_snapshot(snapshot))
+        if args.reconcile:
+            print(
+                f"  separately-observed-RRs-linked="
+                f"{len(item.cross_message_records)}"
+            )
     if args.limit and len(snapshots) > args.limit:
         print(f"Other retained instances: {len(snapshots) - args.limit}")
     return 0 if counts["errors"] == 0 else 1
