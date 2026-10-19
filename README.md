@@ -1179,11 +1179,20 @@ history and there were **zero decode errors**. Missing PTR freshness
 prevented other associations; it does not prove every underlying
 orphan record's individual TTL expired.
 
-**Remaining acceptance:** Inspect one newly linked standalone RR
-in the original PCAPNG (mDNS response, matching owner name and
-original TTL) in Wireshark. No independent packet-level verification
-has yet been reported. PR review/merge pending; no private endpoint
-identifiers committed.
+**Independent Wireshark corroboration accepted (2026-10-18):**
+The user found a **separate Companion Link TXT mDNS response** on
+capture interface `en5`; the TXT RR had the exact native DNS-SD
+instance owner previously advertised by PTR, class IN, original
+**TTL 4500s**, cache-flush set, and an accompanying NSEC RR
+in Additional Records. The separate TXT response contained **no
+service PTR**. IPv4/IPv6 source Ethernet MACs were independently
+confirmed as two interfaces of the **same Mac**, not two devices.
+This completes wire-level corroboration of the additional TXT
+association without exposing private host or TXT identifiers.
+
+**Phase 1M-D-B acceptance complete; PR ready for review/squash
+merge.** No application code changes since the user's **478/478**
+passing test run; subsequent changes are documentation only.
 
 See [Phase 1M-D-B implementation and limits](
 docs/implementation/2026-10-18-mdns-cross-message-reconciliation.md).
