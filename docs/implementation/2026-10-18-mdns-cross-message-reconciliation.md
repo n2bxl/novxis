@@ -1,7 +1,7 @@
 # Phase 1M-D-B — Optional Cross-Message DNS-SD Evidence Reconstruction
 
 **Date:** 2026-10-18  
-**Status:** Focused/full macOS tests, initial second-capture reconciliation, and +200-second TTL-aging replay all passed with zero decode errors. Independent Wireshark verification of one linked record is still pending; PR not merged.  
+**Status:** Focused/full macOS tests, initial private-capture reconciliation, +200-second TTL-aging and independent Wireshark examination of the standalone Companion Link TXT evidence all passed. PR open for review/squash merge.  
 **Baseline:** Phase 1M-D-A merged to `main` as `71c7320`, after which the user's macOS/Python 3.14.6 environment passed **458/458** tests in 0.40s.
 
 ## Purpose
@@ -199,11 +199,47 @@ independently prove that every underlying SRV/A record had itself
 expired. Previously observed RRs remain historical evidence subject
 to bounded retention, and no offline-device conclusion is made.
 
-**Still pending:** Independent Wireshark inspection of at least one
-previously standalone response RR. Verify that it is a response
-record with exactly matching DNS labels on the correct capture
-interface and confirm its original TTL. Do not claim the packet-level
-verification has happened until the user reports it.
+### Wireshark packet-level corroboration — accepted
+
+The user independently inspected the original second private PCAPNG
+rather than relying only on the NOVXIS output:
+
+- A PTR-bearing mDNS response on capture interface `en5` advertised
+  one native `_companion-link._tcp.local` **service instance**. This
+  response's unrelated TXT answer belonged to `_device-info._tcp.local`,
+  **not** the Companion Link instance.
+- A **different response packet** on the same capture interface
+  contained exactly **one TXT RR in Answers**. Its complete DNS owner
+  name matched the previously advertised Companion Link **instance**.
+  This TXT RR had **TTL 4,500 seconds**, **class IN** and the
+  **cache-flush bit set**.
+- That same separate response contained an **NSEC RR (type 47)
+  in Additional Records** with the same name and TTL. NSEC and TXT
+  were **not** mistaken for one RR; no matching PTR was present
+  in the TXT response itself.
+- A corresponding IPv6 multicast response contained the same native
+  service instance TXT claim. The user independently verified the
+  two source MAC addresses were interfaces `en5` and `en0` of
+  the **same Mac**; they are not evidence of two physical hosts.
+  Both packets were visible from the `en5` capture vantage point.
+- This wire-level evidence independently corroborates the
+  cross-message **PTR instance → TXT owner** association used by
+  `--reconcile` and the continued TTL freshness at +200 seconds.
+  Multiple source frames may reduce to one semantic latest RR in
+  NOVXIS; this review establishes that the claim was truly
+  advertised separately, not which original response was selected
+  as the latest semantic variant.
+
+The raw device name, individual IP and MAC addresses, and TXT
+values are deliberately **omitted** from public repository notes.
+Packet-analysis annotations and Wireshark's heuristic
+request/retransmission links are not substituted for original DNS
+record-name equality, TTL, response/section provenance or source
+interface observations.
+
+**Phase 1M-D-B acceptance criteria now satisfied.** Further device
+identity inference, cache-flush simulation and mixed-PTR response
+processing are separate future work.
 
 **Important:** Phase 1M-D-B remains opt-in; Phase 1M-D-A results and
 default CLI output are unchanged.
