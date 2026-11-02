@@ -71,6 +71,7 @@ h2 { font-size: 18px; line-height: 1.35; margin-top: 10px; overflow-wrap: anywhe
   border: 1px solid var(--border); padding: 12px; border-radius: 7px; }
 .claim-card strong { color: var(--text); overflow-wrap: anywhere; }
 .claim-card p { font-size: 11px; margin-top: 4px; }
+.inspector-note { margin-top: 16px; }
 .footnote { padding: 12px 22px; border-top: 1px solid var(--border);
   color: var(--muted); font-size: 11px; line-height: 1.5; }
 .map-node { cursor: pointer; }
