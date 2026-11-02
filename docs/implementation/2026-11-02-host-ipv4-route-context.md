@@ -1,7 +1,7 @@
 # Phase 1N-E: Read-only macOS Host IPv4 and Default Route Context
 
 Date: 2026-11-02
-Status: M5 Python regressions and read-only macOS en0 comparison accepted; Safari live panel acceptance pending.
+Status: M5 automated tests, macOS read-only comparison, Safari live context and offline isolation accepted; ready for PR review.
 Baseline: Phase 1N-D PR #36 merged, with 529/529 full tests accepted.
 
 ## Goal
@@ -139,11 +139,50 @@ that name was present. The test output and collector invocation
 completed successfully afterwards. A later `git branch --show-current`
 check can confirm the active branch when desired.
 
-**Still pending before PR readiness:** manual Safari validation of
-the Host IPv4 context panel during a bounded live-ARP session and
-confirmation that the offline PCAP preview remains without local
-host configuration. Automated unit and web integration checks passed,
-but those are not substitutes for this browser check.
+**Both the live context and offline isolation checks subsequently passed**
+as documented below. The earlier missing panel was a transient observation;
+its underlying cause was not conclusively established.
+
+## Final Safari acceptance: host context visible (2026-11-02)
+
+A subsequent screenshot from the M5's localhost live browser confirms the
+previously absent **Host IPv4 context** section now appears above the
+Evidence Inspector. Its contents include:
+
+- Provenance: `Local macOS configuration (not packet evidence)`.
+- Interface: `en0`, status: `reported`.
+- An IPv4 address with **/22** prefix and matching configured network.
+- The OS-selected IPv4 default gateway via **en0**, with the UI reporting
+  that the route interface matches the capture interface.
+- A UTC timestamp identifying when the host configuration was queried.
+- A concurrent, working live-ARP graph and a selected gateway-address
+  protocol node showing one captured sender claim and its evidence.
+
+The screenshot's live graph contains **20 typed address nodes**,
+**10 ARP sender claims** and **35 binding updates** and shows status
+`ended`. These figures are an illustrative capture session, not an
+exhaustive inventory or proof of physical links.
+
+Previous screenshots confirm offline `arp_phase0_sanitized.pcap` replay
+still displays **12 nodes**, **6 ARP sender claims**, **8 frames**, and
+**no host-context section**. This completes the required isolation check.
+
+The panel had been absent during an earlier live session. The developer
+subsequently reported that the HTML and JavaScript diagnostic checks both
+returned true, and the panel appeared after revisiting the page.
+A stale browser view, assets or local process is possible, but caching or
+any specific cause has **not been proven**. No code change was necessary
+to obtain the successful screenshot. The server already sets
+`Cache-Control: no-store` on responses.
+
+No private IP addresses, MAC addresses, gateway identifiers or screenshots
+were committed to this public note. The **OS route fact** remains separate
+from **ARP sender evidence** in the data contract and interface.
+
+**Phase 1N-E acceptance complete** on the reported M5 evidence:
+73 focused tests passing, 560 full-suite tests passing, macOS CLI
+comparison matching, local live host-context UI visible, and offline
+host-context isolation confirmed. Ready for the owner's normal squash merge.
 
 ## Deliberately deferred
 
