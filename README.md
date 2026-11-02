@@ -70,7 +70,7 @@ acceptance tests and architectural boundaries.
 ## Live ARP in the Local 2D Debugger (Development Preview)
 
 The live browser view is an **opt-in, loopback-only** debugging workflow.
-It uses a bounded, privileged *capture-only* producer and an ordinary,
+It uses a bounded, privileged *capture-and-ARP-normalization* helper and an ordinary,
 unprivileged browser server. The processes exchange **decoded ARP sender
 binding observations through a local stdout/stdin pipe**. Packet payloads
 are not sent to the web server, and the browser has no capture-start API.
