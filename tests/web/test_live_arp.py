@@ -175,3 +175,20 @@ def test_live_metadata_remains_read_only_and_has_version():
     assert snap["schema_version"] == 1
     assert snap["source"]["max_bindings"] == 256
     assert snap["source"]["updates_seen"] == 0
+
+
+def test_missing_producer_completion_is_reported_as_an_error():
+    state = LiveARPGraphState()
+    consume_stream(
+        io.StringIO(json.dumps({"type": "session", "interface": "en0"}) + "\n"),
+        state,
+    )
+    snapshot = state.snapshot()
+    assert snapshot["capture_status"] == "error"
+    assert snapshot["source"]["stream_errors"] == 1
+
+
+def test_empty_capture_pipe_is_not_mistaken_for_success():
+    state = LiveARPGraphState()
+    consume_stream(io.StringIO(""), state)
+    assert state.snapshot()["capture_status"] == "error"
