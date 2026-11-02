@@ -106,8 +106,14 @@ class LiveARPGraphState:
                 self._revision += 1
                 return
             previous = self._bindings.get(key)
-            if previous is not None and count <= previous.observation_count:
-                raise ValueError("non-increasing observation count")
+            if previous is not None:
+                if previous.hardware_address != binding.hardware_address:
+                    # NetworkState starts a new observation epoch when an
+                    # address claims a different hardware address.
+                    if count != 1:
+                        raise ValueError("changed hardware claim must reset count")
+                elif count <= previous.observation_count:
+                    raise ValueError("non-increasing observation count")
             self._bindings[key] = binding
             self._updates += 1
             self._revision += 1
