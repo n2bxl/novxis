@@ -119,6 +119,7 @@ def test_oversized_pipe_record_rejected_and_stream_continues():
 
 def test_repeat_count_is_not_accepted_for_same_hardware_claim():
     state = LiveARPGraphState()
+    state.ingest({"type": "session", "interface": "en0"})
     message = _binding()
     state.ingest(message)
     with pytest.raises(ValueError):
@@ -147,3 +148,30 @@ def test_pipe_contains_binding_facts_not_raw_packet_payload():
     assert all("payload" not in x and "data" not in x for x in messages)
     assert all("protocol_hex" in x and "hardware_hex" in x
                for x in messages if x["type"] == "binding")
+
+
+def test_binding_without_session_is_rejected():
+    state = LiveARPGraphState()
+    with pytest.raises(ValueError):
+        state.ingest(_binding())
+
+
+def test_rejects_out_of_order_mac_change_count():
+    state = LiveARPGraphState()
+    state.ingest({"type": "session", "interface": "en0"})
+    original = _binding()
+    state.ingest(original)
+    with pytest.raises(ValueError):
+        state.ingest({**original, "hardware_hex": "02000000000b",
+                      "observation_count": 2})
+
+
+def test_live_metadata_remains_read_only_and_has_version():
+    state = LiveARPGraphState()
+    state.ingest({"type": "session", "interface": "en0"})
+    snap = state.snapshot()
+    assert snap["revision"] == 1
+    assert snap["capture_status"] == "capturing"
+    assert snap["schema_version"] == 1
+    assert snap["source"]["max_bindings"] == 256
+    assert snap["source"]["updates_seen"] == 0
