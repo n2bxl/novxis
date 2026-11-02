@@ -1,0 +1,1 @@
+"""Packaged static resources for the local NOVXIS web preview."""

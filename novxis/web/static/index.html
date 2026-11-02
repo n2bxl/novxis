@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>NOVXIS | Evidence Map Preview</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div><strong>NOVXIS</strong><span class="brand-sub">2D EVIDENCE PREVIEW</span></div>
+      </div>
+      <span class="mode">OFFLINE REPLAY</span>
+    </header>
+    <main class="workspace">
+      <section class="map-panel" aria-label="Network evidence map">
+        <div class="panel-head">
+          <div>
+            <h1>Observed address map</h1>
+            <p id="summary">Loading replay evidence...</p>
+          </div>
+          <div class="controls" aria-label="Map controls">
+            <button id="zoom-out" type="button" title="Zoom out" aria-label="Zoom out">−</button>
+            <button id="zoom-in" type="button" title="Zoom in" aria-label="Zoom in">+</button>
+            <button id="fit" type="button">Reset view</button>
+          </div>
+        </div>
+        <div class="canvas-wrap">
+          <svg id="map" viewBox="0 0 1080 620" role="img"
+            aria-label="Interactive graph of observed ARP protocol and hardware addresses">
+            <g id="viewport"></g>
+          </svg>
+          <p class="canvas-hint">Scroll to zoom · Drag empty space to pan · Select an address</p>
+        </div>
+        <div class="canvas-footer">
+          <span><span class="legend-dot protocol"></span>Protocol address</span>
+          <span><span class="legend-dot hardware"></span>Hardware address</span>
+          <span><span class="legend-line"></span>Observed ARP sender claim</span>
+        </div>
+      </section>
+      <aside class="inspector" aria-labelledby="inspector-title">
+        <div class="inspector-head">
+          <span class="eyebrow">EVIDENCE INSPECTOR</span>
+          <h2 id="inspector-title">Nothing selected</h2>
+        </div>
+        <div id="inspector-content" class="inspector-content" aria-live="polite">
+          <p>Select an address node to inspect its captured ARP evidence.</p>
+        </div>
+      </aside>
+    </main>
+    <footer class="footnote">
+      Address associations are observations, not verified devices, physical links,
+      subnet membership, or online status.
+    </footer>
+  </div>
+</body>
+</html>

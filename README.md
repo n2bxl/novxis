@@ -24,6 +24,33 @@ interface/subnet/route evidence. Later DNS extensions (TCP, HTTPS/SVCB
 record decoding, EDNS, IPv6 and encrypted-transport limitations) are
 **deferred**, not unimplemented blockers for this milestone.
 
+## First 2D Browser Preview (Phase 1N-B)
+
+The initial web preview is deliberately simple and **offline-only**: it reads
+the sanitized ARP replay fixture, produces the existing renderer-neutral
+observed address graph and renders protocol/hardware nodes and sender
+associations. Nodes are address evidence, **not** physical devices or cables.
+
+```bash
+python -m pip install -e ".[dev]"
+python -m novxis.cli.web_preview
+```
+
+Open http://127.0.0.1:8765/ in Safari. Click address nodes to inspect
+observations, scroll to zoom, drag empty space to pan, or use Reset View.
+Press Ctrl+C to stop the preview server. The server binds to localhost only,
+does not run active scans and does not serve raw PCAP packet bytes.
+
+A custom private capture can be inspected locally using
+`python -m novxis.cli.web_preview --pcap /path/to/capture.pcapng`, but
+do not commit that file to the repository. The prototype handles ARP
+sender evidence only; DNS, ICMP, DHCP, mDNS, live capture, and physical
+network topology are not yet part of this view.
+
+See `docs/implementation/2026-11-02-2d-web-evidence-preview.md` for
+acceptance tests and architectural boundaries.
+
+
 ## Phase 0 Development Environment
 
 The initial development baseline is Python 3.14.

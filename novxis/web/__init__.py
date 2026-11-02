@@ -1,0 +1,1 @@
+"""Local, read-only browser preview for NOVXIS evidence snapshots."""
