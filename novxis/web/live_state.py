@@ -11,6 +11,7 @@ from typing import TextIO
 
 from novxis.state.arp import ARPBinding
 from novxis.views.arp_address_map import project_arp_address_map
+from novxis.views.subnet_evidence import project_subnet_evidence
 from novxis.web.graph_data import serialize_arp_snapshot
 
 MAX_LINE = 4096
@@ -185,6 +186,11 @@ class LiveARPGraphState:
         )
         if context is not None:
             result["host_context"] = context
+            subnet = project_subnet_evidence(
+                snapshot, context, capture_interface=metadata["interface"],
+            )
+            if subnet is not None:
+                result["subnet_evidence"] = subnet
         return result
 
 

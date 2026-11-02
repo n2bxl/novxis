@@ -9,6 +9,8 @@ const inspectorTitle = document.getElementById("inspector-title");
 const inspector = document.getElementById("inspector-content");
 const hostPanel = document.getElementById("host-context");
 const hostBody = document.getElementById("host-context-content");
+const subnetPanel = document.getElementById("subnet-evidence");
+const subnetBody = document.getElementById("subnet-evidence-content");
 
 let graph = null;
 let selectedId = null;
@@ -99,6 +101,108 @@ function showHostContext(context) {
   );
 }
 
+function appendAddressButton(parent, item) {
+  if (!graph || !graph.nodes.some((node) => node.id === item.node_id)) return;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "subnet-address";
+  button.textContent = item.address;
+  button.title = "Select observed ARP address evidence";
+  button.addEventListener("click", () => {
+    // Explicit select, rather than toggle: multiple prefix groups can
+    // correctly refer to one interface-scoped protocol address node.
+    selectedId = item.node_id;
+    renderGraph();
+    showInspector();
+  });
+  parent.append(button);
+}
+
+function appendAddressSection(parent, title, entries) {
+  const details = document.createElement("details");
+  const summary = document.createElement("summary");
+  summary.textContent = title + " (" + entries.length + ")";
+  details.append(summary);
+  if (entries.length === 0) {
+    const empty = document.createElement("p");
+    empty.textContent = "No matching ARP sender addresses in this capture.";
+    details.append(empty);
+  } else {
+    const items = document.createElement("div");
+    items.className = "subnet-address-list";
+    // Protect the browser against large or overlapping prefix lists.
+    for (const entry of entries.slice(0, 64)) {
+      appendAddressButton(items, entry);
+    }
+    if (entries.length > 64) {
+      const remainder = document.createElement("p");
+      remainder.textContent = (entries.length - 64) +
+        " additional address entries not listed in this debug panel.";
+      items.append(remainder);
+    }
+    details.append(items);
+  }
+  parent.append(details);
+}
+
+function showSubnetEvidence(lens) {
+  if (!lens || lens.origin !== "derived-comparison" || !graph) {
+    subnetPanel.hidden = true;
+    subnetBody.replaceChildren();
+    return;
+  }
+  subnetPanel.hidden = false;
+  subnetBody.replaceChildren();
+  appendDetail(
+    "Basis",
+    "Local OS configured prefixes compared with interface-scoped ARP sender observations",
+    subnetBody,
+  );
+  appendDetail("Capture interface", lens.capture_interface, subnetBody);
+  appendDetail("Observed IPv4 addresses", lens.observed_ipv4_address_count, subnetBody);
+
+  const groups = Array.isArray(lens.configured_prefixes)
+    ? lens.configured_prefixes : [];
+  if (!groups.length) {
+    const absent = document.createElement("p");
+    absent.className = "subnet-limitation";
+    absent.textContent = "No valid IPv4 prefix reported by the host. " +
+      "ARP evidence cannot establish a configured subnet by itself.";
+    subnetBody.append(absent);
+  }
+  for (const group of groups.slice(0, 16)) {
+    appendAddressSection(
+      subnetBody,
+      group.network + " · configured on " + group.configured_address,
+      Array.isArray(group.matching_observed_ipv4)
+        ? group.matching_observed_ipv4 : [],
+    );
+  }
+  if (groups.length) {
+    appendAddressSection(
+      subnetBody,
+      "Outside reported prefix(es), not necessarily remote",
+      Array.isArray(lens.outside_reported_prefixes)
+        ? lens.outside_reported_prefixes : [],
+    );
+  }
+  const gateway = lens.gateway_address_cross_reference;
+  if (gateway && gateway.node_id) {
+    appendDetail(
+      "Independent default-route address match",
+      "An observed ARP sender address also matches the OS-selected " +
+      "IPv4 default-route gateway on this interface.",
+      subnetBody,
+    );
+    appendAddressButton(subnetBody, gateway);
+  }
+  const caveat = document.createElement("p");
+  caveat.className = "subnet-limitation";
+  caveat.textContent = "Containment is only an address comparison, not " +
+    "confirmed device identity, L2 adjacency, reachability or membership.";
+  subnetBody.append(caveat);
+}
+
 function clearInspector(message) {
   inspector.replaceChildren();
   inspectorTitle.textContent = "Nothing selected";
@@ -126,6 +230,16 @@ function showInspector() {
   appendDetail("Address", node.display_address, inspector);
   appendDetail("ARP hardware type", node.hardware_type, inspector);
   appendDetail("ARP protocol type", "0x" + node.protocol_type.toString(16).padStart(4, "0"), inspector);
+  const gatewayMatch = graph.subnet_evidence &&
+    graph.subnet_evidence.gateway_address_cross_reference;
+  if (gatewayMatch && gatewayMatch.node_id === node.id) {
+    appendDetail(
+      "Independent OS route context",
+      "This IPv4 sender address also matches the Mac's configured default " +
+      "gateway on the observed interface (not a verified physical link).",
+      inspector,
+    );
+  }
 
   const claims = graph.claims.filter((claim) =>
     claim.source === selectedId || claim.target === selectedId
@@ -469,6 +583,7 @@ async function loadGraph() {
     graph = payload;
     lastRevision = payload.revision;
     renderGraph();
+    showSubnetEvidence(live ? payload.subnet_evidence : null);
     showInspector();
   }
   if (live && !pollHandle) {
