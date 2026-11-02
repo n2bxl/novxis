@@ -7,6 +7,8 @@ const viewport = document.getElementById("viewport");
 const summary = document.getElementById("summary");
 const inspectorTitle = document.getElementById("inspector-title");
 const inspector = document.getElementById("inspector-content");
+const hostPanel = document.getElementById("host-context");
+const hostBody = document.getElementById("host-context-content");
 
 let graph = null;
 let selectedId = null;
@@ -49,6 +51,52 @@ function appendDetail(label, value, parent) {
   content.textContent = String(value);
   line.append(heading, content);
   parent.append(line);
+}
+
+function showHostContext(context) {
+  // An offline PCAP must never borrow the viewer Mac's current config.
+  if (!context || context.origin !== "local-os") {
+    hostPanel.hidden = true;
+    hostBody.replaceChildren();
+    return;
+  }
+  hostPanel.hidden = false;
+  hostBody.replaceChildren();
+  appendDetail("Source", "Local macOS configuration (not packet evidence)", hostBody);
+  appendDetail("Capture interface", context.interface || "Unavailable", hostBody);
+  appendDetail("Status", context.status || "Unavailable", hostBody);
+  const addresses = Array.isArray(context.ipv4_addresses)
+    ? context.ipv4_addresses : [];
+  if (addresses.length) {
+    for (const entry of addresses.slice(0, 16)) {
+      appendDetail(
+        "Configured IPv4 / reported prefix",
+        String(entry.address) + "/" + String(entry.prefix_length) +
+          " · " + String(entry.network),
+        hostBody,
+      );
+    }
+  } else {
+    appendDetail("Configured IPv4", "Not reported", hostBody);
+  }
+  const route = context.default_route;
+  if (route && route.gateway && route.interface) {
+    appendDetail(
+      "OS-selected IPv4 default route",
+      String(route.gateway) + " via " + String(route.interface), hostBody,
+    );
+    appendDetail(
+      "Default route uses capture interface?",
+      route.interface === context.interface ? "Yes" : "No",
+      hostBody,
+    );
+  } else {
+    appendDetail("OS-selected IPv4 default route", "Not reported", hostBody);
+  }
+  appendDetail(
+    "Context queried",
+    context.observed_at || "Time not available", hostBody,
+  );
 }
 
 function clearInspector(message) {
@@ -397,6 +445,7 @@ async function loadGraph() {
   }
   const source = payload.source || {};
   const live = payload.mode === "live-arp";
+  showHostContext(live ? payload.host_context : null);
   const status = payload.capture_status || "waiting";
   if (live) {
     summary.textContent = "LIVE ARP · " + (source.interface || "waiting for capture") +

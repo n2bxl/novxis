@@ -12,6 +12,7 @@ import sys
 from threading import Thread
 
 from novxis.web.live_state import LiveARPGraphState, consume_stream
+from novxis.host_context import collect_host_ipv4_context
 from novxis.web.server import create_server
 
 
@@ -31,7 +32,10 @@ def main():
         parser.error("--port must be between 1 and 65535")
     if not 1 <= args.max_bindings <= 4096:
         parser.error("--max-bindings must be between 1 and 4096")
-    state = LiveARPGraphState(max_bindings=args.max_bindings)
+    state = LiveARPGraphState(
+        max_bindings=args.max_bindings,
+        context_provider=collect_host_ipv4_context,
+    )
     try:
         server = create_server(state.snapshot, args.port)
     except OSError as exc:
