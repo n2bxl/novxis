@@ -25,6 +25,7 @@ const COLUMN_X = { protocol: 114, hardware: 708 };
 const manualOrders = { protocol: null, hardware: null };
 let orderedByKind = { protocol: [], hardware: [] };
 let moveNodesMode = false;
+const openSubnetGroups = new Set();
 
 function makeSVG(tag, attrs) {
   const element = document.createElementNS(NS, tag);
@@ -118,8 +119,14 @@ function appendAddressButton(parent, item) {
   parent.append(button);
 }
 
-function appendAddressSection(parent, title, entries) {
+function appendAddressSection(parent, title, entries, groupKey) {
   const details = document.createElement("details");
+  // Preserve an expanded group across one-second live graph revisions.
+  details.open = openSubnetGroups.has(groupKey);
+  details.addEventListener("toggle", () => {
+    if (details.open) openSubnetGroups.add(groupKey);
+    else openSubnetGroups.delete(groupKey);
+  });
   const summary = document.createElement("summary");
   summary.textContent = title + " (" + entries.length + ")";
   details.append(summary);
@@ -169,6 +176,13 @@ function showSubnetEvidence(lens) {
     absent.textContent = "No valid IPv4 prefix reported by the host. " +
       "ARP evidence cannot establish a configured subnet by itself.";
     subnetBody.append(absent);
+    appendAddressSection(
+      subnetBody,
+      "Observed IPv4 without a reported prefix",
+      Array.isArray(lens.unclassified_without_prefix)
+        ? lens.unclassified_without_prefix : [],
+      "unclassified",
+    );
   }
   for (const group of groups.slice(0, 16)) {
     appendAddressSection(
@@ -176,6 +190,7 @@ function showSubnetEvidence(lens) {
       group.network + " · configured on " + group.configured_address,
       Array.isArray(group.matching_observed_ipv4)
         ? group.matching_observed_ipv4 : [],
+      "prefix:" + group.network + "@" + group.configured_address,
     );
   }
   if (groups.length) {
@@ -184,6 +199,7 @@ function showSubnetEvidence(lens) {
       "Outside reported prefix(es), not necessarily remote",
       Array.isArray(lens.outside_reported_prefixes)
         ? lens.outside_reported_prefixes : [],
+      "outside",
     );
   }
   const gateway = lens.gateway_address_cross_reference;
