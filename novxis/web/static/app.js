@@ -95,7 +95,7 @@ function showInspector() {
     inspector.append(card);
   }
   const caveat = document.createElement("p");
-  caveat.style.marginTop = "16px";
+  caveat.className = "inspector-note";
   caveat.textContent = "This is address evidence, not verified physical host identity or reachability.";
   inspector.append(caveat);
 }
