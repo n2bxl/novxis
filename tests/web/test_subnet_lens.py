@@ -101,6 +101,10 @@ def test_subnet_panel_reads_lens_without_new_capture_apis():
     assert 'subnetPanel.hidden = true;' in script
     assert '.subnet-evidence[hidden] { display: none; }' in css
     assert 'selectedId = item.node_id;' in script
+    assert "openSubnetGroups = new Set()" in script
+    assert 'details.open = openSubnetGroups.has(groupKey)' in script
+    assert 'details.addEventListener("toggle"' in script
+    assert '"Observed IPv4 without a reported prefix"' in script
     assert 'setSelected(item.node_id)' not in script
     assert 'graph.subnet_evidence.gateway_address_cross_reference' in script
     assert 'fetch("/api/graph"' in script
