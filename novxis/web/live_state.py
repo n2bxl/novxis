@@ -17,7 +17,7 @@ MAX_LINE = 4096
 
 
 class LiveARPGraphState:
-    def __init__(self, *, max_bindings: int = 256):
+    def __init__(self, *, max_bindings: int = 256, context_provider=None):
         if not 1 <= max_bindings <= 4096:
             raise ValueError("max_bindings must be between 1 and 4096")
         self._lock = Lock()
@@ -29,6 +29,9 @@ class LiveARPGraphState:
         self._status = "waiting"
         self._interface = None
         self._max_bindings = max_bindings
+        self._context_provider = context_provider
+        self._host_context = None
+        self._context_attempted = False
 
     def ingest(self, message: dict) -> None:
         """Validate untrusted NDJSON; never interpret it as a command."""
@@ -41,6 +44,7 @@ class LiveARPGraphState:
                 1 <= len(interface) <= 128 and interface.isprintable()
             ):
                 raise ValueError("invalid capture interface")
+            needs_context = False
             with self._lock:
                 if self._interface is not None and self._interface != interface:
                     raise ValueError("unexpected interface change")
@@ -49,6 +53,25 @@ class LiveARPGraphState:
                 if self._status != "error":
                     self._status = "capturing"
                 self._revision += 1
+                if self._context_provider is not None and not self._context_attempted:
+                    self._context_attempted = True
+                    needs_context = True
+            if needs_context:
+                # Subprocess-backed OS configuration queries must not run while
+                # holding the ARP state lock or in the privileged producer.
+                try:
+                    context = self._context_provider(interface)
+                except Exception:
+                    # No raw subprocess errors or private command output
+                    # should be transmitted to the browser.
+                    context = {
+                        "schema_version": 1, "origin": "local-os",
+                        "status": "unavailable", "interface": interface,
+                        "ipv4_addresses": [], "default_route": None,
+                    }
+                with self._lock:
+                    self._host_context = context
+                    self._revision += 1
             return
         if kind == "completed":
             self.finish()
@@ -154,11 +177,15 @@ class LiveARPGraphState:
             }
             revision = self._revision
             status = self._status
+            context = self._host_context
         snapshot = project_arp_address_map(bindings)
-        return serialize_arp_snapshot(
+        result = serialize_arp_snapshot(
             snapshot, mode="live-arp", source=metadata,
             revision=revision, capture_status=status,
         )
+        if context is not None:
+            result["host_context"] = context
+        return result
 
 
 def consume_stream(stream: TextIO, state: LiveARPGraphState) -> None:

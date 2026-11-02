@@ -70,6 +70,10 @@ button.active, button[aria-pressed="true"] {
 .hardware { background: var(--hardware); }
 .legend-line { display: inline-block; background: #778a9e; width: 19px; height: 2px;
   margin-right: 6px; vertical-align: middle; }
+.host-context { border-bottom: 1px solid var(--border); padding: 18px 20px; }
+.host-context[hidden] { display: none; }
+.host-context h2 { font-size: 14px; margin: 0 0 10px; color: var(--accent); }
+.context-caveat { color: var(--muted); font-size: 11px; line-height: 1.5; margin-top: 12px; }
 .inspector-head { padding: 22px 20px; border-bottom: 1px solid var(--border); }
 .eyebrow { font-size: 10px; color: var(--accent); letter-spacing: .12em; }
 h2 { font-size: 18px; line-height: 1.35; margin-top: 10px; overflow-wrap: anywhere; }

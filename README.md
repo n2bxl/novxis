@@ -83,6 +83,37 @@ but not across browser reloads; no changes are written to network state.
 See [the layout milestone](docs/implementation/2026-11-02-2d-relationship-aware-layout.md)
 for behavior, limitations and acceptance.
 
+## Local Host IPv4 Context (Phase 1N-E)
+
+The live 2D debugger can now show **read-only local OS configuration**
+alongside observed ARP address claims: the selected capture interface's
+reported IPv4 addresses/prefixes, the corresponding configured network
+prefixes, and the **OS-selected IPv4 default route**, including its own
+interface. A capture on en5 may correctly show a system default route
+through en0. Neither fact establishes physical network topology.
+
+This context is collected by the **unprivileged browser process** once
+when the capture session starts, using read-only macOS commands. No
+network settings are changed. The privileged ARP helper and the
+unchanged offline replay view never collect or reuse local OS context.
+
+To inspect configuration without starting any packet capture:
+
+```bash
+python -m novxis.cli.host_context en5
+```
+
+The existing live ARP launch command automatically enables this optional
+information in the browser's **Host IPv4 context** panel. If macOS does not
+report an address, route, or suitable interface, NOVXIS reports the
+missing information instead of inferring a gateway or subnet from ARP.
+
+The output contains private local addressing; do not paste unredacted
+outputs into public GitHub issues or commit them to the repository.
+
+See [Phase 1N-E: Host IPv4 and Default Route Context](docs/implementation/2026-11-02-host-ipv4-route-context.md)
+for parser scope, security requirements, and acceptance checks.
+
 ## Live ARP in the Local 2D Debugger (Development Preview)
 
 The live browser view is an **opt-in, loopback-only** debugging workflow.
