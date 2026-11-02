@@ -14,6 +14,13 @@ let stageHeight = 620;
 let camera = { x: 0, y: 0, scale: 1 };
 let dragging = null;
 const PAN_THRESHOLD = 5; // Canvas SVG units: distinguish a click from a drag.
+const NODE_HEIGHT = 50;
+const ROW_STEP = 76;
+const ROW_START = 105;
+const COLUMN_X = { protocol: 114, hardware: 708 };
+const manualOrders = { protocol: null, hardware: null };
+let orderedByKind = { protocol: [], hardware: [] };
+let moveNodesMode = false;
 
 function makeSVG(tag, attrs) {
   const element = document.createElementNS(NS, tag);
@@ -108,23 +115,85 @@ function setSelected(id) {
   showInspector();
 }
 
+function computeAutoOrders(snapshot) {
+  // Keep protocol addresses sorted for lookup, but position MAC addresses
+  // by the mean row of their observed protocol neighbors. This reduces
+  // crossings without interpreting ARP claims as physical topology.
+  const addressOrder = (a, b) =>
+    a.interface.localeCompare(b.interface) ||
+    a.address_hex.localeCompare(b.address_hex) ||
+    a.id.localeCompare(b.id);
+  const protocol = snapshot.nodes
+    .filter((node) => node.kind === "protocol").sort(addressOrder);
+  const hardware = snapshot.nodes
+    .filter((node) => node.kind === "hardware").sort(addressOrder);
+  const protocolRank = new Map(protocol.map((node, index) => [node.id, index]));
+  const neighbors = new Map(hardware.map((node) => [node.id, []]));
+  for (const claim of snapshot.claims) {
+    if (protocolRank.has(claim.source) && neighbors.has(claim.target)) {
+      neighbors.get(claim.target).push(protocolRank.get(claim.source));
+    }
+  }
+  const averageRank = (node) => {
+    const positions = neighbors.get(node.id);
+    return positions.length
+      ? positions.reduce((total, value) => total + value, 0) / positions.length
+      : Number.POSITIVE_INFINITY;
+  };
+  hardware.sort((a, b) =>
+    averageRank(a) - averageRank(b) || addressOrder(a, b));
+  return { protocol, hardware };
+}
+
+function preserveManualOrder(kind, automatic) {
+  const ids = manualOrders[kind];
+  if (!ids) return automatic;
+  const byId = new Map(automatic.map((node) => [node.id, node]));
+  const seen = new Set();
+  const arranged = [];
+  for (const id of ids) {
+    if (byId.has(id)) {
+      arranged.push(byId.get(id));
+      seen.add(id);
+    }
+  }
+  for (const node of automatic) {
+    if (!seen.has(node.id)) arranged.push(node);
+  }
+  return arranged;
+}
+
+function reorderNode(kind, id, targetIndex) {
+  const current = orderedByKind[kind];
+  const startIndex = current.findIndex((node) => node.id === id);
+  if (startIndex < 0) return false;
+  const endIndex = Math.max(0, Math.min(current.length - 1, targetIndex));
+  if (startIndex === endIndex) return false;
+  const updated = current.map((node) => node.id);
+  updated.splice(startIndex, 1);
+  updated.splice(endIndex, 0, id);
+  manualOrders[kind] = updated;
+  return true;
+}
+
 function layoutGraph() {
-  const ordered = (kind) => graph.nodes
-    .filter((node) => node.kind === kind)
-    .sort((a, b) =>
-      a.interface.localeCompare(b.interface) ||
-      a.display_address.localeCompare(b.display_address)
-    );
-  const protocol = ordered("protocol");
-  const hardware = ordered("hardware");
-  const count = Math.max(protocol.length, hardware.length);
-  stageHeight = Math.max(620, count * 76 + 175);
+  const automatic = computeAutoOrders(graph);
+  orderedByKind = {
+    protocol: preserveManualOrder("protocol", automatic.protocol),
+    hardware: preserveManualOrder("hardware", automatic.hardware),
+  };
+  const count = Math.max(
+    orderedByKind.protocol.length, orderedByKind.hardware.length,
+  );
+  stageHeight = Math.max(620, count * ROW_STEP + 175);
   svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);
   const locations = new Map();
-  protocol.forEach((node, index) =>
-    locations.set(node.id, { x: 114, y: 105 + index * 76 }));
-  hardware.forEach((node, index) =>
-    locations.set(node.id, { x: 708, y: 105 + index * 76 }));
+  for (const kind of ["protocol", "hardware"]) {
+    orderedByKind[kind].forEach((node, index) =>
+      locations.set(node.id, {
+        x: COLUMN_X[kind], y: ROW_START + index * ROW_STEP,
+      }));
+  }
   return locations;
 }
 
@@ -169,13 +238,25 @@ function renderGraph() {
         " on " + node.interface,
       "data-node-id": node.id,
     });
-    group.append(makeSVG("rect", { x: 0, y: 0, width: 256, height: 50, rx: 8 }));
+    group.append(makeSVG("rect", { x: 0, y: 0, width: 256, height: NODE_HEIGHT, rx: 8 }));
     addSVGText(group, 13, 22, node.display_address);
     addSVGText(group, 13, 39, "interface: " + node.interface, "node-meta");
     group.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         setSelected(node.id);
+      } else if (moveNodesMode && event.shiftKey &&
+                 (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+        event.preventDefault();
+        const index = orderedByKind[node.kind].findIndex((item) => item.id === node.id);
+        if (reorderNode(node.kind, node.id,
+                        index + (event.key === "ArrowUp" ? -1 : 1))) {
+          renderGraph();
+          const replacement = Array.from(
+            svg.querySelectorAll("[data-node-id]"),
+          ).find((item) => item.getAttribute("data-node-id") === node.id);
+          if (replacement) replacement.focus();
+        }
       }
     });
     viewport.append(group);
@@ -216,6 +297,21 @@ document.getElementById("zoom-in").addEventListener("click", () =>
 document.getElementById("zoom-out").addEventListener("click", () =>
   zoomAt(1 / 1.2, { x: 540, y: stageHeight / 2 }));
 document.getElementById("fit").addEventListener("click", resetView);
+const moveButton = document.getElementById("move-nodes");
+const canvasHint = document.querySelector(".canvas-hint");
+moveButton.addEventListener("click", () => {
+  moveNodesMode = !moveNodesMode;
+  moveButton.setAttribute("aria-pressed", String(moveNodesMode));
+  moveButton.classList.toggle("active", moveNodesMode);
+  canvasHint.textContent = moveNodesMode
+    ? "Drag nodes to reorder · Shift + ↑/↓ to move selected row · Drag empty space to pan"
+    : "Scroll to zoom · Drag to pan · Select an address";
+});
+document.getElementById("auto-arrange").addEventListener("click", () => {
+  manualOrders.protocol = null;
+  manualOrders.hardware = null;
+  renderGraph();
+});
 
 // Listen on the entire canvas wrapper. Empty SVG regions are not always
 // wheel hit-test targets in Safari, but the wrapper covers the whole map.
@@ -232,13 +328,15 @@ svg.addEventListener("pointerdown", (event) => {
   if (event.button !== 0 || dragging) return;
   event.preventDefault();
   const point = svgPoint(event);
-  // A quick click selects a node; dragging that same node pans the map.
-  // Selection is handled on pointerup so a drag cannot also select it.
   const targetNode = event.target.closest("[data-node-id]");
+  const nodeId = targetNode ? targetNode.getAttribute("data-node-id") : null;
+  const node = nodeId && graph ? graph.nodes.find((item) => item.id === nodeId) : null;
   dragging = {
     pointerId: event.pointerId, start: point,
     x: camera.x, y: camera.y, moved: false,
-    nodeId: targetNode ? targetNode.getAttribute("data-node-id") : null,
+    nodeId, kind: node ? node.kind : null,
+    fromIndex: node ? orderedByKind[node.kind].findIndex((item) => item.id === nodeId) : -1,
+    mode: moveNodesMode && node ? "reorder" : "pan",
   };
   svg.setPointerCapture(event.pointerId);
 });
@@ -249,6 +347,15 @@ svg.addEventListener("pointermove", (event) => {
   const dy = point.y - dragging.start.y;
   if (!dragging.moved && Math.hypot(dx, dy) < PAN_THRESHOLD) return;
   dragging.moved = true;
+  if (dragging.mode === "reorder") {
+    svg.classList.add("reordering");
+    // A row is one visual address slot. Camera scale converts pointer
+    // movement to graph coordinates; no claim or node identity is mutated.
+    const displacement = Math.round(dy / (ROW_STEP * camera.scale));
+    const target = dragging.fromIndex + displacement;
+    if (reorderNode(dragging.kind, dragging.nodeId, target)) renderGraph();
+    return;
+  }
   svg.classList.add("panning");
   camera.x = dragging.x + dx;
   camera.y = dragging.y + dy;
@@ -258,7 +365,7 @@ function endPan(event) {
   if (!dragging || dragging.pointerId !== event.pointerId) return;
   const gesture = dragging;
   dragging = null;
-  svg.classList.remove("panning");
+  svg.classList.remove("panning", "reordering");
   if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
   if (event.type === "pointerup" && !gesture.moved && gesture.nodeId) {
     setSelected(gesture.nodeId);
