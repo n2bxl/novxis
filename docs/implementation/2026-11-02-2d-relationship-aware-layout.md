@@ -82,7 +82,28 @@ Open http://127.0.0.1:8765/ in Safari and confirm:
 
 A small standalone JavaScript smoke evaluation of the pure layout functions
 validated reverse-sorted one-to-one claims, manual movement and reset.
-A real Safari interaction test is still required.
+## M5 Safari interaction feedback (2026-11-02)
+
+The developer manually checked the updated 2D interface on the M5 and
+reported that the **foundational movement works** with no observed
+interaction regressions. In particular:
+
+- Zoom in/out continues working when hovering over address nodes.
+- Panning does not inadvertently select an address.
+- Physics-based snapping and spring-style motion remain explicitly
+  deferred until the layout and gesture foundation is stable.
+
+This confirms user-reported manual interaction acceptance for the
+tested gestures. The developer has not yet provided focused/full
+Python regression output for this branch, nor separate verification
+of every optional arrangement control, keyboard reordering, or
+live-update persistence scenario.
+
+**Remaining acceptance:** focused `python -m pytest tests/web -q`
+and full `python -m pytest` results on the feature branch; any
+untested rearrangement scenarios can be checked before merging.
+
+
 
 ## Deferred
 
