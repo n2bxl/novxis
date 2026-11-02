@@ -1,7 +1,7 @@
 # Phase 1N-A: Renderer-Neutral Observed ARP Address Map
 
 Date: 2026-11-01
-Status: Feature branch, local acceptance pending.
+Status: M5 focused/full test and public sanitized replay acceptance passed; ready for PR review.
 Baseline: 478 tests passed on the previously merged Phase 1M-D-B milestone.
 
 ## Purpose
@@ -46,15 +46,41 @@ The public sanitized fixture should yield 8 frames and 6 retained ARP sender
 bindings/claims. No zero sender protocol address is mapped. Exact number
 of distinct hardware nodes depends on observed values.
 
-## Acceptance still needed
+## Actual acceptance on the M5 development Mac (2026-11-02)
 
-1. Verify the focused tests and full suite (do not count 478 as new result).
-2. Replay the sanitized fixture with and without --map.
-3. Review a private PCAP optionally. Never commit real device identifiers,
-   private PCAPs, or sensitive capture data to the public repository.
+- macOS Darwin, Python 3.14.6, pytest 9.1.1.
+- **9/9 focused tests passed in 0.10s.**
+- **487/487 full regression tests passed in 0.43s.** The previous
+  accepted baseline was 478; this slice added nine tests.
+- Sanitized replay with `--map`: **8 frames; 6 ARP sender bindings;
+  12 address nodes; 6 sender claims**. Six unique IP addresses and
+  six unique MAC addresses account for these twelve address nodes;
+  none are asserted to be twelve physical devices.
+- The repeated sender `192.0.2.70` reported two observations;
+  the `0.0.0.0` sender did not become a binding.
+- The fixture timestamps start 100 seconds after the Unix epoch,
+  which explains the 1969-12-31 local-time presentation and is not
+  an incorrect live-clock interpretation.
+- Default output absence of the map was verified by an automated CLI
+  test. A separate manual replay without `--map` was not reported.
+- Private/live-capture validation was not performed for this sprint;
+  it is optional and must not leak source addresses or PCAP data.
 
-## Follow-on
 
-Read-only local interface/prefix/route evidence should establish the host's
-reported capture boundary. Add separate typed DHCP, mDNS and DNS evidence
-relationships next, without inferring physical topology from protocol hints.
+## Follow-on: first usable 2D evidence map
+
+Build a minimal 2D view of the frozen graph, using offline/replay data
+first. It should render **observed address claims**, not physical topology,
+with pan/zoom, selection, and an evidence inspector. A deterministic layout
+and explicit edge types are required; no graph relationships should be
+manufactured from spatial proximity.
+
+The next evidence increment should add read-only host interface/prefix/route
+observations so NOVXIS can show the capture host's *reported* network context.
+Then add separately typed ICMP observed exchanges, DNS naming, DHCP ACK
+configuration, and mDNS service advertisement relationships. Individual
+protocol scope and freshness rules must survive each projection.
+
+A shared renderer-neutral semantic graph should feed 2D first and a later
+3D scene; no 3D-only identity or layout assumptions belong in the core.
+
