@@ -67,6 +67,22 @@ See `docs/implementation/2026-11-02-2d-web-evidence-preview.md` for
 acceptance tests and architectural boundaries.
 
 
+## Evidence-Aware 2D Arrangement (Phase 1N-D)
+
+The local 2D debugger arranges hardware addresses using their observed
+ARP sender associations instead of independently sorting the two columns.
+This reduces unnecessary crossing lines while preserving exactly the
+same semantic graph and evidence.
+
+The default interaction remains **drag to pan**. Select **Rearrange**
+to explicitly drag address nodes up/down within their column or use
+Shift+ArrowUp/ArrowDown on a focused node. **Auto arrange** resets
+manual adjustments. Manual order persists through live capture updates
+but not across browser reloads; no changes are written to network state.
+
+See [the layout milestone](docs/implementation/2026-11-02-2d-relationship-aware-layout.md)
+for behavior, limitations and acceptance.
+
 ## Live ARP in the Local 2D Debugger (Development Preview)
 
 The live browser view is an **opt-in, loopback-only** debugging workflow.

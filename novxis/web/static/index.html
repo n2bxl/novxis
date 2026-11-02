@@ -28,6 +28,10 @@
             <button id="zoom-out" type="button" title="Zoom out" aria-label="Zoom out">−</button>
             <button id="zoom-in" type="button" title="Zoom in" aria-label="Zoom in">+</button>
             <button id="fit" type="button">Reset view</button>
+            <button id="move-nodes" type="button" aria-pressed="false"
+              title="Reorder addresses without changing evidence">Rearrange</button>
+            <button id="auto-arrange" type="button"
+              title="Clear manual arrangement and minimize crossed claims">Auto arrange</button>
           </div>
         </div>
         <div class="canvas-wrap">
@@ -35,7 +39,7 @@
             aria-label="Interactive graph of observed ARP protocol and hardware addresses">
             <g id="viewport"></g>
           </svg>
-          <p class="canvas-hint">Scroll to zoom · Drag empty space to pan · Select an address</p>
+          <p class="canvas-hint">Scroll to zoom · Drag to pan · Select an address</p>
         </div>
         <div class="canvas-footer">
           <span><span class="legend-dot protocol"></span>Protocol address</span>
