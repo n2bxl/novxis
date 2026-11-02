@@ -2,6 +2,7 @@
 
 import json
 from threading import Thread
+from importlib import resources
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -70,3 +71,21 @@ def test_cli_default_uses_sanitized_fixture():
     args = build_parser().parse_args([])
     assert args.pcap.name == "arp_phase0_sanitized.pcap"
     assert args.port == 8765
+
+
+def test_canvas_pan_prevents_safari_svg_text_selection():
+    """Only the SVG viewport suppresses selection, not the inspector."""
+    static = resources.files("novxis.web.static")
+    styles = static.joinpath("styles.css").read_text(encoding="utf-8")
+    script = static.joinpath("app.js").read_text(encoding="utf-8")
+    assert "#map, #map *" in styles
+    assert "-webkit-user-select: none" in styles
+    assert "user-select: none" in styles
+    assert 'svg.addEventListener("selectstart"' in script
+    assert 'svg.addEventListener("dragstart"' in script
+    start = script.index('svg.addEventListener("pointerdown"')
+    end = script.index('svg.addEventListener("pointermove"', start)
+    pan_handler = script[start:end]
+    assert 'event.target.closest("[data-node-id]")' in pan_handler
+    assert "event.preventDefault();" in pan_handler
+    assert ".inspector" not in styles[styles.index("#map, #map *"):styles.index("#map.panning")]
