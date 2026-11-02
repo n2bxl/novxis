@@ -89,3 +89,30 @@ def test_canvas_pan_prevents_safari_svg_text_selection():
     assert 'event.target.closest("[data-node-id]")' in pan_handler
     assert "event.preventDefault();" in pan_handler
     assert ".inspector" not in styles[styles.index("#map, #map *"):styles.index("#map.panning")]
+
+
+def test_mouse_wheel_zoom_is_bound_to_entire_canvas_not_only_svg_shapes():
+    """Safari must zoom when hovering over blank map space as well as nodes."""
+    static = resources.files("novxis.web.static")
+    script = static.joinpath("app.js").read_text(encoding="utf-8")
+    assert 'document.querySelector(".canvas-wrap")' in script
+    assert 'canvas.addEventListener("wheel"' in script
+    assert 'svg.addEventListener("wheel"' not in script
+    assert 'zoomAt(event.deltaY < 0' in script
+    assert 'svgPoint(event)' in script
+    assert '{ passive: false }' in script
+
+
+def test_click_node_selects_but_dragging_node_pans():
+    """Selection follows a stationary pointerup, not a click after panning."""
+    static = resources.files("novxis.web.static")
+    script = static.joinpath("app.js").read_text(encoding="utf-8")
+    styles = static.joinpath("styles.css").read_text(encoding="utf-8")
+    assert 'const PAN_THRESHOLD = 5' in script
+    assert 'group.addEventListener("click"' not in script
+    assert 'if (event.button !== 0 || dragging) return;' in script
+    assert 'const targetNode = event.target.closest("[data-node-id]");' in script
+    assert 'Math.hypot(dx, dy) < PAN_THRESHOLD' in script
+    assert 'if (event.type === "pointerup" && !gesture.moved && gesture.nodeId)' in script
+    assert 'setSelected(gesture.nodeId)' in script
+    assert '#map.panning .map-node' in styles
