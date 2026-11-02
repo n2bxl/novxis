@@ -1,7 +1,7 @@
 # Phase 1N-B: First browser-based NOVXIS 2D evidence preview
 
 Date: 2026-11-02
-Status: M5 Safari interaction acceptance confirmed by user on 2026-11-02; Python focused/full regression results still pending.
+Status: M5 Safari interaction acceptance and focused/full Python regression tests passed on 2026-11-02; ready for review.
 Base: Phase 1N-A squash-merged as commit 8118fa8 (#32).
 
 ## Purpose
@@ -56,7 +56,7 @@ To replay a *private local* capture without committing it:
 For alternate local ports use --port 8766. The development server
 intentionally does not support a non-loopback host binding.
 
-## Acceptance targets (not yet validated on M5)
+## Acceptance targets (validated on M5)
 
 - HTML/JS/CSS load locally without CDN or npm build.
 - 8 sanitized frames result in 6 claims and 12 typed address nodes.
@@ -72,13 +72,12 @@ During first on-screen validation in Safari, panning the SVG map could
 also produce native text-selection highlighting across the map's labels.
 The canvas now applies WebKit-compatible selection suppression to the SVG
 and its descendants, cancels the native selection/drag defaults, and calls
-preventDefault() only when starting a blank-canvas pan. Clicking a node
-remains distinct from panning. Inspector content is intentionally selectable.
+preventDefault() on the canvas pointerdown gesture. A short node click
+remains distinct from dragging that node. Inspector content is intentionally selectable.
 
 A static regression test covers the scoped CSS and pointerdown guard.
-**Manual Safari retest is still required** after fetching the branch update.
-Verify drag in empty canvas and across headings/edges without browser text
-highlight; verify node clicking and inspector text copying continue to work.
+The later M5 Safari review confirmed the original unintended-selection issue
+was resolved alongside the wheel and pan interactions.
 
 ## Whole-canvas zoom and node-origin pan fix (2026-11-02)
 
@@ -120,10 +119,23 @@ The user's explicit confirmation covers the original text-selection,
 blank-canvas wheel hit-testing and node-origin panning complaints.
 No visual redesign is necessary to proceed.
 
-This is a **manual browser UI acceptance**, not a recorded test-suite
-pass. The final focused `python -m pytest tests/web -q` and full
-`python -m pytest` outputs for this branch have not been supplied.
-Keep PR #33 in draft until regression acceptance is reported.
+This manual browser UI acceptance is complemented by the focused and full
+Python regression test results recorded below.
+
+## Final M5 acceptance: automated tests (2026-11-02)
+
+The user supplied terminal output from the updated Phase 1N-B branch:
+
+- macOS Darwin, Python 3.14.6, pytest 9.1.1, pluggy 1.6.0.
+- `python -m pytest tests/web -q`: **14/14 passed in 3.12 seconds**.
+- `python -m pytest`: **501/501 passed in 3.41 seconds**.
+- No pytest failures or errors in either run.
+- The earlier Phase 1N-A merged acceptance was 487 passing tests;
+  this iteration adds 14 tests (the reported suite total is 501).
+- Browser-based manual interaction validation was separately confirmed;
+  the Python suite does not substitute for full cross-browser UI tests.
+
+**Phase 1N-B acceptance complete.** Ready for PR review/squash merge.
 
 ## Deferred
 
