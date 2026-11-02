@@ -90,7 +90,8 @@ class LiveARPGraphState:
             last = Decimal(message["last_seen"])
         except (KeyError, InvalidOperation, TypeError, ValueError) as exc:
             raise ValueError("invalid observation timestamps") from exc
-        if not first.is_finite() or not last.is_finite() or last < first:
+        if (not first.is_finite() or not last.is_finite()
+                or first < 0 or last < first or last > Decimal("10000000000000")):
             raise ValueError("invalid timestamp order")
         binding = ARPBinding(
             interface=interface, hardware_type=htype, protocol_type=ptype,
@@ -99,15 +100,20 @@ class LiveARPGraphState:
         )
         key = (interface, htype, ptype, protocol)
         with self._lock:
-            if self._interface is not None and self._interface != interface:
-                raise ValueError("binding is outside the capture interface")
+            if self._interface != interface:
+                raise ValueError("binding is outside the capture session")
             if key not in self._bindings and len(self._bindings) >= self._max_bindings:
                 self._truncated = True
                 self._revision += 1
                 return
             previous = self._bindings.get(key)
-            if previous is not None and count <= previous.observation_count:
-                raise ValueError("non-increasing observation count")
+            if previous is not None:
+                if previous.hardware_address != binding.hardware_address:
+                    # NetworkState begins a new observation epoch on MAC changes.
+                    if count != 1:
+                        raise ValueError("changed claim must reset count")
+                elif count <= previous.observation_count:
+                    raise ValueError("non-increasing observation count")
             self._bindings[key] = binding
             self._updates += 1
             self._revision += 1
