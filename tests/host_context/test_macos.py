@@ -60,11 +60,11 @@ def test_default_route_has_actual_reported_gateway_and_interface():
 
 
 @pytest.mark.parametrize("text", [
-    "destination: default\\ngateway: link#4\\ninterface: en5",
-    "destination: default\\ngateway: 192.0.2.1\\ninterface: -help",
-    "destination: 203.0.113.1\\ngateway: 192.0.2.1\\ninterface: en5",
-    "destination: default\\ngateway: 999.1.1.1\\ninterface: en5",
-    "destination: default\\ngateway: 192.0.2.1",
+    "destination: default\ngateway: link#4\ninterface: en5",
+    "destination: default\ngateway: 192.0.2.1\ninterface: -help",
+    "destination: 203.0.113.1\ngateway: 192.0.2.1\ninterface: en5",
+    "destination: default\ngateway: 999.1.1.1\ninterface: en5",
+    "destination: default\ngateway: 192.0.2.1",
 ])
 def test_invalid_route_cannot_become_gateway(text):
     assert parse_macos_default_route(text) is None
@@ -126,7 +126,7 @@ def test_no_route_does_not_invent_gateway_or_local_connectivity():
 def test_no_ipv4_address_is_not_converted_to_a_fabricated_prefix():
     def fake_run(argv, **kwargs):
         if argv[0] == "/sbin/ifconfig":
-            return SimpleNamespace(returncode=0, stdout="en5: flags=0\\n")
+            return SimpleNamespace(returncode=0, stdout="en5: flags=0\n")
         return SimpleNamespace(returncode=0, stdout=DEFAULT_ROUTE)
 
     result = collect_host_ipv4_context(
