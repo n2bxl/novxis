@@ -2,6 +2,7 @@
 
 const NS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("map");
+const canvas = document.querySelector(".canvas-wrap");
 const viewport = document.getElementById("viewport");
 const summary = document.getElementById("summary");
 const inspectorTitle = document.getElementById("inspector-title");
@@ -12,6 +13,7 @@ let selectedId = null;
 let stageHeight = 620;
 let camera = { x: 0, y: 0, scale: 1 };
 let dragging = null;
+const PAN_THRESHOLD = 5; // Canvas SVG units: distinguish a click from a drag.
 
 function makeSVG(tag, attrs) {
   const element = document.createElementNS(NS, tag);
@@ -170,10 +172,6 @@ function renderGraph() {
     group.append(makeSVG("rect", { x: 0, y: 0, width: 256, height: 50, rx: 8 }));
     addSVGText(group, 13, 22, node.display_address);
     addSVGText(group, 13, 39, "interface: " + node.interface, "node-meta");
-    group.addEventListener("click", (event) => {
-      event.stopPropagation();
-      setSelected(node.id);
-    });
     group.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
@@ -219,36 +217,52 @@ document.getElementById("zoom-out").addEventListener("click", () =>
   zoomAt(1 / 1.2, { x: 540, y: stageHeight / 2 }));
 document.getElementById("fit").addEventListener("click", resetView);
 
-svg.addEventListener("wheel", (event) => {
+// Listen on the entire canvas wrapper. Empty SVG regions are not always
+// wheel hit-test targets in Safari, but the wrapper covers the whole map.
+canvas.addEventListener("wheel", (event) => {
   event.preventDefault();
+  if (!event.deltaY) return;
   zoomAt(event.deltaY < 0 ? 1.1 : 1 / 1.1, svgPoint(event));
 }, { passive: false });
 
 // Safari may select SVG text before pointer capture takes over navigation.
-// Cancel only blank-canvas gestures so node clicks still work normally.
 svg.addEventListener("selectstart", (event) => event.preventDefault());
 svg.addEventListener("dragstart", (event) => event.preventDefault());
 svg.addEventListener("pointerdown", (event) => {
-  if (event.button !== 0 || event.target.closest("[data-node-id]")) return;
+  if (event.button !== 0 || dragging) return;
   event.preventDefault();
   const point = svgPoint(event);
-  dragging = { pointerId: event.pointerId, start: point,
-    x: camera.x, y: camera.y };
+  // A quick click selects a node; dragging that same node pans the map.
+  // Selection is handled on pointerup so a drag cannot also select it.
+  const targetNode = event.target.closest("[data-node-id]");
+  dragging = {
+    pointerId: event.pointerId, start: point,
+    x: camera.x, y: camera.y, moved: false,
+    nodeId: targetNode ? targetNode.getAttribute("data-node-id") : null,
+  };
   svg.setPointerCapture(event.pointerId);
-  svg.classList.add("panning");
 });
 svg.addEventListener("pointermove", (event) => {
   if (!dragging || dragging.pointerId !== event.pointerId) return;
   const point = svgPoint(event);
-  camera.x = dragging.x + point.x - dragging.start.x;
-  camera.y = dragging.y + point.y - dragging.start.y;
+  const dx = point.x - dragging.start.x;
+  const dy = point.y - dragging.start.y;
+  if (!dragging.moved && Math.hypot(dx, dy) < PAN_THRESHOLD) return;
+  dragging.moved = true;
+  svg.classList.add("panning");
+  camera.x = dragging.x + dx;
+  camera.y = dragging.y + dy;
   updateCamera();
 });
 function endPan(event) {
   if (!dragging || dragging.pointerId !== event.pointerId) return;
+  const gesture = dragging;
   dragging = null;
   svg.classList.remove("panning");
   if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+  if (event.type === "pointerup" && !gesture.moved && gesture.nodeId) {
+    setSelected(gesture.nodeId);
+  }
 }
 svg.addEventListener("pointerup", endPan);
 svg.addEventListener("pointercancel", endPan);
