@@ -303,6 +303,7 @@ moveButton.addEventListener("click", () => {
   moveNodesMode = !moveNodesMode;
   moveButton.setAttribute("aria-pressed", String(moveNodesMode));
   moveButton.classList.toggle("active", moveNodesMode);
+  svg.classList.toggle("move-mode", moveNodesMode);
   canvasHint.textContent = moveNodesMode
     ? "Drag nodes to reorder · Shift + ↑/↓ to move selected row · Drag empty space to pan"
     : "Scroll to zoom · Drag to pan · Select an address";
