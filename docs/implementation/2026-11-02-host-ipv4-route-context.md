@@ -1,7 +1,7 @@
 # Phase 1N-E: Read-only macOS Host IPv4 and Default Route Context
 
 Date: 2026-11-02
-Status: Feature branch; M5 focused/full regression and macOS live acceptance pending.
+Status: M5 Python regressions and read-only macOS en0 comparison accepted; Safari live panel acceptance pending.
 Baseline: Phase 1N-D PR #36 merged, with 529/529 full tests accepted.
 
 ## Goal
@@ -103,6 +103,47 @@ to capture a new OS configuration snapshot.
    panel and ARP node counts/claims remain unchanged.
 9. Confirm an unknown interface or unavailable default route is
    reported without a fabricated prefix or gateway.
+
+## M5 Phase 1N-E validation (2026-11-02)
+
+The developer provided two sets of test evidence:
+
+- **Focused suite:** `python -m pytest tests/host_context tests/web -q`:
+  **73 passed in 3.76 seconds**.
+- **Full suite:** `python -m pytest`: **560 passed in 3.90 seconds**
+  (macOS Darwin, Python 3.14.6, pytest 9.1.1, pluggy 1.6.0).
+- **Regression change:** 31 more tests than the Phase 1N-D
+  529-test baseline, with no failures.
+- **Read-only CLI:** `python -m novxis.cli.host_context en0` reported
+  status `reported`, with an IPv4 address, a **/22** prefix,
+  a matching configured network and an IPv4 default route through
+  **en0**.
+- **Independent OS comparison:** `ifconfig en0` and
+  `route -n get default` agreed with the CLI's selected
+  interface, configured address, hexadecimal netmask-derived prefix,
+  and default gateway/interface.
+
+No actual private IP addresses, gateway address, hardware addresses or
+unredacted command output have been committed to this validation note.
+
+**Source boundary:** The developer also recognized the default gateway's
+protocol address from earlier **ARP sender evidence**, prior to this OS
+configuration query. Those are independent observation/configuration
+sources. ARP did not establish that the address was the Mac's gateway;
+the host route lookup did. Do not merge ARP node scope across capture
+interfaces or infer a physical link from this agreement.
+
+The checkout command in the submitted terminal produced
+`fatal: a branch named ... already exists` because a local branch of
+that name was present. The test output and collector invocation
+completed successfully afterwards. A later `git branch --show-current`
+check can confirm the active branch when desired.
+
+**Still pending before PR readiness:** manual Safari validation of
+the Host IPv4 context panel during a bounded live-ARP session and
+confirmation that the offline PCAP preview remains without local
+host configuration. Automated unit and web integration checks passed,
+but those are not substitutes for this browser check.
 
 ## Deliberately deferred
 
