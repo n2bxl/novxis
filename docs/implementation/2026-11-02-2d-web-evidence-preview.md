@@ -80,6 +80,36 @@ A static regression test covers the scoped CSS and pointerdown guard.
 Verify drag in empty canvas and across headings/edges without browser text
 highlight; verify node clicking and inspector text copying continue to work.
 
+## Whole-canvas zoom and node-origin pan fix (2026-11-02)
+
+The first browser preview exposed two related pointer-hit-testing behaviors:
+
+1. Safari wheel zoom responded over painted address nodes, but did not
+   respond reliably while hovering blank regions of the SVG canvas.
+2. Pointer-down on an address node was explicitly excluded from starting
+   a pan, so only blank-canvas drags moved the graph.
+
+The wheel listener now attaches to the full `.canvas-wrap` rather than
+the SVG element. It continues to prevent the page scroll and anchors
+zoom to the pointer's position in SVG coordinates.
+
+The shared pan gesture now starts over either background or node. A
+5-SVG-unit movement threshold distinguishes a drag from a click:
+stationary node pointer-up selects the address; moving beyond the
+threshold pans instead and does not change selection. Node keyboard
+Enter/Space selection remains supported. The inspector remains
+selectable for copying evidence, and the panning cursor applies when
+starting over a node. Pointer cancellation never selects a node.
+
+Static regression tests cover both code paths. A JavaScript smoke
+check exercised blank-canvas wheel and node-origin pan handlers in
+a mocked environment and passed. These are not substitutes for a
+real Safari acceptance test on the M5. Confirm all four cases:
+wheel over empty background, wheel over nodes, drag from empty
+background, and drag starting on a node. Confirm a simple click still
+updates the inspector, that dragging does not select a new node, and
+that inspector text remains copyable.
+
 ## Deferred
 
 No 3D scene, framework adoption, live capture, port scanner, physical
