@@ -99,6 +99,35 @@ ARP probes with zero protocol sender addresses do not produce bindings.
 7. Confirm the right-hand HTTP process is not running under sudo.
 8. Run offline preview again to ensure unchanged fixture behavior.
 
+## Initial M5 live-browser validation (2026-11-02)
+
+The developer supplied a screenshot of the live local Safari interface
+after an authorized capture on **en5**. The web UI reports:
+
+- Mode: `LIVE ARP`
+- Capture interface: `en5`
+- Terminal state: `ended`
+- **17 typed address nodes**
+- **9 observed ARP sender claims**
+- **69 binding updates**
+
+The developer also reported **watching the graph populate during the
+capture**, which establishes first-hand manual validation of the
+live capture-to-2D-graph path. The browser retained a navigable evidence
+map at the end of the capture. The interface screenshot does not
+independently confirm capture-helper exit code, transport loss, absence of
+errors, process privilege boundaries, or the automated test suite.
+
+The count of address nodes **does not indicate 17 devices**. Typed protocol
+and hardware nodes can overlap in their claim associations. Do not
+publish private interface captures, raw local MAC addresses, or home
+network addressing in repository documentation or fixtures.
+
+**Pending:** focused `python -m pytest tests/web -q`, full
+`python -m pytest` results from the feature branch; final
+start/stop, privilege, and in-flight inspector/camera checks.
+Keep the implementation PR in draft until that acceptance is complete.
+
 ## Deferred
 
 No direct in-browser capture controls, unrestricted continuous sessions,
