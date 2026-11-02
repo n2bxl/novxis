@@ -1,7 +1,7 @@
 # Phase 1N-B: First browser-based NOVXIS 2D evidence preview
 
 Date: 2026-11-02
-Status: Development branch. Local M5 Safari and pytest acceptance pending.
+Status: M5 Safari interaction acceptance confirmed by user on 2026-11-02; Python focused/full regression results still pending.
 Base: Phase 1N-A squash-merged as commit 8118fa8 (#32).
 
 ## Purpose
@@ -109,6 +109,21 @@ wheel over empty background, wheel over nodes, drag from empty
 background, and drag starting on a node. Confirm a simple click still
 updates the inspector, that dragging does not select a new node, and
 that inspector text remains copyable.
+
+## M5 Safari interaction acceptance (2026-11-02)
+
+The user confirmed the previously reported browser interaction issues
+are resolved in the latest preview and provided a new ~40-second screen
+recording. Reviewed sampled frames showing the live 2D map at different
+pan/zoom positions and selected protocol/hardware address inspectors.
+The user's explicit confirmation covers the original text-selection,
+blank-canvas wheel hit-testing and node-origin panning complaints.
+No visual redesign is necessary to proceed.
+
+This is a **manual browser UI acceptance**, not a recorded test-suite
+pass. The final focused `python -m pytest tests/web -q` and full
+`python -m pytest` outputs for this branch have not been supplied.
+Keep PR #33 in draft until regression acceptance is reported.
 
 ## Deferred
 
