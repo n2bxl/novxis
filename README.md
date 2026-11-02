@@ -67,6 +67,35 @@ See `docs/implementation/2026-11-02-2d-web-evidence-preview.md` for
 acceptance tests and architectural boundaries.
 
 
+## Live ARP in the Local 2D Debugger (Development Preview)
+
+The live browser view is an **opt-in, loopback-only** debugging workflow.
+It uses a bounded, privileged *capture-and-ARP-normalization* helper and an ordinary,
+unprivileged browser server. The processes exchange **decoded ARP sender
+binding observations through a local stdout/stdin pipe**. Packet payloads
+are not sent to the web server, and the browser has no capture-start API.
+
+From the active NOVXIS virtual environment, run this exact pipeline from a
+single terminal (replace en0 with the authorized traffic-carrying interface):
+
+```bash
+sudo .venv/bin/python -m novxis.cli.arp_live_stream en0 --count 2000 --timeout 120 \
+  | .venv/bin/python -m novxis.cli.web_live
+```
+
+Then open http://127.0.0.1:8765/ in Safari. It updates its ARP address
+claims approximately once per second, retaining the selected node and camera.
+The source ends after 120 seconds or 2000 captured ARP frames; the last
+snapshot remains visible until you stop the browser process with Ctrl+C.
+The browser server never runs under sudo. Use an interface for which you
+have capture authorization. Do not leave capture running unattended.
+
+This is ARP only, not live DNS/ICMP or physical topology reconstruction.
+The current cap is 256 distinct ARP protocol bindings per session; the view
+marks itself truncated if new bindings are omitted. See
+[the Phase 1N-C live-ARP handoff note](docs/implementation/2026-11-02-live-arp-browser-handoff.md)
+for limitations, acceptance tests, and security boundaries.
+
 ## Phase 0 Development Environment
 
 The initial development baseline is Python 3.14.

@@ -116,3 +116,50 @@ def test_click_node_selects_but_dragging_node_pans():
     assert 'if (event.type === "pointerup" && !gesture.moved && gesture.nodeId)' in script
     assert 'setSelected(gesture.nodeId)' in script
     assert '#map.panning .map-node' in styles
+
+
+def test_live_server_serves_current_snapshots_without_restart():
+    from novxis.web.live_state import LiveARPGraphState
+
+    state = LiveARPGraphState()
+    instance = create_server(state.snapshot, port=0)
+    worker = Thread(target=instance.serve_forever, daemon=True)
+    worker.start()
+    try:
+        with urlopen(_url(instance, "/api/graph")) as response:
+            first = json.load(response)
+        assert first["mode"] == "live-arp"
+        assert first["capture_status"] == "waiting"
+
+        state.ingest({"type": "session", "interface": "en0"})
+        state.ingest({
+            "type": "binding", "interface": "en0",
+            "hardware_type": 1, "protocol_type": 0x0800,
+            "protocol_hex": "c000020a", "hardware_hex": "02000000000a",
+            "first_seen": "100", "last_seen": "100",
+            "observation_count": 1,
+        })
+
+        with urlopen(_url(instance, "/api/graph")) as response:
+            second = json.load(response)
+            assert response.headers["Cache-Control"] == "no-store"
+        assert second["revision"] > first["revision"]
+        assert second["capture_status"] == "capturing"
+        assert len(second["claims"]) == 1
+        assert len(second["nodes"]) == 2
+        assert second["source"]["interface"] == "en0"
+    finally:
+        instance.shutdown()
+        instance.server_close()
+        worker.join(timeout=2)
+
+
+def test_live_frontend_polling_keeps_camera_and_node_selection_state():
+    static = resources.files("novxis.web.static")
+    script = static.joinpath("app.js").read_text(encoding="utf-8")
+    assert 'payload.mode === "live-arp"' in script
+    assert 'lastRevision !== payload.revision' in script
+    assert 'window.setInterval' in script
+    assert '1000);' in script
+    assert 'renderGraph();' in script
+    assert 'showInspector();' in script

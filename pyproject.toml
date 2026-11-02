@@ -38,6 +38,8 @@ novxis-mdns-replay = "novxis.cli.mdns_replay:main"
 novxis-mdns-events = "novxis.cli.mdns_events:main"
 novxis-mdns-state-replay = "novxis.cli.mdns_state_replay:main"
 novxis-web-preview = "novxis.cli.web_preview:main"
+novxis-arp-live-stream = "novxis.cli.arp_live_stream:main"
+novxis-web-live = "novxis.cli.web_live:main"
 
 [tool.setuptools.packages.find]
 include = ["novxis*"]
