@@ -113,7 +113,7 @@ def test_oversized_pipe_record_rejected_and_stream_continues():
     consume_stream(io.StringIO(content), state)
     snap = state.snapshot()
     assert snap["capture_status"] == "error"
-    assert snap["source"]["decode_errors"] == 1
+    assert snap["source"]["stream_errors"] == 1
     assert snap["source"]["interface"] == "en0"
 
 
