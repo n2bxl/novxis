@@ -137,6 +137,19 @@ The user supplied terminal output from the updated Phase 1N-B branch:
 
 **Phase 1N-B acceptance complete.** Ready for PR review/squash merge.
 
+## Long-term role of this preview
+
+The browser-based canvas is the first implementation of a permanent
+**2D reference and diagnostics** interface. It will remain useful for
+reproducible network evidence inspection and debugging even after 3D
+Cyberspace is introduced. Both views must share semantic IDs, typed
+relationships, observation scope/provenance and time semantics rather
+than independently deriving network facts.
+
+See [ADR 0001](../architecture/0001-permanent-2d-reference-and-shared-graph.md).
+Advanced filters, replay timeline, graph parity tests and 3D remain future
+work; this milestone establishes the initial web interaction baseline.
+
 ## Deferred
 
 No 3D scene, framework adoption, live capture, port scanner, physical

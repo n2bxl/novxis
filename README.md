@@ -24,6 +24,22 @@ interface/subnet/route evidence. Later DNS extensions (TCP, HTTPS/SVCB
 record decoding, EDNS, IPv6 and encrypted-transport limitations) are
 **deferred**, not unimplemented blockers for this milestone.
 
+## Visualization Architecture: Permanent 2D Reference + Future 3D
+
+**Established direction (2026-11-02):** The 2D browser-based explorer is
+a **permanent reference and debugging interface**, not a disposable
+prototype. Future 3D Cyberspace must consume the same versioned,
+renderer-neutral graph/snapshots and preserve the same typed IDs, evidence
+relationships, provenance, source scope, uncertainty and time context.
+
+The 3D renderer may change camera, layout and animations, but cannot invent
+topology or change underlying network facts. We will build reliable 2D
+inspection and multiprotocol context before attempting 3D; both interfaces
+remain supported once 3D exists.
+
+See [ADR 0001: Permanent 2D Reference Explorer and Shared Evidence Graph](docs/architecture/0001-permanent-2d-reference-and-shared-graph.md)
+for rationale, invariants and future acceptance criteria.
+
 ## First 2D Browser Preview (Phase 1N-B)
 
 The initial web preview is deliberately simple and **offline-only**: it reads
