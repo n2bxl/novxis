@@ -1,6 +1,7 @@
 """Loopback-only HTTP server for a read-only, replay-backed web prototype."""
 
 import json
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from urllib.parse import urlsplit
@@ -18,7 +19,7 @@ _CSP = (
 )
 
 
-def make_handler(graph: dict) -> type[BaseHTTPRequestHandler]:
+def make_handler(graph: dict | Callable[[], dict]) -> type[BaseHTTPRequestHandler]:
     """Create an HTTP handler that serves one immutable graph snapshot."""
 
     class PreviewHandler(BaseHTTPRequestHandler):
@@ -32,7 +33,10 @@ def make_handler(graph: dict) -> type[BaseHTTPRequestHandler]:
 
             path = urlsplit(self.path).path
             if path == "/api/graph":
-                body = json.dumps(graph, separators=(",", ":")).encode("utf-8")
+                body = json.dumps(
+                    graph() if callable(graph) else graph,
+                    separators=(",", ":"),
+                ).encode("utf-8")
                 self._respond(200, body, "application/json; charset=utf-8")
                 return
             if path in _STATIC:
@@ -64,7 +68,9 @@ def make_handler(graph: dict) -> type[BaseHTTPRequestHandler]:
     return PreviewHandler
 
 
-def create_server(graph: dict, port: int = 8765) -> ThreadingHTTPServer:
+def create_server(
+    graph: dict | Callable[[], dict], port: int = 8765
+) -> ThreadingHTTPServer:
     """Never expose packet-derived data on a non-loopback address."""
     if not 0 <= port <= 65535:
         raise ValueError("port must be between 0 and 65535")

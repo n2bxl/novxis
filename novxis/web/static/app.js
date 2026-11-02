@@ -274,28 +274,61 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-async function start() {
-  try {
-    const response = await fetch("/api/graph", { cache: "no-store" });
-    if (!response.ok) throw new Error("HTTP " + response.status);
-    const payload = await response.json();
-    if (payload.schema_version !== 1 ||
-        !Array.isArray(payload.nodes) || !Array.isArray(payload.claims)) {
-      throw new Error("Unsupported graph response");
+// Live mode requests a fresh immutable snapshot every second. The renderer
+// changes only when its semantic revision changes; camera and selection stay.
+let lastRevision = null;
+let pollHandle = null;
+
+async function loadGraph() {
+  const response = await fetch("/api/graph", { cache: "no-store" });
+  if (!response.ok) throw new Error("HTTP " + response.status);
+  const payload = await response.json();
+  if (payload.schema_version !== 1 ||
+      !Array.isArray(payload.nodes) || !Array.isArray(payload.claims)) {
+    throw new Error("Unsupported graph response");
+  }
+  const source = payload.source || {};
+  const live = payload.mode === "live-arp";
+  const status = payload.capture_status || "waiting";
+  if (live) {
+    summary.textContent = "LIVE ARP · " + (source.interface || "waiting for capture") +
+      " · " + status + " · " + payload.nodes.length + " address nodes · " +
+      payload.claims.length + " sender claims · " +
+      (source.updates_seen || 0) + " binding updates";
+    if (source.truncated) {
+      summary.textContent += " · CAP REACHED (new addresses omitted)";
     }
-    graph = payload;
-    const source = payload.source || {};
+  } else {
     summary.textContent = (source.capture_name || "Replay") +
       " · " + payload.nodes.length + " address nodes · " +
       payload.claims.length + " sender claims · " +
       (source.frames_replayed || 0) + " frames";
-    if (source.decode_errors) {
-      summary.textContent += " · " + source.decode_errors + " decode errors";
-    }
-    if (!payload.nodes.length) {
-      clearInspector("No usable ARP sender claims in this replay.");
-    }
+  }
+  if (source.decode_errors) {
+    summary.textContent += " · " + source.decode_errors + " errors";
+  }
+  if (!graph || !live || lastRevision !== payload.revision) {
+    graph = payload;
+    lastRevision = payload.revision;
     renderGraph();
+    showInspector();
+  }
+  if (live && !pollHandle) {
+    pollHandle = window.setInterval(() => {
+      loadGraph().catch((error) => {
+        // Keep the last valid snapshot visible on transient HTTP failures.
+        summary.textContent = "Live update unavailable: " + error.message;
+      });
+    }, 1000);
+  }
+  if (!live && !payload.nodes.length) {
+    clearInspector("No usable ARP sender claims in this replay.");
+  }
+}
+
+async function start() {
+  try {
+    await loadGraph();
   } catch (error) {
     summary.textContent = "Could not load evidence map.";
     clearInspector("Error loading local replay data: " + error.message);
