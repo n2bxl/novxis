@@ -304,8 +304,9 @@ async function loadGraph() {
       payload.claims.length + " sender claims · " +
       (source.frames_replayed || 0) + " frames";
   }
-  if (source.decode_errors) {
-    summary.textContent += " · " + source.decode_errors + " errors";
+  const errors = (source.decode_errors || 0) + (source.stream_errors || 0);
+  if (errors) {
+    summary.textContent += " · " + errors + " errors";
   }
   if (!graph || !live || lastRevision !== payload.revision) {
     graph = payload;
