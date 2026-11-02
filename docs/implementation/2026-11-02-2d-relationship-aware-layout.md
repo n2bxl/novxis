@@ -1,7 +1,7 @@
 # Phase 1N-D: Relationship-aware 2D address layout
 
 Date: 2026-11-02
-Status: Feature branch, M5 Safari and focused/full test acceptance pending.
+Status: M5 Safari foundational interaction validation and focused/full Python regression accepted; ready for PR review.
 Baseline: Phase 1N-C live ARP accepted at 524/524 tests and merged via PR #35.
 
 ## Problem
@@ -94,14 +94,31 @@ interaction regressions. In particular:
   deferred until the layout and gesture foundation is stable.
 
 This confirms user-reported manual interaction acceptance for the
-tested gestures. The developer has not yet provided focused/full
-Python regression output for this branch, nor separate verification
-of every optional arrangement control, keyboard reordering, or
-live-update persistence scenario.
+tested gestures. The focused/full Python regression results have since
+been provided and are recorded below. Separate hands-on confirmation
+of every optional rearrangement control, keyboard reordering and
+live-update persistence scenario has not been reported. The earlier
+mocked JavaScript smoke tests checked automatic ordering, manual
+reordering/reset and default pan behavior, but do not substitute for
+full end-to-end Safari tests.
 
-**Remaining acceptance:** focused `python -m pytest tests/web -q`
-and full `python -m pytest` results on the feature branch; any
-untested rearrangement scenarios can be checked before merging.
+## M5 automated acceptance (2026-11-02)
+
+The developer supplied terminal output from the feature branch:
+
+- Platform: macOS Darwin, Python 3.14.6, pytest 9.1.1, pluggy 1.6.0.
+- `python -m pytest tests/web -q`: **42 passed in 3.76 seconds**.
+- `python -m pytest`: **529 passed in 3.89 seconds**.
+- **No test failures** in either run; five tests added since Phase 1N-C's
+  full 524-test baseline.
+- The new `tests/web/test_layout_controls.py` checks five contracts
+  for controls, auto layout, gesture preservation, keyboard arrangement
+  and continued live-update handling.
+
+**Phase 1N-D regression acceptance complete.** Ready for review and
+the owner's squash merge, with optional additional Safari manual
+checks of Rearrange, Auto arrange and live-refresh persistence recorded
+as follow-up validation rather than falsely claimed as completed.
 
 
 
