@@ -224,8 +224,13 @@ svg.addEventListener("wheel", (event) => {
   zoomAt(event.deltaY < 0 ? 1.1 : 1 / 1.1, svgPoint(event));
 }, { passive: false });
 
+// Safari may select SVG text before pointer capture takes over navigation.
+// Cancel only blank-canvas gestures so node clicks still work normally.
+svg.addEventListener("selectstart", (event) => event.preventDefault());
+svg.addEventListener("dragstart", (event) => event.preventDefault());
 svg.addEventListener("pointerdown", (event) => {
   if (event.button !== 0 || event.target.closest("[data-node-id]")) return;
+  event.preventDefault();
   const point = svgPoint(event);
   dragging = { pointerId: event.pointerId, start: point,
     x: camera.x, y: camera.y };
