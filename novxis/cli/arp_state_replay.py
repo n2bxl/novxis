@@ -15,8 +15,10 @@ from novxis.presentation.arp_state_console import (
     print_arp_state_change,
     print_arp_state_snapshot,
 )
+from novxis.presentation.arp_address_map_console import print_arp_address_map
 from novxis.protocols.arp import ARPParseError
 from novxis.protocols.ethernet import EthernetParseError
+from novxis.views.arp_address_map import project_arp_address_map
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,6 +36,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Decimal,
         default=Decimal("5"),
         help="Maximum seconds between a request and matching reply.",
+    )
+    parser.add_argument(
+        "--map",
+        action="store_true",
+        help="Also render an evidence-only ARP sender address association map.",
     )
     return parser
 
@@ -88,6 +95,11 @@ def main() -> int:
 
     print()
     print_arp_state_snapshot(pipeline.state.arp_bindings)
+    if args.map:
+        print()
+        print_arp_address_map(
+            project_arp_address_map(pipeline.state.arp_bindings)
+        )
     print()
     print(f"Frames replayed: {replayed}")
     print(f"Current ARP bindings: {len(pipeline.state.arp_bindings)}")
