@@ -37,6 +37,7 @@ novxis-dns-relationships = "novxis.cli.dns_relationships:main"
 novxis-mdns-replay = "novxis.cli.mdns_replay:main"
 novxis-mdns-events = "novxis.cli.mdns_events:main"
 novxis-mdns-state-replay = "novxis.cli.mdns_state_replay:main"
+novxis-web-preview = "novxis.cli.web_preview:main"
 
 [tool.setuptools.packages.find]
 include = ["novxis*"]
@@ -44,3 +45,6 @@ include = ["novxis*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+
+[tool.setuptools.package-data]
+"novxis.web.static" = ["*.html", "*.css", "*.js"]
