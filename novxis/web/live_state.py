@@ -45,7 +45,9 @@ class LiveARPGraphState:
                 if self._interface is not None and self._interface != interface:
                     raise ValueError("unexpected interface change")
                 self._interface = interface
-                self._status = "capturing"
+                # A previous malformed pipe record remains visible as error.
+                if self._status != "error":
+                    self._status = "capturing"
                 self._revision += 1
             return
         if kind == "completed":
