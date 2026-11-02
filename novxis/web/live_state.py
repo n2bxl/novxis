@@ -137,7 +137,7 @@ class LiveARPGraphState:
                 "capture_name": "Live ARP",
                 "interface": self._interface,
                 "updates_seen": self._updates,
-                "decode_errors": self._errors,
+                "stream_errors": self._errors,
                 "truncated": self._truncated,
                 "max_bindings": self._max_bindings,
             }
