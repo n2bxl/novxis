@@ -66,6 +66,20 @@ intentionally does not support a non-loopback host binding.
 - No false inferred host/device identity, cable, liveness or subnet.
 - No browsing external URLs; local-only read-only API.
 
+## Safari canvas drag-selection regression
+
+During first on-screen validation in Safari, panning the SVG map could
+also produce native text-selection highlighting across the map's labels.
+The canvas now applies WebKit-compatible selection suppression to the SVG
+and its descendants, cancels the native selection/drag defaults, and calls
+preventDefault() only when starting a blank-canvas pan. Clicking a node
+remains distinct from panning. Inspector content is intentionally selectable.
+
+A static regression test covers the scoped CSS and pointerdown guard.
+**Manual Safari retest is still required** after fetching the branch update.
+Verify drag in empty canvas and across headings/edges without browser text
+highlight; verify node clicking and inspector text copying continue to work.
+
 ## Deferred
 
 No 3D scene, framework adoption, live capture, port scanner, physical
