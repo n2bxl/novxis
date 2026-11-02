@@ -49,7 +49,7 @@ def test_normal_drag_remains_pan_and_rearrangement_requires_opt_in():
     assert 'svg.classList.add("panning")' in script
     assert 'svg.classList.add("reordering")' in script
     assert '#map.reordering' in styles
-    assert "event.type === \\"pointerup\\" && !gesture.moved" in script
+    assert 'event.type === "pointerup" && !gesture.moved' in script
 
 
 def test_keyboard_reorder_and_live_refresh_retains_manual_order():
@@ -72,4 +72,4 @@ def test_layout_controls_do_not_add_capture_apis_or_external_dependencies():
     assert "/api/graph" in script
     assert "http://" not in html and "https://" not in html
     assert "getUserMedia" not in script
-    assert "fetch(\\"/api/graph\\"" in script
+    assert 'fetch("/api/graph"' in script
