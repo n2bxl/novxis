@@ -127,10 +127,19 @@ class LiveARPGraphState:
             self._revision += 1
 
     def finish(self) -> None:
+        """Record a producer's explicit successful completion message."""
         with self._lock:
             if self._status != "error":
                 self._status = "ended"
             self._revision += 1
+
+    def close_input(self) -> None:
+        """Unexpected pipe EOF is not evidence of a completed capture."""
+        with self._lock:
+            if self._status not in ("ended", "error"):
+                self._errors += 1
+                self._status = "error"
+                self._revision += 1
 
     def snapshot(self) -> dict:
         with self._lock:
@@ -172,4 +181,4 @@ def consume_stream(stream: TextIO, state: LiveARPGraphState) -> None:
     except (OSError, UnicodeError):
         state.mark_error("pipe read error")
     finally:
-        state.finish()
+        state.close_input()
