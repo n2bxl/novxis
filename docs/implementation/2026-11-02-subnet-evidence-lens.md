@@ -94,6 +94,34 @@ Open http://127.0.0.1:8765/ in Safari. Check that:
 Avoid committing local live IP/MACs, screenshots or full OS outputs to
 public GitHub documentation. Tests use documentation-only IP ranges.
 
+## Initial M5 live Safari observation (2026-11-02)
+
+The developer supplied a screenshot of a live, localhost, `en0`
+capture with the new **Subnet evidence lens** displayed beneath
+Host IPv4 context. The snapshot shows:
+
+- An expanded OS-configured IPv4 **/22** prefix group.
+- **11** distinct observed, interface-scoped IPv4 ARP sender addresses,
+  all **11** numerically contained in the reported prefix.
+- **Zero** observed IPv4 sender addresses outside reported prefixes.
+- A separate OS default-route gateway address cross-reference, with
+  the observed gateway address also represented in the existing ARP
+  graph and its protocol node visibly selected.
+- The distinct host-context provenance and ARP evidence visualization
+  remain on the screen together.
+- The developer reported no unusual UI behavior during this initial
+  visual check.
+
+This validates the principal **live rendering and grouping** path,
+but does **not** independently establish every gesture, expanded-group
+persistence through future live updates, or the offline isolation
+check. No Python test results for this feature branch have yet been
+supplied; PR stays in draft until focused/full test results and any
+remaining browser checks are reported.
+
+Private local IP, gateway and MAC address values in the screenshot
+are intentionally **not recorded** in this public repository note.
+
 ## Deferred
 
 Multi-interface fusion, full route tables, gateway and L2 link
