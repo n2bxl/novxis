@@ -83,6 +83,43 @@ but not across browser reloads; no changes are written to network state.
 See [the layout milestone](docs/implementation/2026-11-02-2d-relationship-aware-layout.md)
 for behavior, limitations and acceptance.
 
+## Phase 1N-H: Passive Live mDNS + ARP Browser Summary (Draft)
+
+The local 2D reference debugger can now **opt in** to a combined capture
+of ARP and IPv4/IPv6 mDNS (UDP port 5353). Our existing ARP-only command
+and offline sanitized PCAP workflow remain supported.
+
+From an unprivileged terminal in the project virtual environment:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.network_live_stream en0 --count 2000 --timeout 120 \
+  | .venv/bin/python -m novxis.cli.web_live
+```
+
+Open http://127.0.0.1:8765/ in Safari and select the new **Services**
+tab. The tab shows mDNS query/response and IPv4/IPv6 counts, observed
+PTR-backed service type/instance names, capture timestamps, TTL
+freshness, and omitted/decode counts. Observed queries (including
+known-answer hints) never become service advertisements. TTL freshness
+updates with wall-clock time even after packet capture has ended.
+
+This is **not** a device inventory or a verified active-service scanner.
+The service labels/TTL and ARP address claims remain separate evidence:
+no inferred connection or physical host identity is introduced. Names
+may contain private device details and should not be posted to public
+GitHub fixtures. TXT values, SRV records, and captured raw packet
+payloads are not forwarded to the browser in this first slice.
+
+The combined helper observes a maximum of 2,000 matching packets in
+120 seconds by default, emits no more than four PTR-backed service
+advertisements per mDNS message, and the receiving summary retains
+at most 128 service instances. Any truncation is labeled explicitly.
+The localhost server runs unprivileged; do not place sudo before the
+entire pipeline.
+
+See [Phase 1N-H: Live mDNS Handoff](docs/implementation/2026-11-03-live-mdns-browser-handoff.md)
+for the test/validation checklist and remaining limitations.
+
 ## Tabbed Local Evidence Sidebar (Phase 1N-G)
 
 The local 2D debugger now provides **Evidence**, **Subnet** and **Host**

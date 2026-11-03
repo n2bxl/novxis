@@ -7,9 +7,9 @@ It is not an mDNS cache and does not infer device identity or liveness.
 
 from decimal import Decimal, InvalidOperation
 
-MAX_ADVERTISEMENTS_PER_MESSAGE = 4
+MAX_ADVERTISEMENTS_PER_MESSAGE = 6
 MAX_SERVICE_INSTANCES = 128
-MAX_NAME_LENGTH = 120
+MAX_NAME_LENGTH = 180
 MAX_TIMESTAMP = Decimal("10000000000000")
 
 
