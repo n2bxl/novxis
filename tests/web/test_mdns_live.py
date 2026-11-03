@@ -57,6 +57,7 @@ def test_mdns_query_counts_do_not_create_service_instances():
     assert observed["messages"] == observed["queries"] == 1
     assert observed["responses"] == observed["ptr_advertisements"] == 0
     assert observed["services"] == []
+    assert observed["interface"] == "en0"
 
 
 def test_ttl_expiration_advances_revision_without_packet_arrival_or_arp_redraw():
