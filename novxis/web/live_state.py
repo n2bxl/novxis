@@ -198,6 +198,7 @@ class LiveARPGraphState:
                 mdns_evidence, signature = self._mdns.snapshot(
                     Decimal(str(self._clock())),
                 )
+                mdns_evidence["interface"] = self._interface
                 if signature != self._last_fresh_signature:
                     self._last_fresh_signature = signature
                     self._revision += 1
