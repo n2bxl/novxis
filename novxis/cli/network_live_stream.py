@@ -15,8 +15,8 @@ from novxis.pipeline import ARPStatePipeline
 from novxis.pipeline.mdns import MDNSEventPipeline
 from novxis.views.mdns_services import project_dnssd_advertisements
 
-MAX_ADS_PER_MESSAGE = 6
-MAX_NAME_LENGTH = 180
+MAX_ADS_PER_MESSAGE = 4
+MAX_NAME_LENGTH = 120
 
 
 def mdns_message(observed, advertisements) -> dict:
