@@ -12,6 +12,70 @@ const hostBody = document.getElementById("host-context-content");
 const subnetPanel = document.getElementById("subnet-evidence");
 const subnetBody = document.getElementById("subnet-evidence-content");
 
+const sidebarTabNames = ["evidence", "subnet", "host"];
+const sidebarTabs = Object.fromEntries(sidebarTabNames.map((name) => [
+  name, {
+    button: document.getElementById("tab-" + name),
+    panel: document.getElementById("panel-" + name),
+  },
+]));
+let activeSidebarTab = "evidence";
+
+function selectSidebarTab(name, focus = false) {
+  if (!sidebarTabs[name] || sidebarTabs[name].button.disabled) return;
+  activeSidebarTab = name;
+  for (const key of sidebarTabNames) {
+    const selected = key === name;
+    const tab = sidebarTabs[key];
+    tab.button.setAttribute("aria-selected", String(selected));
+    tab.button.tabIndex = selected ? 0 : -1;
+    tab.panel.hidden = !selected;
+  }
+  if (focus) sidebarTabs[name].button.focus();
+}
+
+function updateSidebarTabs(payload) {
+  // Host configuration and derived prefix comparisons are unavailable
+  // for offline PCAP replay, even if a previous live tab was selected.
+  const live = payload.mode === "live-arp";
+  const available = {
+    evidence: true,
+    subnet: live && payload.subnet_evidence?.origin === "derived-comparison",
+    host: live && payload.host_context?.origin === "local-os",
+  };
+  for (const name of sidebarTabNames) {
+    const enabled = available[name] === true;
+    sidebarTabs[name].button.disabled = !enabled;
+    sidebarTabs[name].button.setAttribute("aria-disabled", String(!enabled));
+    sidebarTabs[name].button.title = enabled ? "" :
+      "Not available for this capture";
+  }
+  if (!available[activeSidebarTab]) activeSidebarTab = "evidence";
+  selectSidebarTab(activeSidebarTab);
+}
+
+for (const name of sidebarTabNames) {
+  const button = sidebarTabs[name].button;
+  button.addEventListener("click", () => selectSidebarTab(name));
+  button.addEventListener("keydown", (event) => {
+    const enabled = sidebarTabNames.filter((key) => !sidebarTabs[key].button.disabled);
+    if (!enabled.length) return;
+    const current = enabled.indexOf(name);
+    let next = null;
+    if (event.key === "Home") next = enabled[0];
+    if (event.key === "End") next = enabled[enabled.length - 1];
+    if (event.key === "ArrowRight")
+      next = enabled[(current + 1) % enabled.length];
+    if (event.key === "ArrowLeft")
+      next = enabled[(current - 1 + enabled.length) % enabled.length];
+    if (next !== null) {
+      event.preventDefault();
+      selectSidebarTab(next, true);
+    }
+  });
+}
+
+
 let graph = null;
 let selectedId = null;
 let stageHeight = 620;
@@ -115,6 +179,7 @@ function appendAddressButton(parent, item) {
     selectedId = item.node_id;
     renderGraph();
     showInspector();
+    selectSidebarTab("evidence");
   });
   parent.append(button);
 }
@@ -291,6 +356,7 @@ function setSelected(id) {
   selectedId = selectedId === id ? null : id;
   renderGraph();
   showInspector();
+  selectSidebarTab("evidence");
 }
 
 function computeAutoOrders(snapshot) {
@@ -575,6 +641,7 @@ async function loadGraph() {
   }
   const source = payload.source || {};
   const live = payload.mode === "live-arp";
+  updateSidebarTabs(payload);
   showHostContext(live ? payload.host_context : null);
   const status = payload.capture_status || "waiting";
   if (live) {

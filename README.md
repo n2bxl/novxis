@@ -83,6 +83,25 @@ but not across browser reloads; no changes are written to network state.
 See [the layout milestone](docs/implementation/2026-11-02-2d-relationship-aware-layout.md)
 for behavior, limitations and acceptance.
 
+## Tabbed Local Evidence Sidebar (Phase 1N-G)
+
+The local 2D debugger now provides **Evidence**, **Subnet** and **Host**
+pages inside the same right-side panel. Evidence displays selected ARP
+claims and their provenance. Subnet displays OS prefix-to-observation
+address comparisons. Host shows macOS's reported interface/route
+context. One page is visible at a time; the map remains interactive.
+
+Use the tab buttons or Left/Right/Home/End keys while a tab is focused.
+Selecting an address from the map or the Subnet list automatically
+opens Evidence. The selected node, camera, and manual layout survive
+tab changes. Offline replay disables Subnet and Host because its
+sanitized ARP fixture must not inherit the current Mac's configuration.
+
+This is presentation-only; no capture endpoint, discovery behavior,
+or source/evidence semantics change. See
+[Phase 1N-G Sidebar Tabs](docs/implementation/2026-11-02-tabbed-evidence-sidebar.md)
+for acceptance criteria and expected interactions.
+
 ## Evidence-backed IPv4 Subnet Lens (Phase 1N-F)
 
 The local live 2D debugger now offers a **Subnet evidence lens** below the
