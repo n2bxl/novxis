@@ -72,6 +72,18 @@ button.active, button[aria-pressed="true"] {
   margin-right: 6px; vertical-align: middle; }
 .host-context { border-bottom: 1px solid var(--border); padding: 18px 20px; }
 .host-context[hidden] { display: none; }
+.subnet-evidence { border-bottom: 1px solid var(--border); padding: 18px 20px; }
+.subnet-evidence[hidden] { display: none; }
+.subnet-evidence h2 { font-size: 14px; margin: 0 0 10px; color: var(--accent); }
+.subnet-evidence details { border-bottom: 1px solid var(--border); padding: 9px 0; }
+.subnet-evidence summary { cursor: pointer; font-size: 12px; color: var(--text);
+  overflow-wrap: anywhere; }
+.subnet-address-list { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; }
+.subnet-address { background: var(--panel-2); color: var(--text);
+  border: 1px solid #465e73; font-size: 11px; padding: 6px 8px; }
+.subnet-limitation { font-size: 11px; line-height: 1.55; margin-top: 12px;
+  color: var(--muted); }
+
 .host-context h2 { font-size: 14px; margin: 0 0 10px; color: var(--accent); }
 .context-caveat { color: var(--muted); font-size: 11px; line-height: 1.5; margin-top: 12px; }
 .inspector-head { padding: 22px 20px; border-bottom: 1px solid var(--border); }

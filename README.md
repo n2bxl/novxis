@@ -83,6 +83,37 @@ but not across browser reloads; no changes are written to network state.
 See [the layout milestone](docs/implementation/2026-11-02-2d-relationship-aware-layout.md)
 for behavior, limitations and acceptance.
 
+## Evidence-backed IPv4 Subnet Lens (Phase 1N-F)
+
+The local live 2D debugger now offers a **Subnet evidence lens** below the
+host-context panel. For each validated IPv4 prefix reported by macOS on
+the selected capture interface, the lens lists observed ARP **sender
+protocol addresses** whose numeric values fall within that configured
+range. Each address button selects its original, interface-scoped ARP
+evidence node. A distinct list includes observed IPv4 senders outside
+all reported prefixes.
+
+**This is address containment, not subnet membership verification.**
+The lens never interprets a configured CIDR as a list of discovered
+hosts, counts MAC addresses as unique devices, assumes reachability,
+connects a gateway physically to the Mac, or merges identical IPs across
+capture interfaces. Multiple configured prefixes may overlap and
+therefore list an observed address in more than one prefix.
+
+When macOS's selected IPv4 default route uses the capture interface and
+its gateway address is also present in ARP sender observations, the lens
+and selected-node inspector display an **independent route-address
+cross-reference**. It does not create an inferred graph edge.
+
+The view is **live-mode only**, updates alongside the ARP snapshots,
+uses no active discovery and does not change the existing capture
+privilege boundary. Offline replay does not inherit local host
+configuration or a subnet lens. Local prefix data should not be
+committed to public fixtures.
+
+See [Phase 1N-F: Subnet Evidence Lens](docs/implementation/2026-11-02-subnet-evidence-lens.md)
+for the evidence contract, limitations and testing instructions.
+
 ## Local Host IPv4 Context (Phase 1N-E)
 
 The live 2D debugger can now show **read-only local OS configuration**
