@@ -296,6 +296,7 @@ function showMDNSEvidence(evidence) {
   mdnsPanel.hidden = false;
   mdnsBody.replaceChildren();
   appendDetail("Origin", "Passive UDP/5353 mDNS observations", mdnsBody);
+  appendDetail("Capture interface", evidence.interface || "unavailable", mdnsBody);
   appendDetail("Messages", evidence.messages, mdnsBody);
   appendDetail("Queries / responses",
     String(evidence.queries) + " / " + String(evidence.responses), mdnsBody);
