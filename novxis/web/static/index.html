@@ -47,22 +47,41 @@
           <span><span class="legend-line"></span>Observed ARP sender claim</span>
         </div>
       </section>
-      <aside class="inspector" aria-labelledby="inspector-title">
-        <section id="host-context" class="host-context" aria-label="Read-only host network context" hidden>
-          <h2>Host IPv4 context</h2>
-          <div id="host-context-content"></div>
-          <p class="context-caveat">Reported by the local Mac at session start. Not derived from ARP and not proof that any address is reachable.</p>
-        </section>
-        <section id="subnet-evidence" class="subnet-evidence" aria-label="Configured IPv4 subnet and ARP address comparison" hidden>
-          <h2>Subnet evidence lens</h2>
-          <div id="subnet-evidence-content"></div>
-        </section>
-        <div class="inspector-head">
-          <span class="eyebrow">EVIDENCE INSPECTOR</span>
-          <h2 id="inspector-title">Nothing selected</h2>
+      <aside class="inspector" aria-label="Network evidence and context">
+        <div class="sidebar-tabs" role="tablist" aria-label="Network detail pages">
+          <button id="tab-evidence" role="tab" aria-selected="true"
+            aria-controls="panel-evidence" tabindex="0" type="button">Evidence</button>
+          <button id="tab-subnet" role="tab" aria-selected="false"
+            aria-controls="panel-subnet" tabindex="-1" type="button" disabled>Subnet</button>
+          <button id="tab-host" role="tab" aria-selected="false"
+            aria-controls="panel-host" tabindex="-1" type="button" disabled>Host</button>
         </div>
-        <div id="inspector-content" class="inspector-content" aria-live="polite">
-          <p>Select an address node to inspect its captured ARP evidence.</p>
+        <div id="panel-evidence" class="sidebar-page" role="tabpanel"
+          aria-labelledby="tab-evidence" tabindex="0">
+          <div class="inspector-head">
+            <span class="eyebrow">EVIDENCE INSPECTOR</span>
+            <h2 id="inspector-title">Nothing selected</h2>
+          </div>
+          <div id="inspector-content" class="inspector-content" aria-live="polite">
+            <p>Select an address node to inspect its captured ARP evidence.</p>
+          </div>
+        </div>
+        <div id="panel-subnet" class="sidebar-page" role="tabpanel"
+          aria-labelledby="tab-subnet" tabindex="0" hidden>
+          <section id="subnet-evidence" class="subnet-evidence"
+            aria-label="Configured IPv4 subnet and ARP address comparison" hidden>
+            <h2>Subnet evidence lens</h2>
+            <div id="subnet-evidence-content"></div>
+          </section>
+        </div>
+        <div id="panel-host" class="sidebar-page" role="tabpanel"
+          aria-labelledby="tab-host" tabindex="0" hidden>
+          <section id="host-context" class="host-context"
+            aria-label="Read-only host network context" hidden>
+            <h2>Host IPv4 context</h2>
+            <div id="host-context-content"></div>
+            <p class="context-caveat">Reported by the local Mac at session start. Not derived from ARP and not proof that any address is reachable.</p>
+          </section>
         </div>
       </aside>
     </main>
