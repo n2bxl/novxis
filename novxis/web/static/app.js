@@ -11,8 +11,10 @@ const hostPanel = document.getElementById("host-context");
 const hostBody = document.getElementById("host-context-content");
 const subnetPanel = document.getElementById("subnet-evidence");
 const subnetBody = document.getElementById("subnet-evidence-content");
+const mdnsPanel = document.getElementById("mdns-evidence");
+const mdnsBody = document.getElementById("mdns-evidence-content");
 
-const sidebarTabNames = ["evidence", "subnet", "host"];
+const sidebarTabNames = ["evidence", "subnet", "host", "services"];
 const sidebarTabs = Object.fromEntries(sidebarTabNames.map((name) => [
   name, {
     button: document.getElementById("tab-" + name),
@@ -42,6 +44,7 @@ function updateSidebarTabs(payload) {
     evidence: true,
     subnet: live && payload.subnet_evidence?.origin === "derived-comparison",
     host: live && payload.host_context?.origin === "local-os",
+    services: live && payload.mdns_evidence?.origin === "mdns-observation",
   };
   for (const name of sidebarTabNames) {
     const enabled = available[name] === true;
@@ -282,6 +285,67 @@ function showSubnetEvidence(lens) {
   caveat.textContent = "Containment is only an address comparison, not " +
     "confirmed device identity, L2 adjacency, reachability or membership.";
   subnetBody.append(caveat);
+}
+
+function showMDNSEvidence(evidence) {
+  if (!evidence || evidence.origin !== "mdns-observation") {
+    mdnsPanel.hidden = true;
+    mdnsBody.replaceChildren();
+    return;
+  }
+  mdnsPanel.hidden = false;
+  mdnsBody.replaceChildren();
+  appendDetail("Origin", "Passive UDP/5353 mDNS observations", mdnsBody);
+  appendDetail("Messages", evidence.messages, mdnsBody);
+  appendDetail("Queries / responses",
+    String(evidence.queries) + " / " + String(evidence.responses), mdnsBody);
+  appendDetail("IPv4 / IPv6",
+    String(evidence.ipv4) + " / " + String(evidence.ipv6), mdnsBody);
+  appendDetail("PTR service advertisements", evidence.ptr_advertisements, mdnsBody);
+  appendDetail("Retained service instances", evidence.retained_instances, mdnsBody);
+  appendDetail("Fresh PTR instances", evidence.fresh_instances, mdnsBody);
+  if (evidence.decode_errors) {
+    appendDetail("Malformed mDNS candidates", evidence.decode_errors, mdnsBody);
+  }
+  if (evidence.truncated || evidence.omitted_advertisements) {
+    appendDetail("Evidence limit", "Some advertisements were omitted or " +
+      "not retained. This is not a complete inventory.", mdnsBody);
+  }
+  const services = Array.isArray(evidence.services) ? evidence.services : [];
+  const list = document.createElement("div");
+  list.className = "mdns-service-list";
+  for (const item of services.slice(0, 48)) {
+    const record = document.createElement("article");
+    record.className = "mdns-service-item";
+    const heading = document.createElement("strong");
+    heading.textContent = String(item.instance);
+    const type = document.createElement("p");
+    type.textContent = String(item.service_type) + " · " +
+      (item.fresh ? "PTR fresh" : "PTR not fresh");
+    const detail = document.createElement("p");
+    detail.textContent = "TTL " + String(item.ttl_seconds) + "s · " +
+      String(item.observations) + " observation(s) · " +
+      "last captured " + String(item.last_seen) + " (Unix seconds)";
+    record.append(heading, type, detail);
+    list.append(record);
+  }
+  if (!services.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "No PTR-backed service advertisements observed.";
+    list.append(empty);
+  }
+  if (services.length > 48) {
+    const omitted = document.createElement("p");
+    omitted.textContent = String(services.length - 48) +
+      " other retained instances omitted from this summary.";
+    list.append(omitted);
+  }
+  mdnsBody.append(list);
+  const note = document.createElement("p");
+  note.className = "mdns-limitation";
+  note.textContent = "Service names and PTR TTLs are packet claims, " +
+    "not verified application availability or physical device identities.";
+  mdnsBody.append(note);
 }
 
 function clearInspector(message) {
@@ -629,6 +693,7 @@ document.addEventListener("keydown", (event) => {
 // Live mode requests a fresh immutable snapshot every second. The renderer
 // changes only when its semantic revision changes; camera and selection stay.
 let lastRevision = null;
+let lastGraphRevision = null;
 let pollHandle = null;
 
 async function loadGraph() {
@@ -652,6 +717,10 @@ async function loadGraph() {
     if (source.truncated) {
       summary.textContent += " · CAP REACHED (new addresses omitted)";
     }
+    if (payload.mdns_evidence) {
+      summary.textContent += " · mDNS " +
+        String(payload.mdns_evidence.messages) + " messages";
+    }
   } else {
     summary.textContent = (source.capture_name || "Replay") +
       " · " + payload.nodes.length + " address nodes · " +
@@ -663,10 +732,16 @@ async function loadGraph() {
     summary.textContent += " · " + errors + " errors";
   }
   if (!graph || !live || lastRevision !== payload.revision) {
+    const graphRevision = live
+      ? (payload.graph_revision ?? payload.revision) : null;
+    const redrawGraph = !graph || !live ||
+      lastGraphRevision !== graphRevision;
     graph = payload;
     lastRevision = payload.revision;
-    renderGraph();
+    lastGraphRevision = graphRevision;
+    if (redrawGraph) renderGraph();
     showSubnetEvidence(live ? payload.subnet_evidence : null);
+    showMDNSEvidence(live ? payload.mdns_evidence : null);
     showInspector();
   }
   if (live && !pollHandle) {
