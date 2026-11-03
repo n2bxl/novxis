@@ -710,7 +710,8 @@ async function loadGraph() {
   showHostContext(live ? payload.host_context : null);
   const status = payload.capture_status || "waiting";
   if (live) {
-    summary.textContent = "LIVE ARP · " + (source.interface || "waiting for capture") +
+    summary.textContent = (payload.mdns_evidence ? "LIVE ARP + mDNS · " : "LIVE ARP · ") +
+      (source.interface || "waiting for capture") +
       " · " + status + " · " + payload.nodes.length + " address nodes · " +
       payload.claims.length + " sender claims · " +
       (source.updates_seen || 0) + " binding updates";
