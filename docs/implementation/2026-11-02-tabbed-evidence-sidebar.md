@@ -1,7 +1,7 @@
 # Phase 1N-G: Tabbed local 2D evidence sidebar
 
 Date: 2026-11-02
-Status: Draft PR based on merged main; M5 Safari and regression acceptance pending.
+Status: M5 Python regressions and Safari sidebar acceptance reported passing; ready for PR review.
 Baseline: Phase 1N-F Subnet Evidence Lens PR #38 squash-merged to main
 (commit 85405e7) after 580/580 tests passed on the developer's M5.
 
@@ -76,6 +76,39 @@ Check:
 
 This change is presentation-only. It does not modify host collection,
 subnet derivation, ARP state, packet capture, HTTP binding, or API schema.
+
+## M5 acceptance evidence (2026-11-02)
+
+The developer reported the focused/full pytest runs **clean** on the
+updated sidebar branch. Exact command totals and elapsed times were
+not included in this report, so they are not invented here. The
+preceding Phase 1N-F main baseline was 580 passing tests; this branch
+adds eight new sidebar asset-contract tests.
+
+The developer also provided an approximately 149-second Safari screen
+recording of the browser workflow. It shows the real-time ARP graph
+populating and selected address evidence being inspected, switching
+among Evidence, Subnet and Host views, and opening the sanitized
+offline replay. In the test feedback, the developer indicated that
+the other browser acceptance items had passed, including the
+interactive map and live/sidebar behaviors.
+
+**Keyboard coverage:** The developer manually confirmed that
+**Left/Right Arrow** navigates between sidebar tabs. **Home/End**
+was not manually exercised because the integrated MacBook keyboard
+has no dedicated Home/End keys. The code and regression contract
+checks cover these key handlers, but that is not the same as an
+end-to-end Safari test. An optional follow-up is to focus a tab
+and try Fn+Left Arrow (Home) and Fn+Right Arrow (End).
+
+The unverified Home/End hardware shortcut is a minor residual manual
+check, **not** a failure of the documented feature. M5 feedback and
+the recording support marking the tabbed-sidebar milestone ready for
+review and the owner's normal squash merge.
+
+This repository note deliberately omits real IP addresses, MAC
+addresses, packet captures, and any screenshots or recording of the
+developer's private network.
 
 ## Merge-base verification
 
