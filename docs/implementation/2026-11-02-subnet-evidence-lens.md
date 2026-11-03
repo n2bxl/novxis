@@ -1,7 +1,7 @@
 # Phase 1N-F: Evidence-backed IPv4 Subnet Lens
 
 Date: 2026-11-02
-Status: Draft implementation PR; M5 regression and Safari acceptance pending.
+Status: M5 580/580 regression suite and live Safari primary rendering accepted; ready for review.
 Baseline: Phase 1N-E merged (#37) and 560/560 tests validated on M5.
 
 ## Goal
@@ -112,12 +112,22 @@ Host IPv4 context. The snapshot shows:
 - The developer reported no unusual UI behavior during this initial
   visual check.
 
-This validates the principal **live rendering and grouping** path,
-but does **not** independently establish every gesture, expanded-group
-persistence through future live updates, or the offline isolation
-check. No Python test results for this feature branch have yet been
-supplied; PR stays in draft until focused/full test results and any
-remaining browser checks are reported.
+This validates the principal **live rendering and grouping** path.
+The developer subsequently confirmed **580/580 automated checks passed**
+on the Phase 1N-F feature branch and reported no unusual UI behavior.
+The full 580-test suite represents **20 additional passing tests** over
+the preceding Phase 1N-E baseline of 560.
+
+Full manual verification of every gesture, continuous-update behavior and
+offline lens isolation was not independently reported in this milestone;
+the relevant automated and browser smoke checks passed. The remaining
+manual scenarios can be performed as optional follow-up checks.
+This implementation is ready for review and the developer's squash merge.
+
+The developer also identified a sidebar usability issue: Host Context,
+Subnet Lens and Evidence Inspector increasingly crowd the same long sidebar.
+**A separate follow-on UI sprint will introduce tab pages**; those
+changes do not belong to this evidence-projection milestone.
 
 Private local IP, gateway and MAC address values in the screenshot
 are intentionally **not recorded** in this public repository note.
