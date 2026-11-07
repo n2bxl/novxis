@@ -16,6 +16,8 @@ from novxis.views.subnet_evidence import project_subnet_evidence
 from novxis.views.mdns_arp_crossref import cross_reference_mdns_arp
 from novxis.web.graph_data import serialize_arp_snapshot
 from novxis.web.mdns_live import LiveMDNSState
+from novxis.web.ndp_live import LiveNDPState
+from novxis.views.mdns_ndp_crossref import cross_reference_mdns_ndp
 
 MAX_LINE = 4096
 
@@ -39,7 +41,9 @@ class LiveARPGraphState:
         self._context_attempted = False
         self._clock = clock
         self._mdns_enabled = False
+        self._ndp_enabled = False
         self._mdns = LiveMDNSState()
+        self._ndp = LiveNDPState()
         self._last_fresh_signature = ()
         self._graph_revision = 0
 
@@ -55,16 +59,22 @@ class LiveARPGraphState:
             ):
                 raise ValueError("invalid capture interface")
             protocols = message.get("protocols", ["arp"])
-            if protocols not in (["arp"], ["arp", "mdns"]):
+            if protocols not in (
+                ["arp"], ["arp", "mdns"], ["arp", "mdns", "ndp"],
+            ):
                 raise ValueError("unsupported capture protocol set")
             needs_context = False
             with self._lock:
                 if self._interface is not None and self._interface != interface:
                     raise ValueError("unexpected interface change")
-                if self._interface is not None and self._mdns_enabled != ("mdns" in protocols):
+                if self._interface is not None and (
+                    self._mdns_enabled != ("mdns" in protocols)
+                    or self._ndp_enabled != ("ndp" in protocols)
+                ):
                     raise ValueError("unexpected capture protocol change")
                 self._interface = interface
                 self._mdns_enabled = "mdns" in protocols
+                self._ndp_enabled = "ndp" in protocols
                 # A previous malformed pipe record remains visible as error.
                 if self._status != "error":
                     self._status = "capturing"
@@ -94,6 +104,16 @@ class LiveARPGraphState:
             return
         if kind == "error":
             self.mark_error("Capture helper reported an error; see terminal.")
+            return
+        if kind in ("ndp", "ndp_decode_error"):
+            with self._lock:
+                if not self._ndp_enabled or message.get("interface") != self._interface:
+                    raise ValueError("NDP event outside authorized capture session")
+                if kind == "ndp":
+                    self._ndp.observe(message, self._interface)
+                else:
+                    self._ndp.decode_error()
+                self._revision += 1
             return
         if kind in (
             "mdns", "mdns_decode_error", "mdns_reconciliation",
@@ -206,6 +226,9 @@ class LiveARPGraphState:
         with self._lock:
             bindings = tuple(self._bindings.values())
             mdns_evidence = None
+            ndp_evidence = (
+                self._ndp.snapshot(self._interface) if self._ndp_enabled else None
+            )
             if self._mdns_enabled:
                 mdns_evidence, signature = self._mdns.snapshot(
                     Decimal(str(self._clock())),
@@ -215,7 +238,10 @@ class LiveARPGraphState:
                     self._last_fresh_signature = signature
                     self._revision += 1
             metadata = {
-                "capture_name": "Live ARP + mDNS" if self._mdns_enabled else "Live ARP",
+                "capture_name": (
+                    "Live ARP + mDNS + NDP" if self._ndp_enabled else
+                    "Live ARP + mDNS" if self._mdns_enabled else "Live ARP"
+                ),
                 "interface": self._interface,
                 "updates_seen": self._updates,
                 "stream_errors": self._errors,
@@ -232,10 +258,15 @@ class LiveARPGraphState:
             revision=revision, capture_status=status,
         )
         result["graph_revision"] = graph_revision
+        if ndp_evidence is not None:
+            result["ndp_evidence"] = ndp_evidence
         if mdns_evidence is not None:
-            result["mdns_evidence"] = cross_reference_mdns_arp(
+            services = cross_reference_mdns_arp(
                 mdns_evidence, result["nodes"],
             )
+            if ndp_evidence is not None:
+                services = cross_reference_mdns_ndp(services, ndp_evidence)
+            result["mdns_evidence"] = services
         if context is not None:
             result["host_context"] = context
             subnet = project_subnet_evidence(

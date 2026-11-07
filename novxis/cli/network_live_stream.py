@@ -1,4 +1,4 @@
-"""Finite passive ARP + dual-stack mDNS capture for the local 2D debugger.
+"""Finite passive ARP + dual-stack mDNS + IPv6 NDP 2D evidence capture.
 
 Only normalized binding/service metadata crosses stdout into the
 unprivileged web process. Do not send raw frames, TXT data or payloads.
@@ -11,7 +11,9 @@ import sys
 from novxis.capture.scapy_provider import ScapyCaptureProvider
 from novxis.cli.arp_live_stream import build_handler as build_arp_handler
 from novxis.cli.mdns_replay import _DECODE_ERRORS as _MDNS_ERRORS
-from novxis.pipeline import ARPStatePipeline
+from novxis.pipeline import ARPStatePipeline, NDStatePipeline
+from novxis.cli.ndp_replay import _DECODE_ERRORS as _NDP_ERRORS
+from novxis.views.ndp_live import ndp_message
 from novxis.pipeline.mdns import MDNSEventPipeline
 from novxis.state.mdns_reconciliation import MDNSServiceReconciliation
 from novxis.views.mdns_live_reconciliation import project_live_reconciliation
@@ -114,6 +116,9 @@ def build_handler(emit):
     """Demultiplex one capture stream into existing ARP/mDNS interpreters."""
     arp_handler = build_arp_handler(ARPStatePipeline(), emit)
     mdns_pipeline = MDNSEventPipeline()
+    ndp_pipeline = NDStatePipeline(
+        max_claims=128, max_unlinked=128, max_history=256,
+    )
     # The typed reconciliation engine and its original packet objects stay
     # inside the capture process. The browser receives bounded metadata only.
     reconciliation = MDNSServiceReconciliation(
@@ -124,6 +129,12 @@ def build_handler(emit):
 
     def on_frame(frame):
         arp_handler(frame)
+        try:
+            ndp = ndp_pipeline.process(frame)
+            if ndp is not None:
+                emit(ndp_message(ndp))
+        except _NDP_ERRORS:
+            emit({"type": "ndp_decode_error", "interface": frame.interface})
         try:
             observed = mdns_pipeline.process(frame)
             if observed is None:
@@ -180,7 +191,7 @@ def build_handler(emit):
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="Capture finite passive ARP and IPv4/IPv6 UDP/5353 evidence."
+        description="Capture finite passive ARP, dual-stack mDNS and ICMPv6 NDP evidence."
     )
     parser.add_argument("interface", help="Authorized interface such as en0.")
     parser.add_argument("--count", type=int, default=2000,
@@ -208,11 +219,11 @@ def main():
     try:
         emit({
             "type": "session", "interface": args.interface,
-            "protocols": ["arp", "mdns"],
+            "protocols": ["arp", "mdns", "ndp"],
         })
         provider.start(
             args.interface, build_handler(emit),
-            bpf_filter="arp or udp port 5353",
+            bpf_filter="arp or udp port 5353 or icmp6",
             count=args.count, timeout=args.timeout,
         )
         provider.wait()

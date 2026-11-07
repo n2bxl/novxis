@@ -83,6 +83,54 @@ but not across browser reloads; no changes are written to network state.
 See [the layout milestone](docs/implementation/2026-11-02-2d-relationship-aware-layout.md)
 for behavior, limitations and acceptance.
 
+## Phase 1N-K Stage 3: Live IPv6 Neighbor Evidence in the 2D Debugger (Draft)
+
+The opt-in combined capture now observes **ARP, dual-stack mDNS/DNS-SD,
+and IPv6 ICMPv6 Neighbor Discovery** from one authorized interface.
+The capture helper uses the existing Stage 2 `NDStatePipeline` to
+classify each checksummed NS/NA as an **NS source-SLLA claim**, an
+**NA target-TLLA claim**, a **tentative DAD probe**, or another
+**unlinked observation** such as NA-without-TLLA.
+
+Only bounded, normalized per-observation metadata crosses the
+root-to-nonroot NDJSON pipe; never raw Ethernet/ICMPv6 bytes or
+unknown option payloads. The new unprivileged `LiveNDPState`
+validates source-vs-target evidence, timestamps, interface and
+Ethernet addresses atomically. It retains up to 128 distinct
+option-backed claims and 128 distinct unlinked observations,
+with explicit omission counters and decode errors. NDP has no
+invented TTL, device identity or reachability status.
+
+A new keyboard-accessible **IPv6** sidebar tab shows the claims
+separately from the existing ARP canvas. DNS-SD AAAA records may
+offer **Inspect independent IPv6 neighbor evidence** when an exact
+IPv6 address has a same-interface, independently observed
+option-backed NS/NA claim. DAD probes and unlinked NA targets
+never create a shortcut. Multiple conflicting link-layer claims
+remain visible, not merged or authenticated. No new graph edges
+or physical hosts are inferred.
+
+M5 live acceptance:
+
+~~~bash
+git fetch origin
+git switch --track origin/ai/phase1n-k-live-ipv6-neighbors-2026-11-07
+python -m pytest tests/web/test_ndp_live.py tests/web/test_ndp_sidebar.py \
+  tests/cli/test_network_live_stream.py tests/web -q
+python -m pytest
+
+sudo .venv/bin/python -m novxis.cli.network_live_stream en5 --count 2000 --timeout 120 \
+  | .venv/bin/python -m novxis.cli.web_live
+~~~
+
+Open http://127.0.0.1:8765/ and inspect **IPv6**, **Services**,
+and the unchanged **Evidence/ARP** tab. More NDP than DNS-SD may
+occur during a capture, or none at all. The prior ARP-only
+capture command, sanitized offline replay and older
+ARP+mDNS session format are still supported.
+
+See [Stage 3 live IPv6 handoff](docs/implementation/2026-11-07-live-ndp-ipv6-sidebar.md).
+
 ## Phase 1N-K Stage 2: Interface-Scoped IPv6 Neighbor Evidence (Draft)
 
 Stage 2 layers a **bounded, typed observation state** over the existing
