@@ -13,8 +13,11 @@ const subnetPanel = document.getElementById("subnet-evidence");
 const subnetBody = document.getElementById("subnet-evidence-content");
 const mdnsPanel = document.getElementById("mdns-evidence");
 const mdnsBody = document.getElementById("mdns-evidence-content");
+const ndpPanel = document.getElementById("ndp-evidence");
+const ndpBody = document.getElementById("ndp-evidence-content");
 
-const sidebarTabNames = ["evidence", "subnet", "host", "services"];
+const sidebarTabNames = ["evidence", "subnet", "host", "services", "neighbors"];
+let selectedNdpAddress = null;
 const sidebarTabs = Object.fromEntries(sidebarTabNames.map((name) => [
   name, {
     button: document.getElementById("tab-" + name),
@@ -45,6 +48,7 @@ function updateSidebarTabs(payload) {
     subnet: live && payload.subnet_evidence?.origin === "derived-comparison",
     host: live && payload.host_context?.origin === "local-os",
     services: live && payload.mdns_evidence?.origin === "mdns-observation",
+    neighbors: live && payload.ndp_evidence?.origin === "ndp-observation",
   };
   for (const name of sidebarTabNames) {
     const enabled = available[name] === true;
@@ -287,6 +291,95 @@ function showSubnetEvidence(lens) {
   subnetBody.append(caveat);
 }
 
+function showNDPEvidence(evidence) {
+  if (!evidence || evidence.origin !== "ndp-observation") {
+    ndpPanel.hidden = true;
+    ndpBody.replaceChildren();
+    selectedNdpAddress = null;
+    return;
+  }
+  ndpPanel.hidden = false;
+  ndpBody.replaceChildren();
+  appendDetail("Origin", "Passive ICMPv6 NS/NA packet assertions", ndpBody);
+  appendDetail("Capture interface", evidence.interface || "unavailable", ndpBody);
+  appendDetail("NS / NA / DAD",
+    String(evidence.ns) + " / " + String(evidence.na) +
+      " / " + String(evidence.dad), ndpBody);
+  appendDetail("Retained option-backed claims", evidence.retained_claims, ndpBody);
+  appendDetail("Unlinked observations", evidence.retained_unlinked, ndpBody);
+  appendDetail("Multiple advertised LLAs", evidence.multiple_lla_addresses, ndpBody);
+  if (evidence.decode_errors)
+    appendDetail("Malformed NDP candidates", evidence.decode_errors, ndpBody);
+  if (evidence.truncated)
+    appendDetail("Retention limit", "Some NDP observations were omitted.", ndpBody);
+
+  const claims = Array.isArray(evidence.claims) ? evidence.claims : [];
+  const unlinked = Array.isArray(evidence.unlinked) ? evidence.unlinked : [];
+  if (selectedNdpAddress !== null) {
+    appendDetail("Selected IPv6 evidence", selectedNdpAddress, ndpBody);
+    const all = document.createElement("button");
+    all.type = "button";
+    all.textContent = "Show all IPv6 observations";
+    all.addEventListener("click", () => {
+      selectedNdpAddress = null;
+      showNDPEvidence(graph?.ndp_evidence);
+    });
+    ndpBody.append(all);
+  }
+  const visibleClaims = claims.filter(item => selectedNdpAddress === null ||
+    item.address === selectedNdpAddress);
+  const visibleUnlinked = unlinked.filter(item => selectedNdpAddress === null ||
+    item.source === selectedNdpAddress || item.target === selectedNdpAddress);
+  const list = document.createElement("div");
+  list.className = "ndp-evidence-list";
+  for (const item of visibleClaims.slice(0, 64)) {
+    const record = document.createElement("article");
+    record.className = "ndp-evidence-item";
+    const heading = document.createElement("strong");
+    heading.textContent = String(item.address);
+    const detail = document.createElement("p");
+    detail.textContent = (item.kind === "ns_source_slla"
+      ? "NS source SLLA claim" : "NA target TLLA claim") +
+      " · advertised Ethernet " + String(item.mac).match(/.{2}/g)?.join(":") +
+      " · " + String(item.observations) + " observation(s)" +
+      " · captured " + String(item.first_seen) + " to " + String(item.last_seen);
+    record.append(heading, detail);
+    list.append(record);
+  }
+  for (const item of visibleUnlinked.slice(0, 48)) {
+    const record = document.createElement("article");
+    record.className = "ndp-evidence-item";
+    const heading = document.createElement("strong");
+    heading.textContent = String(item.reason).replaceAll("_", " ");
+    const detail = document.createElement("p");
+    detail.textContent = "Source " + String(item.source) + " · target " +
+      String(item.target) + " · frame sender " +
+      String(item.frame_source).match(/.{2}/g)?.join(":") +
+      " (not a target-MAC association) · " +
+      String(item.observations) + " observation(s)" +
+      " · captured " + String(item.last_seen);
+    record.append(heading, detail);
+    list.append(record);
+  }
+  if (!visibleClaims.length && !visibleUnlinked.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "No matching independent IPv6 neighbor evidence observed.";
+    list.append(empty);
+  }
+  if (visibleClaims.length > 64 || visibleUnlinked.length > 48) {
+    const more = document.createElement("p");
+    more.textContent = "Additional retained observations are omitted from this view.";
+    list.append(more);
+  }
+  ndpBody.append(list);
+  const note = document.createElement("p");
+  note.className = "ndp-evidence-note";
+  note.textContent = "These NS source and NA target option assertions are " +
+    "not verified device identity, neighbor-cache reachability, or physical " +
+    "connections. DAD is tentative. No NDP freshness TTL is inferred.";
+  ndpBody.append(note);
+}
+
 function showMDNSEvidence(evidence) {
   if (!evidence || evidence.origin !== "mdns-observation") {
     mdnsPanel.hidden = true;
@@ -378,10 +471,27 @@ function showMDNSEvidence(evidence) {
             selectSidebarTab("evidence");
           });
           line.append(button);
+        } else if (address.family === 6 && typeof address.ndp_address === "string" &&
+            graph?.ndp_evidence?.interface === graph?.mdns_evidence?.interface &&
+            graph.ndp_evidence.claims.some((item) =>
+              item.interface === graph.ndp_evidence.interface &&
+              item.address === address.ndp_address)) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "mdns-ndp-link";
+          button.textContent = "Inspect independent IPv6 neighbor evidence";
+          button.addEventListener("click", () => {
+            selectedNdpAddress = address.ndp_address;
+            showNDPEvidence(graph.ndp_evidence);
+            selectSidebarTab("neighbors");
+          });
+          line.append(button);
         } else {
           const absent = document.createElement("span");
           absent.className = "mdns-address-unmatched";
-          absent.textContent = "No same-interface ARP address match";
+          absent.textContent = address.family === 6
+            ? "No same-interface option-backed NDP address match"
+            : "No same-interface ARP address match";
           line.append(absent);
         }
         claim.append(line);
@@ -786,6 +896,10 @@ async function loadGraph() {
       summary.textContent += " · mDNS " +
         String(payload.mdns_evidence.messages) + " messages";
     }
+    if (payload.ndp_evidence) {
+      summary.textContent += " · NDP " +
+        String(payload.ndp_evidence.messages) + " messages";
+    }
   } else {
     summary.textContent = (source.capture_name || "Replay") +
       " · " + payload.nodes.length + " address nodes · " +
@@ -807,6 +921,7 @@ async function loadGraph() {
     if (redrawGraph) renderGraph();
     showSubnetEvidence(live ? payload.subnet_evidence : null);
     showMDNSEvidence(live ? payload.mdns_evidence : null);
+    showNDPEvidence(live ? payload.ndp_evidence : null);
     showInspector();
   }
   if (live && !pollHandle) {

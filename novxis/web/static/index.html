@@ -57,6 +57,8 @@
             aria-controls="panel-host" tabindex="-1" type="button" disabled>Host</button>
           <button id="tab-services" role="tab" aria-selected="false"
             aria-controls="panel-services" tabindex="-1" type="button" disabled>Services</button>
+          <button id="tab-neighbors" role="tab" aria-selected="false"
+            aria-controls="panel-neighbors" tabindex="-1" type="button" disabled>IPv6</button>
         </div>
         <div id="panel-evidence" class="sidebar-page" role="tabpanel"
           aria-labelledby="tab-evidence" tabindex="0">
@@ -91,6 +93,14 @@
             aria-label="Passive mDNS and DNS-SD evidence" hidden>
             <h2>Passive mDNS discovery</h2>
             <div id="mdns-evidence-content"></div>
+          </section>
+        </div>
+        <div id="panel-neighbors" class="sidebar-page" role="tabpanel"
+          aria-labelledby="tab-neighbors" tabindex="0" hidden>
+          <section id="ndp-evidence" class="ndp-evidence"
+            aria-label="Observed IPv6 Neighbor Discovery address evidence" hidden>
+            <h2>IPv6 neighbor evidence</h2>
+            <div id="ndp-evidence-content"></div>
           </section>
         </div>
       </aside>
