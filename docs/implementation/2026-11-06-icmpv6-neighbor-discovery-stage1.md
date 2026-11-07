@@ -1,7 +1,7 @@
 # Phase 1N-K: ICMPv6 Neighbor Discovery Stage 1
 
 Date: 2026-11-06 (America/Chicago)
-Status: Draft implementation; M5 pytest and replay acceptance pending.
+Status: M5 focused/full Python tests and real dual-interface PCAP replay accepted; ready for review.
 Baseline: Phase 1N-J PR #42 squash-merged to main at ba3ae7a; 647 M5 tests previously passed.
 
 ## Scope
@@ -76,6 +76,51 @@ prints original IPv6 and link-layer values to the local terminal.
 Do not commit or share raw private PCAPs, MACs or IPv6 addresses.
 An empty local capture is not a parser failure; synthetic fixtures
 exercise supported messages deterministically.
+
+## M5 acceptance: automated regressions and passive captures
+
+The developer reported full results from their M5 MacBook Air,
+Python 3.14.6 / pytest 9.1.1:
+
+- Focused NDP tests: **64 passed in 0.08s**.
+- Full regression suite: **711 passed in 3.96s**.
+- Stage 1 added 64 passing tests beyond the previous baseline of 647.
+
+They also replayed two locally held, authorized PCAPNG files via the
+new Stage 1 command using `--summary-only`, with no decode errors:
+
+| Capture interface | Frames | NS | NA | DAD | Decode errors |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| en0 (Wi-Fi) | 508 | 32 | 32 | 0 | 0 |
+| en5 (Ethernet) | 3,918 | 2 | 2 | 0 | 0 |
+
+A private aggregate-only review of the uploaded PCAPNGs found
+approximately 181 seconds of en0 traffic versus 36 seconds on en5,
+with 8 distinct NS/NA target addresses on en0 and 2 on en5.
+These durations are not controlled or equivalent capture windows;
+packet totals alone must not be treated as interface traffic
+performance comparisons.
+
+Crucial future Stage 2 boundary: all 34 observed Neighbor
+Solicitations included exactly one-unit **Source Link-Layer Address**
+options, but **Target Link-Layer Address** options appeared in only
+one of the 32 en0 Neighbor Advertisements and none of the two en5
+Neighbor Advertisements. An NA without an explicit TLLA option
+must not be treated as a verified target-to-MAC association.
+The NS SLLA refers to the **soliciting source IPv6 address**, not
+the NS target. Observations remain separate from device identity.
+
+At least one Router Advertisement was also present on each interface
+in these captures. Type 134 is correctly outside the Stage 1
+NS/NA decoder scope and is deferred to a later milestone.
+
+**Acceptance:** Focused and full regressions, synthetic replay and
+both real-interface replays passed. Ready for owner review and
+squash merge. Stage 1 does not introduce live NDP map state or
+browser links.
+
+No raw PCAPs, private IPs, MAC addresses, hostnames or screenshots
+were committed to this public repository.
 
 ## Deferred
 
