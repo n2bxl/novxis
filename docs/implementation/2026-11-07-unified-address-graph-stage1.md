@@ -1,7 +1,7 @@
 # Phase 1N-L Stage 1: Pure Unified Address Evidence Projection
 
 **Date:** 2026-11-07
-**Status:** Implemented in a draft feature branch; M5 focused/full regression tests pending
+**Status:** M5 focused/full regression accepted; ready for owner PR review
 **Baseline:** 794 passing tests reported on the M5 after Phase 1N-K Stage 3
 
 ## Scope delivered
@@ -108,8 +108,17 @@ python -m pytest tests/views/test_unified_address_graph.py -q
 python -m pytest
 ~~~
 
-The latest prior result was **794 passed**, not a test result for
-this branch. The assistant did not run the M5 Python suite.
+**M5 acceptance reported on 2026-11-07:**
+
+- Focused: `python -m pytest tests/views/test_unified_address_graph.py -q` → **55 passed in 0.06s**.
+- Full: `python -m pytest` → **849 passed in 4.15s** on macOS, Python 3.14.6, pytest 9.1.1.
+- Full test growth: **794 → 849**, with no reported failures.
+
+The developer executed both commands on the Stage 1 feature branch.
+The results verify the evidence-projection tests and existing
+regression suite, **not** a new browser visualization or physical
+network validation. Stage 2 and Stage 3 remain deferred.
+No private network identifiers or raw captures were committed.
 
 ## Deferred stages
 
