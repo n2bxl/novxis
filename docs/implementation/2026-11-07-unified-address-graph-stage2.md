@@ -121,6 +121,42 @@ canvas**; the new node/edge visualization and edge inspector belong
 to Stage 3. Any live capture observations should remain private.
 No packet contents or personal IP/MAC values belong in public PR docs.
 
+## Initial private en5 live observation (2026-11-07)
+
+The developer supplied a private Safari screen recording of an
+authorized combined capture on Ethernet interface `en5`. The recording
+shows an **ended** ARP + mDNS + NDP capture and confirms that the
+existing browser workflow remains usable; it does **not** display
+the new `unified_address_graph` JSON payload or prove its edge
+serialization yet. No recording, raw capture, device identifiers,
+IP addresses, MAC addresses, or private service names are committed.
+
+Sanitized visible totals from the recording:
+
+- **ARP:** 26 legacy ARP address nodes, 13 sender claims, 61 binding
+  updates; original ARP canvas, selection and Inspector still present.
+- **mDNS:** 134 messages; the Services sidebar continues to distinguish
+  address matches from records lacking same-interface evidence.
+- **NDP:** 24 NS/NA messages (**16 NS**, **8 NA**, of which **2** are
+  DAD probes); **4 retained option-backed** claims,
+  **7 unlinked observations**, **0 multiple-LLA address conflicts**
+  reported by the sidebar.
+- A single MAC appeared independently in an IPv4 ARP sender claim
+  and an IPv6 NS source-SLLA observation on `en5`.
+  A DAD target mentioning a different IPv6 address remained
+  an *unlinked tentative observation*, not an IPv6-to-MAC claim.
+
+These are **UI field observations**, not a new test-suite result
+and not proof of physical-host identity. The recording does not
+show the new JSON graph field, cross-session UUID isolation,
+truncation branches, synthetic error handling or the full
+Python regression suite.
+
+**Still pending for Stage 2 acceptance:** focused and full
+M5 pytest results, plus inspection of `/api/graph`'s additive
+`unified_address_graph` field (node/edge types and counts).
+Keep the PR in draft until those are confirmed.
+
 ## Deferred
 
 - Visual unified canvas mode, selection and edge inspector (Stage 3).
