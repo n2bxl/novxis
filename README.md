@@ -90,7 +90,7 @@ assembled from *separate mDNS response packets*, not only records
 co-observed inside one response. This is an explicitly labeled,
 opt-in extension to the existing passive ARP + mDNS capture.
 
-It **reuses** the bounded \`MDNSServiceReconciliation\` protocol state in
+It **reuses** the bounded `MDNSServiceReconciliation` protocol state in
 the privileged capture helper. The typed original packet objects and
 TXT contents remain there. Only compact service/target/address summaries,
 individual capture timestamps, record TTLs, and their distinct
@@ -106,8 +106,9 @@ graph links are introduced. The optional IPv4-to-existing-ARP address
 navigation remains unchanged.
 
 Each joined SRV or address retains its **own original observed time**
-and TTL. TTL-zero withdrawal and expiry retract a prior joined claim;
-the status also changes when a record expires without any new packet.
+and TTL. TTL-zero withdrawal retracts the prior joined claim; expiry
+marks the corresponding record and relationship chain as no longer
+fresh, even without any new packets.
 The original ARP-only stream and offline sanitized PCAP mode stay
 unchanged.
 
