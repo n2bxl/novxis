@@ -13,6 +13,7 @@ from typing import TextIO
 from novxis.state.arp import ARPBinding
 from novxis.views.arp_address_map import project_arp_address_map
 from novxis.views.subnet_evidence import project_subnet_evidence
+from novxis.views.mdns_arp_crossref import cross_reference_mdns_arp
 from novxis.web.graph_data import serialize_arp_snapshot
 from novxis.web.mdns_live import LiveMDNSState
 
@@ -221,7 +222,9 @@ class LiveARPGraphState:
         )
         result["graph_revision"] = graph_revision
         if mdns_evidence is not None:
-            result["mdns_evidence"] = mdns_evidence
+            result["mdns_evidence"] = cross_reference_mdns_arp(
+                mdns_evidence, result["nodes"],
+            )
         if context is not None:
             result["host_context"] = context
             subnet = project_subnet_evidence(

@@ -83,6 +83,60 @@ but not across browser reloads; no changes are written to network state.
 See [the layout milestone](docs/implementation/2026-11-02-2d-relationship-aware-layout.md)
 for behavior, limitations and acceptance.
 
+## Phase 1N-I: Same-Response DNS-SD Target and Address Evidence (Draft)
+
+The Services tab can now display **PTR → SRV target/port → A/AAAA**
+relationships already supported by NOVXIS's mDNS projector, without
+creating verified hosts or new graph edges. These relationships are
+**restricted to the same mDNS response packet** as their PTR service
+advertisement. Cross-response reconciliation remains a separate,
+explicit future milestone.
+
+Each record retains its own TTL freshness. An SRV or A/AAAA record can
+be expired even when its PTR remains fresh, and the UI labels the
+complete chain as fresh only when every constituent record is fresh.
+If a subsequent PTR-bearing response omits an earlier target/address,
+the current live preview intentionally drops that target detail rather
+than assuming it remains associated.
+
+A service A-record IP may offer **Inspect independent ARP address** only
+when the same capture interface independently observed the exact
+IPv4 protocol address via ARP. This is an evidence navigation shortcut,
+not an assertion of device identity, connectivity, a verified service,
+or proof that the mDNS advertisement and ARP claim came from the same
+physical endpoint. An AAAA address has no ARP cross-reference.
+
+The capture helper still uses the same passive, bounded UDP/5353 and
+ARP filter, the same loopback-only browser and unprivileged consumer,
+and no active probes. SRV target names/ports and advertised IPs are
+bounded metadata; raw packet bytes and TXT values remain excluded from
+the privileged-to-browser pipe. Oversized or omitted relationships
+are labeled as truncated instead of silently implying completeness.
+
+To test this branch:
+
+```bash
+git fetch origin
+git switch --track origin/ai/phase1n-service-address-links-2026-11-07
+python -m pytest tests/cli/test_mdns_address_links.py tests/web -q
+python -m pytest
+```
+
+Run the existing combined live capture:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.network_live_stream en5 --count 2000 --timeout 120 \
+  | .venv/bin/python -m novxis.cli.web_live
+```
+
+Then open http://127.0.0.1:8765/ and inspect Services.
+The interface \`en5\` is an example: choose the authorized connected
+interface. The current network may advertise PTRs without co-located
+SRV/A/AAAA, so a service with no target details is a valid finding.
+
+See [Phase 1N-I service/address acceptance](docs/implementation/2026-11-06-mdns-service-address-evidence.md)
+for protocol provenance, limitations, testing and safety requirements.
+
 ## Phase 1N-H: Passive Live mDNS + ARP Browser Summary (Draft)
 
 The local 2D reference debugger can now **opt in** to a combined capture

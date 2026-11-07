@@ -86,6 +86,7 @@ def test_real_pipeline_sends_only_bounded_mdns_response_metadata(family):
         "service_type": "_demo._tcp.local",
         "instance": "Node._demo._tcp.local",
         "ttl": 120,
+        "targets": [],
     }]
     assert "payload" not in msg and "txt" not in msg
     assert len(json.dumps(msg)) < MAX_LINE

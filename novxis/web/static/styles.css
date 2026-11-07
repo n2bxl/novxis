@@ -157,3 +157,25 @@ h2 { font-size: 18px; line-height: 1.35; margin-top: 10px; overflow-wrap: anywhe
   line-height: 1.45; color: var(--muted); }
 .mdns-limitation { margin-top: 15px; font-size: 11px;
   line-height: 1.55; color: var(--muted); }
+
+/* A service advertisement is not a physical link or endpoint inventory. */
+.mdns-target-claim {
+  border-left: 2px solid var(--border);
+  margin: 10px 0 4px 4px;
+  padding: 5px 0 5px 10px;
+}
+.mdns-target-address {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.mdns-arp-link {
+  justify-self: start;
+  padding: 5px 8px;
+}
+.mdns-address-unmatched {
+  color: var(--muted);
+  font-size: 10px;
+}
