@@ -233,7 +233,12 @@ class NDNeighborEvidenceState:
                 self.omitted_claims += 1
             return value
 
-        key = (interface, msg.source, msg.target, reason)
+        # Preserve differing Ethernet frame senders as distinct packet
+        # provenance, without treating the sender as the target's LLA.
+        key = (
+            interface, msg.source, msg.target, reason,
+            observed.ethernet.source,
+        )
         prev = self._unlinked.get(key)
         latest = (
             observed if prev is None or at >= prev.last_seen
