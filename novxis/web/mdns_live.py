@@ -46,11 +46,11 @@ class LiveMDNSState:
     def observe(self, message: dict, interface: str) -> None:
         if message.get("interface") != interface:
             raise ValueError("mDNS observation outside capture interface")
-        family = message.get("ip_version")
+        ip_family = message.get("ip_version")
         role = message.get("role")
         count = message.get("advertisement_count")
         ads = message.get("advertisements")
-        if type(family) is not int or family not in (4, 6):
+        if type(ip_family) is not int or ip_family not in (4, 6):
             raise ValueError("unsupported mDNS IP version")
         if role not in ("query", "response"):
             raise ValueError("invalid mDNS role")
@@ -134,8 +134,8 @@ class LiveMDNSState:
         self.messages += 1
         self.queries += int(role == "query")
         self.responses += int(role == "response")
-        self.ipv4 += int(family == 4)
-        self.ipv6 += int(family == 6)
+        self.ipv4 += int(ip_family == 4)
+        self.ipv6 += int(ip_family == 6)
         self.advertisement_count += count
         self.omitted_advertisements += count - len(normalized)
         if count != len(normalized) or relation_omissions:
@@ -271,6 +271,33 @@ class LiveMDNSState:
         entry["reconciled_as_of"] = snapshot_at
         if omitted:
             self.truncated = True
+        return True
+
+    def clear_reconciliation(self, message: dict, interface: str) -> bool:
+        """Explicitly retract a previously joined overlay when it is invalid."""
+        if message.get("interface") != interface:
+            raise ValueError("reconciliation clear outside capture interface")
+        service_type = message.get("service_type")
+        instance = message.get("instance")
+        if not all(isinstance(value, str)
+                   and 1 <= len(value) <= MAX_NAME_LENGTH
+                   and value.isprintable()
+                   for value in (service_type, instance)):
+            raise ValueError("invalid reconciliation clear name")
+        ptr_at = _time(message.get("ptr_observed_at"))
+        as_of = _time(message.get("as_of"))
+        if ptr_at > as_of:
+            raise ValueError("invalid reconciliation clear chronology")
+        key = (interface, service_type.lower(), instance.lower())
+        entry = self._instances.get(key)
+        if entry is None or entry["last_seen"] != ptr_at:
+            return False
+        if as_of < entry.get("reconciled_as_of", Decimal(0)):
+            return False
+        if "reconciled_targets" not in entry:
+            return False
+        del entry["reconciled_targets"]
+        del entry["reconciled_as_of"]
         return True
 
     def decode_error(self) -> None:
