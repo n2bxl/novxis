@@ -83,6 +83,35 @@ but not across browser reloads; no changes are written to network state.
 See [the layout milestone](docs/implementation/2026-11-02-2d-relationship-aware-layout.md)
 for behavior, limitations and acceptance.
 
+## Phase 1N-K: Passive IPv6 Neighbor Discovery Decoder (Stage 1 Draft)
+
+Stage 1 adds a bounded, Scapy-independent **ICMPv6 NS (135) / NA (136)**
+wire decoder, and a typed Ethernet II → IPv6 → ICMPv6 pipeline. It
+checks RFC 4861's hop limit, target validity, code, DAD, NA multicast
+rule, option boundaries, and the RFC 4443 IPv6 pseudoheader checksum.
+Source/target link-layer options are distinguished from the Ethernet
+source; DAD targets are tentative, never device identity claims.
+Router, Solicited and Override flags and unknown options are retained.
+
+The new local, offline replay command summarizes NS/NA/DAD from
+PCAP/PCAPNG. No active probes, live NDP state, DNS-SD AAAA joins or
+2D graph changes belong in Stage 1.
+
+~~~bash
+python -m novxis.cli.ndp_replay /path/to/local.pcap --summary-only
+~~~
+
+M5 test handoff:
+
+~~~bash
+git fetch origin
+git switch --track origin/ai/phase1n-k-icmpv6-ndp-wire-2026-11-06
+python -m pytest tests/protocols/test_icmpv6_nd.py tests/pipeline/test_ndp_pipeline.py tests/cli/test_ndp_replay.py -q
+python -m pytest
+~~~
+
+See [Phase 1N-K Stage 1 Handoff](docs/implementation/2026-11-06-icmpv6-neighbor-discovery-stage1.md).
+
 ## Phase 1N-J: Cross-Message DNS-SD Evidence in Live Services (Draft)
 
 The Services tab can now show **PTR → SRV → A/AAAA** relationships
