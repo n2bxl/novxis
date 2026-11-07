@@ -142,6 +142,7 @@ def build_handler(emit):
                     if emitted >= 4:
                         omitted = True
                         break
+                    event["as_of"] = str(observed.timestamp)
                     emit(event)
                     emitted += 1
                 if omitted:
