@@ -7,13 +7,16 @@ NA TLLA belongs to the advertised *target*, not necessarily its sender.
 A DAD NS target is tentative. Missing/ambiguous LLA remains unlinked.
 """
 
+from __future__ import annotations
+
 from collections import deque
 from dataclasses import dataclass
 from decimal import Decimal
 from ipaddress import IPv6Address
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
-from novxis.pipeline.ndp import NeighborDiscoveryObserved
+if TYPE_CHECKING:
+    from novxis.pipeline.ndp import NeighborDiscoveryObserved
 from novxis.protocols.icmpv6_nd import (
     NeighborAdvertisement, NeighborSolicitation,
     SOURCE_LINK_LAYER_ADDRESS, TARGET_LINK_LAYER_ADDRESS,
@@ -148,6 +151,9 @@ class NDNeighborEvidenceState:
         self, observed: NeighborDiscoveryObserved,
     ) -> NDAddressClaim | NDUnlinkedObservation:
         """Store a Stage 1 verified NS/NA; return its updated typed evidence."""
+        # Lazy import avoids a state <-> pipeline package import cycle.
+        from novxis.pipeline.ndp import NeighborDiscoveryObserved
+
         if not isinstance(observed, NeighborDiscoveryObserved):
             raise TypeError("expected verified NeighborDiscoveryObserved")
         at = observed.captured.timestamp
