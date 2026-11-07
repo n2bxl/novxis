@@ -13,6 +13,8 @@ from novxis.cli.arp_live_stream import build_handler as build_arp_handler
 from novxis.cli.mdns_replay import _DECODE_ERRORS as _MDNS_ERRORS
 from novxis.pipeline import ARPStatePipeline
 from novxis.pipeline.mdns import MDNSEventPipeline
+from novxis.state.mdns_reconciliation import MDNSServiceReconciliation
+from novxis.views.mdns_live_reconciliation import project_live_reconciliation
 from novxis.views.mdns_services import project_dnssd_advertisements
 
 MAX_ADS_PER_MESSAGE = 6
@@ -112,6 +114,13 @@ def build_handler(emit):
     """Demultiplex one capture stream into existing ARP/mDNS interpreters."""
     arp_handler = build_arp_handler(ARPStatePipeline(), emit)
     mdns_pipeline = MDNSEventPipeline()
+    # The typed reconciliation engine and its original packet objects stay
+    # inside the capture process. The browser receives bounded metadata only.
+    reconciliation = MDNSServiceReconciliation(
+        max_instances=128, max_records_per_instance=16,
+        max_history=256, max_unassociated=256,
+    )
+    published: dict[tuple[str, str, str], str] = {}
 
     def on_frame(frame):
         arp_handler(frame)
@@ -120,7 +129,49 @@ def build_handler(emit):
             if observed is None:
                 return
             advertisements = project_dnssd_advertisements(observed)
+            reconciliation.observe_message(observed, advertisements)
             emit(mdns_message(observed, advertisements))
+            if observed.message.is_response:
+                emitted = 0
+                omitted = False
+                for item in reconciliation.snapshots(observed.timestamp):
+                    snap = item.snapshot
+                    if snap.interface != frame.interface:
+                        continue
+                    key = (snap.interface, snap.service_type.text.lower(),
+                           snap.instance.text.lower())
+                    event = project_live_reconciliation(item)
+                    signature = (
+                        json.dumps(event, sort_keys=True, ensure_ascii=True)
+                        if event is not None else None
+                    )
+                    if published.get(key) == signature:
+                        continue
+                    if event is None and key not in published:
+                        continue
+                    if emitted >= 4:
+                        omitted = True
+                        continue
+                    if event is None:
+                        # A goodbye/expiration invalidated the previously
+                        # published relationship. Explicitly retract it.
+                        emit({
+                            "type": "mdns_reconciliation_clear",
+                            "interface": snap.interface,
+                            "service_type": snap.service_type.text,
+                            "instance": snap.instance.text,
+                            "ptr_observed_at": str(snap.last_seen),
+                            "as_of": str(observed.timestamp),
+                        })
+                        del published[key]
+                    else:
+                        event["as_of"] = str(observed.timestamp)
+                        emit(event)
+                        published[key] = signature
+                    emitted += 1
+                if omitted:
+                    emit({"type": "mdns_reconciliation_omitted",
+                          "interface": frame.interface})
         except _MDNS_ERRORS:
             # A malformed mDNS candidate must not abort the ARP session.
             emit({"type": "mdns_decode_error", "interface": frame.interface})

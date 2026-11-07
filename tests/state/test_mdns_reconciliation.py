@@ -287,3 +287,220 @@ def test_malformed_later_rr_does_not_partially_commit_earlier_packet_records():
     with pytest.raises(DNSParseError):
         state.observe_message(source)
     assert state.unassociated_count == 0
+
+
+# Phase 1N-J: full capture helper -> sanitized pipe -> live browser state.
+# Reuse this module's synthetic byte-level DNS fixtures to exercise the
+# existing MDNSServiceReconciliation rather than duplicating its parser.
+
+def _live_messages(*frames):
+    from novxis.cli.network_live_stream import build_handler
+
+    messages = []
+    handler = build_handler(messages.append)
+    for frame in frames:
+        handler(frame)
+    return messages
+
+
+def _live_graph(events, now="110"):
+    from novxis.web.live_state import LiveARPGraphState
+
+    state = LiveARPGraphState(clock=lambda: float(now))
+    state.ingest({
+        "type": "session", "interface": "en5",
+        "protocols": ["arp", "mdns"],
+    })
+    for event in events:
+        state.ingest(event)
+    return state
+
+
+def test_live_reconciler_joins_standalone_srv_and_a_after_ptr():
+    events = _live_messages(
+        _frame("100", (_ptr(),)),
+        _frame("101", (_srv(ttl=300),)),
+        _frame("102", (_addr(ttl=30),), family=6),
+    )
+    assert sum(event["type"] == "mdns" for event in events) == 3
+    updates = [e for e in events if e["type"] == "mdns_reconciliation"]
+    assert len(updates) == 2
+    latest = updates[-1]
+    assert latest["interface"] == "en5"
+    assert latest["service_type"] == "_demo._tcp.local"
+    assert latest["instance"] == "Studio._demo._tcp.local"
+    assert latest["ptr_observed_at"] == "100"
+    assert latest["as_of"] == "102"
+    (target,) = latest["targets"]
+    assert target["target"] == "host.local"
+    assert target["port"] == 4070
+    assert target["observed_at"] == "101"
+    assert target["origin"] == "cross-mdns-response"
+    assert target["addresses"] == [{
+        "address": "192.0.2.25", "family": 4, "ttl": 30,
+        "observed_at": "102", "origin": "cross-mdns-response",
+    }]
+    import json
+    from novxis.web.live_state import MAX_LINE
+    assert all(len(json.dumps(e)) < MAX_LINE for e in events)
+    assert all("payload" not in e and "txt" not in e for e in events)
+
+    state = _live_graph(events, now="110")
+    snap = state.snapshot()
+    mdns = snap["mdns_evidence"]
+    assert mdns["messages"] == 3
+    assert mdns["responses"] == 3
+    assert mdns["ptr_advertisements"] == 1
+    assert mdns["retained_instances"] == 1
+    (srv,) = mdns["services"][0]["targets"]
+    assert srv["source"] == "cross-mdns-response"
+    assert srv["observed_at"] == "101"
+    assert srv["fresh"] and srv["path_fresh"]
+    assert srv["addresses"][0]["source"] == "cross-mdns-response"
+    assert srv["addresses"][0]["observed_at"] == "102"
+    assert srv["addresses"][0]["path_fresh"]
+    assert snap["nodes"] == [] and snap["claims"] == []
+
+
+def test_live_reconciler_handles_orphans_before_ptr_with_same_interface():
+    events = _live_messages(
+        _frame("80", (_addr(ttl=90),)),
+        _frame("90", (_srv(ttl=200),)),
+        _frame("100", (_ptr(),)),
+    )
+    updates = [e for e in events if e["type"] == "mdns_reconciliation"]
+    assert len(updates) == 1
+    assert updates[0]["targets"][0]["observed_at"] == "90"
+    assert updates[0]["targets"][0]["addresses"][0]["observed_at"] == "80"
+    state = _live_graph(events, now="101")
+    (target,) = state.snapshot()["mdns_evidence"]["services"][0]["targets"]
+    assert target["path_fresh"]
+    assert target["addresses"][0]["path_fresh"]
+
+
+def test_live_reconciler_cross_interface_orphan_cannot_attach():
+    events = _live_messages(
+        _frame("100", (_ptr(),), interface="en5"),
+        _frame("101", (_srv(),), interface="en0"),
+        _frame("102", (_addr(),), interface="en0"),
+    )
+    assert not any(e["type"] == "mdns_reconciliation" for e in events)
+
+
+def test_live_reconciler_does_not_join_standalone_query_known_answers():
+    events = _live_messages(
+        _frame("100", (_ptr(),)),
+        _frame("101", (_srv(),), response=False),
+        _frame("102", (_addr(),), response=False),
+    )
+    assert not any(e["type"] == "mdns_reconciliation" for e in events)
+
+
+def test_live_reconciler_clears_withdrawn_srv_instead_of_leaving_stale_link():
+    events = _live_messages(
+        _frame("100", (_ptr(),)),
+        _frame("101", (_srv(ttl=300),)),
+        _frame("110", (_srv(ttl=0),)),
+    )
+    assert sum(e["type"] == "mdns_reconciliation" for e in events) == 1
+    clears = [e for e in events if e["type"] == "mdns_reconciliation_clear"]
+    assert len(clears) == 1
+    state = _live_graph(events, now="110")
+    service = state.snapshot()["mdns_evidence"]["services"][0]
+    assert service["fresh"]
+    assert service["targets"] == []
+
+
+def test_live_reconciler_independent_srv_and_a_ttls_expire_without_packets():
+    now = [103]
+    events = _live_messages(
+        _frame("100", (_ptr(),)),
+        _frame("101", (_srv(ttl=120),)),
+        _frame("102", (_addr(ttl=10),)),
+    )
+    from novxis.web.live_state import LiveARPGraphState
+    state = LiveARPGraphState(clock=lambda: float(now[0]))
+    state.ingest({"type": "session", "interface": "en5",
+                  "protocols": ["arp", "mdns"]})
+    for event in events:
+        state.ingest(event)
+    first = state.snapshot()
+    srv = first["mdns_evidence"]["services"][0]["targets"][0]
+    assert srv["path_fresh"]
+    assert srv["addresses"][0]["path_fresh"]
+    revision, graph_revision = first["revision"], first["graph_revision"]
+
+    now[0] = 113
+    second = state.snapshot()
+    srv = second["mdns_evidence"]["services"][0]["targets"][0]
+    assert srv["fresh"]
+    assert not srv["addresses"][0]["fresh"]
+    assert not srv["addresses"][0]["path_fresh"]
+    assert second["revision"] > revision
+    assert second["graph_revision"] == graph_revision
+
+    now[0] = 222
+    third = state.snapshot()
+    srv = third["mdns_evidence"]["services"][0]["targets"][0]
+    assert not srv["fresh"]
+    assert not srv["path_fresh"]
+    assert third["mdns_evidence"]["services"][0]["fresh"]
+
+
+def test_reconciliation_untrusted_message_is_atomic_and_cannot_create_ptr():
+    from copy import deepcopy
+    from novxis.web.live_state import LiveARPGraphState
+
+    events = _live_messages(
+        _frame("100", (_ptr(),)),
+        _frame("101", (_srv(),)),
+    )
+    update = next(e for e in events if e["type"] == "mdns_reconciliation")
+    state = _live_graph(events, now="102")
+    before = deepcopy(state.snapshot()["mdns_evidence"])
+    bad = dict(update)
+    bad["targets"] = [dict(update["targets"][0], port=True)]
+    with pytest.raises(ValueError):
+        state.ingest(bad)
+    assert state.snapshot()["mdns_evidence"] == before
+
+    other = LiveARPGraphState(clock=lambda: 102)
+    other.ingest({"type": "session", "interface": "en5",
+                  "protocols": ["arp", "mdns"]})
+    assert not other._mdns.observe_reconciliation(update, "en5")
+    assert not other.snapshot()["mdns_evidence"]["services"]
+
+
+def test_reconciliation_rejects_wrong_interface_and_outdated_ptr_epoch():
+    events = _live_messages(
+        _frame("100", (_ptr(),)), _frame("101", (_srv(),)),
+    )
+    state = _live_graph(events, now="102")
+    update = next(e for e in events if e["type"] == "mdns_reconciliation")
+    with pytest.raises(ValueError):
+        state.ingest({**update, "interface": "en0"})
+    old = dict(update)
+    old["ptr_observed_at"] = "90"
+    before = state.snapshot()["revision"]
+    state.ingest(old)
+    assert state.snapshot()["revision"] == before
+
+
+def test_ipv6_mdns_packet_with_ipv4_advertised_a_keeps_correct_transport_count():
+    from novxis.web.mdns_live import LiveMDNSState
+    state = LiveMDNSState()
+    state.observe({
+        "interface": "en5", "ip_version": 6, "role": "response",
+        "observed_at": "100", "advertisement_count": 1,
+        "advertisements": [{
+            "service_type": "_demo._tcp.local",
+            "instance": "Studio._demo._tcp.local", "ttl": 300,
+            "targets": [{
+                "target": "host.local", "port": 4070, "ttl": 120,
+                "addresses": [{"address": "192.0.2.25", "family": 4, "ttl": 30}],
+            }],
+        }],
+    }, "en5")
+    snap, _ = state.snapshot(Decimal("100"))
+    assert snap["ipv4"] == 0
+    assert snap["ipv6"] == 1

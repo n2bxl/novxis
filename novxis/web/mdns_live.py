@@ -46,11 +46,11 @@ class LiveMDNSState:
     def observe(self, message: dict, interface: str) -> None:
         if message.get("interface") != interface:
             raise ValueError("mDNS observation outside capture interface")
-        family = message.get("ip_version")
+        ip_family = message.get("ip_version")
         role = message.get("role")
         count = message.get("advertisement_count")
         ads = message.get("advertisements")
-        if type(family) is not int or family not in (4, 6):
+        if type(ip_family) is not int or ip_family not in (4, 6):
             raise ValueError("unsupported mDNS IP version")
         if role not in ("query", "response"):
             raise ValueError("invalid mDNS role")
@@ -134,8 +134,8 @@ class LiveMDNSState:
         self.messages += 1
         self.queries += int(role == "query")
         self.responses += int(role == "response")
-        self.ipv4 += int(family == 4)
-        self.ipv6 += int(family == 6)
+        self.ipv4 += int(ip_family == 4)
+        self.ipv6 += int(ip_family == 6)
         self.advertisement_count += count
         self.omitted_advertisements += count - len(normalized)
         if count != len(normalized) or relation_omissions:
@@ -160,6 +160,146 @@ class LiveMDNSState:
                 "observations": (previous["observations"] if previous else 0) + 1,
             }
 
+    def observe_reconciliation(self, message: dict, interface: str) -> bool:
+        """Validate then overlay provenance-preserving cross-response targets.
+
+        Never create a PTR service instance from SRV/A/AAAA alone. The PTR
+        epoch must match a previously accepted advertisement in this
+        capture session. No old/later orphan can revive a stale PTR.
+        """
+        if message.get("interface") != interface:
+            raise ValueError("reconciliation outside capture interface")
+        service_type = message.get("service_type")
+        instance = message.get("instance")
+        if not all(isinstance(value, str)
+                   and 1 <= len(value) <= MAX_NAME_LENGTH
+                   and value.isprintable()
+                   for value in (service_type, instance)):
+            raise ValueError("invalid reconciliation service identity")
+        ptr_at = _time(message.get("ptr_observed_at"))
+        snapshot_at = _time(message.get("as_of"))
+        if ptr_at > snapshot_at:
+            raise ValueError("reconciliation PTR after capture time")
+        omitted = message.get("relationships_omitted", False)
+        if type(omitted) is not bool:
+            raise ValueError("invalid reconciliation truncation marker")
+        raw_targets = message.get("targets")
+        if not isinstance(raw_targets, list) or not (
+            1 <= len(raw_targets) <= MAX_SERVICE_TARGETS
+        ):
+            raise ValueError("invalid reconciled target list")
+
+        targets = []
+        has_cross_response = False
+        for raw_target in raw_targets:
+            if not isinstance(raw_target, dict):
+                raise ValueError("invalid reconciled SRV target")
+            name = raw_target.get("target")
+            port = raw_target.get("port")
+            ttl = raw_target.get("ttl")
+            observed_at = _time(raw_target.get("observed_at"))
+            origin = raw_target.get("origin")
+            if not isinstance(name, str) or not (
+                1 <= len(name) <= MAX_NAME_LENGTH and name.isprintable()
+            ):
+                raise ValueError("invalid reconciled SRV name")
+            if type(port) is not int or not 0 <= port <= 65535:
+                raise ValueError("invalid reconciled SRV port")
+            if type(ttl) is not int or not 0 <= ttl <= 0xFFFFFFFF:
+                raise ValueError("invalid reconciled SRV TTL")
+            if observed_at > snapshot_at or origin not in (
+                "same-mdns-response", "cross-mdns-response",
+            ):
+                raise ValueError("invalid SRV record provenance")
+            if origin == "cross-mdns-response":
+                has_cross_response = True
+            raw_addresses = raw_target.get("addresses")
+            if not isinstance(raw_addresses, list) or (
+                len(raw_addresses) > MAX_TARGET_ADDRESSES
+            ):
+                raise ValueError("invalid reconciled A/AAAA list")
+            addresses = []
+            for item in raw_addresses:
+                if not isinstance(item, dict):
+                    raise ValueError("invalid reconciled address claim")
+                raw = item.get("address")
+                family = item.get("family")
+                addr_ttl = item.get("ttl")
+                addr_at = _time(item.get("observed_at"))
+                addr_origin = item.get("origin")
+                if not isinstance(raw, str) or len(raw) > 45:
+                    raise ValueError("invalid reconciled A/AAAA address")
+                if type(family) is not int or family not in (4, 6):
+                    raise ValueError("invalid reconciled address family")
+                if type(addr_ttl) is not int or not 0 <= addr_ttl <= 0xFFFFFFFF:
+                    raise ValueError("invalid reconciled A/AAAA TTL")
+                if addr_at > snapshot_at or addr_origin not in (
+                    "same-mdns-response", "cross-mdns-response",
+                ):
+                    raise ValueError("invalid address record provenance")
+                try:
+                    parsed = ip_address(raw)
+                except ValueError as exc:
+                    raise ValueError("invalid reconciled IP address") from exc
+                if parsed.version != family or str(parsed) != raw:
+                    raise ValueError("mismatched reconciled address family")
+                if addr_origin == "cross-mdns-response":
+                    has_cross_response = True
+                addresses.append({
+                    "address": raw, "family": family,
+                    "ttl": addr_ttl, "observed_at": addr_at,
+                    "origin": addr_origin,
+                })
+            targets.append({
+                "target": name, "port": port, "ttl": ttl,
+                "observed_at": observed_at, "origin": origin,
+                "addresses": addresses,
+            })
+        if not has_cross_response:
+            raise ValueError("no cross-message evidence in reconciliation")
+
+        key = (interface, service_type.lower(), instance.lower())
+        entry = self._instances.get(key)
+        if entry is None or entry["last_seen"] != ptr_at:
+            # Never create a service without a PTR or attach an outdated PTR
+            # epoch to a newer instance. A bounded service cap may omit PTRs.
+            return False
+        previous_at = entry.get("reconciled_as_of")
+        if previous_at is not None and snapshot_at < previous_at:
+            return False
+        entry["reconciled_targets"] = targets
+        entry["reconciled_as_of"] = snapshot_at
+        if omitted:
+            self.truncated = True
+        return True
+
+    def clear_reconciliation(self, message: dict, interface: str) -> bool:
+        """Explicitly retract a previously joined overlay when it is invalid."""
+        if message.get("interface") != interface:
+            raise ValueError("reconciliation clear outside capture interface")
+        service_type = message.get("service_type")
+        instance = message.get("instance")
+        if not all(isinstance(value, str)
+                   and 1 <= len(value) <= MAX_NAME_LENGTH
+                   and value.isprintable()
+                   for value in (service_type, instance)):
+            raise ValueError("invalid reconciliation clear name")
+        ptr_at = _time(message.get("ptr_observed_at"))
+        as_of = _time(message.get("as_of"))
+        if ptr_at > as_of:
+            raise ValueError("invalid reconciliation clear chronology")
+        key = (interface, service_type.lower(), instance.lower())
+        entry = self._instances.get(key)
+        if entry is None or entry["last_seen"] != ptr_at:
+            return False
+        if as_of < entry.get("reconciled_as_of", Decimal(0)):
+            return False
+        if "reconciled_targets" not in entry:
+            return False
+        del entry["reconciled_targets"]
+        del entry["reconciled_as_of"]
+        return True
+
     def decode_error(self) -> None:
         self.decode_errors += 1
 
@@ -178,20 +318,24 @@ class LiveMDNSState:
             )
             targets = []
             target_signature = []
-            for target in entry["targets"]:
+            for target in entry.get("reconciled_targets", entry["targets"]):
+                target_at = target.get("observed_at", entry["last_seen"])
                 srv_fresh = target["ttl"] > 0 and (
-                    entry["last_seen"] <= at <
-                    entry["last_seen"] + Decimal(target["ttl"])
+                    target_at <= at <
+                    target_at + Decimal(target["ttl"])
                 )
                 addresses = []
                 address_signature = []
                 for rr in target["addresses"]:
+                    address_at = rr.get("observed_at", entry["last_seen"])
                     address_fresh = rr["ttl"] > 0 and (
-                        entry["last_seen"] <= at <
-                        entry["last_seen"] + Decimal(rr["ttl"])
+                        address_at <= at <
+                        address_at + Decimal(rr["ttl"])
                     )
                     addresses.append({
-                        **rr, "fresh": address_fresh,
+                        **rr, "observed_at": str(address_at),
+                        "fresh": address_fresh,
+                        "source": rr.get("origin", "same-mdns-response"),
                         "path_fresh": fresh and srv_fresh and address_fresh,
                     })
                     address_signature.append(address_fresh)
@@ -200,7 +344,8 @@ class LiveMDNSState:
                     "ttl_seconds": target["ttl"], "fresh": srv_fresh,
                     "path_fresh": fresh and srv_fresh,
                     "addresses": addresses,
-                    "source": "same-mdns-response",
+                    "observed_at": str(target_at),
+                    "source": target.get("origin", "same-mdns-response"),
                 })
                 target_signature.append((srv_fresh, tuple(address_signature)))
             instances.append({

@@ -342,12 +342,15 @@ function showMDNSEvidence(evidence) {
       label.textContent = "SRV target " + String(target.target) +
         " · port " + String(target.port) +
         " · TTL " + String(target.ttl_seconds) + "s" +
-        (target.path_fresh ? " · PTR+SRV fresh" : " · PTR/SRV path not fresh");
+        (target.path_fresh ? " · PTR+SRV fresh" : " · PTR/SRV path not fresh") +
+        (target.source === "cross-mdns-response"
+          ? " · joined across responses" : " · same response") +
+        " · observed " + String(target.observed_at || item.last_seen);
       claim.append(label);
       const addresses = Array.isArray(target.addresses) ? target.addresses : [];
       if (!addresses.length) {
         const absent = document.createElement("p");
-        absent.textContent = "No A/AAAA address was present in the same response.";
+        absent.textContent = "No matching A/AAAA address supported by observed responses.";
         claim.append(absent);
       }
       for (const address of addresses) {
@@ -357,7 +360,10 @@ function showMDNSEvidence(evidence) {
         summary.textContent = (address.family === 4 ? "A " : "AAAA ") +
           String(address.address) + " · TTL " +
           String(address.ttl) + "s" +
-          (address.path_fresh ? " · chain fresh" : " · chain not fresh");
+          (address.path_fresh ? " · chain fresh" : " · chain not fresh") +
+          (address.source === "cross-mdns-response"
+            ? " · joined across responses" : " · same response") +
+          " · observed " + String(address.observed_at || item.last_seen);
         line.append(summary);
         if (typeof address.arp_node_id === "string" && graph &&
             graph.nodes.some((node) => node.id === address.arp_node_id)) {
@@ -399,9 +405,10 @@ function showMDNSEvidence(evidence) {
   const note = document.createElement("p");
   note.className = "mdns-limitation";
   note.textContent = "PTR, SRV and A/AAAA records are independent packet claims. " +
-    "Only records linked within the same response appear here. " +
-    "An ARP address match is a separate address observation, not a verified " +
-    "device identity, physical link or running service.";
+    "Cross-response joins require fresh matching DNS owner names on the " +
+    "same capture interface; each record retains its own timestamp and TTL. " +
+    "An ARP address match is separate evidence, not a verified device " +
+    "identity, physical link or running service.";
   mdnsBody.append(note);
 }
 

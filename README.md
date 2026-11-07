@@ -83,6 +83,58 @@ but not across browser reloads; no changes are written to network state.
 See [the layout milestone](docs/implementation/2026-11-02-2d-relationship-aware-layout.md)
 for behavior, limitations and acceptance.
 
+## Phase 1N-J: Cross-Message DNS-SD Evidence in Live Services (Draft)
+
+The Services tab can now show **PTR → SRV → A/AAAA** relationships
+assembled from *separate mDNS response packets*, not only records
+co-observed inside one response. This is an explicitly labeled,
+opt-in extension to the existing passive ARP + mDNS capture.
+
+It **reuses** the bounded `MDNSServiceReconciliation` protocol state in
+the privileged capture helper. The typed original packet objects and
+TXT contents remain there. Only compact service/target/address summaries,
+individual capture timestamps, record TTLs, and their distinct
+same-response or cross-response provenance pass over the local NDJSON
+pipe. Queries and known answers do not create service advertisements.
+
+Cross-response joins require a **fresh service-type PTR**, the exact
+service-instance name for an SRV record, and an exact SRV target owner
+name for any associated A/AAAA record, all on the same capture
+interface. No source-IP heuristics, string similarity, device identity
+fusion, network connectivity assertions, active probes or extra
+graph links are introduced. The optional IPv4-to-existing-ARP address
+navigation remains unchanged.
+
+Each joined SRV or address retains its **own original observed time**
+and TTL. TTL-zero withdrawal retracts the prior joined claim; expiry
+marks the corresponding record and relationship chain as no longer
+fresh, even without any new packets.
+The original ARP-only stream and offline sanitized PCAP mode stay
+unchanged.
+
+Testing:
+
+```bash
+git fetch origin
+git switch --track origin/ai/phase1n-cross-message-dnssd-2026-11-07
+python -m pytest tests/state/test_mdns_reconciliation.py tests/web -q
+python -m pytest
+```
+
+Run the same bounded combined capture on your authorized interface:
+
+```bash
+sudo .venv/bin/python -m novxis.cli.network_live_stream en5 --count 2000 --timeout 120 \
+  | .venv/bin/python -m novxis.cli.web_live
+```
+
+Open http://127.0.0.1:8765/ and inspect **Services**. A separate
+SRV/A/AAAA message may or may not arrive during the capture; the
+synthetic tests cover the joins deterministically.
+
+See [Phase 1N-J: Cross-Response Service Evidence](docs/implementation/2026-11-07-live-mdns-cross-message-reconciliation.md)
+for evidence boundaries, validation, and known limitations.
+
 ## Phase 1N-I: Same-Response DNS-SD Target and Address Evidence (Draft)
 
 The Services tab can now display **PTR → SRV target/port → A/AAAA**
