@@ -1,7 +1,7 @@
 # Phase 1N-K Stage 2: Interface-Scoped IPv6 Neighbor Evidence
 
 Date: 2026-11-07
-Status: Draft implementation; M5 focused/full pytest and local PCAP replay pending.
+Status: M5 full regression and dual-interface PCAP state-replay accepted; ready for review.
 Baseline: PR #43 Stage 1 squash-merged to main (6cbc757); 711 passing M5 tests.
 
 ## Goal
@@ -126,6 +126,55 @@ Privacy: Never publish raw private PCAPs, device hostnames, MACs,
 IPv4/IPv6 addresses or source Ethernet captures to GitHub.
 Synthetic tests use documentation IPv6 and invented Ethernet
 addresses only.
+
+## M5 validation report: accepted Stage 2 evidence
+
+The developer reported the full `python -m pytest` result on their M5:
+**759 passed in 4.03 seconds**, with no failures. This is 48 more
+passing tests than the Stage 1 baseline of 711. The separate focused
+test output was not supplied; the full run exercises the added
+Stage 2 test modules.
+
+The developer also replayed two previously authorized local
+PCAPNGs through `novxis.cli.ndp_state_replay --summary-only`.
+The reported aggregate results were:
+
+| Interface | Frames | NDP messages | NS | NA | DAD | Errors |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| en0 | 508 | 64 | 32 | 32 | 0 | 0 |
+| en5 | 3,918 | 4 | 2 | 2 | 0 | 0 |
+
+| Retained evidence | en0 | en5 |
+| --- | ---: | ---: |
+| Total packet claims | 7 | 2 |
+| NS source SLLA claims | 6 | 2 |
+| NA target TLLA claims | 1 | 0 |
+| Distinct claim addresses | 7 | 2 |
+| Multiple-LLA addresses | 0 | 0 |
+| Unlinked evidence entries | 9 | 2 |
+| Reason for every unlinked entry | na_missing_tlla | na_missing_tlla |
+| Omitted claims / unlinked entries | 0 / 0 | 0 / 0 |
+| History truncated | False | False |
+
+The NDP message counts match the earlier Stage 1 replays, providing
+a useful regression check. Counts of retained packet claims and
+unlinked entries are **distinct aggregated evidence keys**, not
+counts of individual NS/NA packets. The eleven unlinked retained
+entries represent NAs lacking a usable TLLA, and no fabricated
+target-MAC association was formed. No contradictory LLA
+assertions were present in these retained snapshots.
+
+The captures were obtained over different, uncontrolled durations,
+so the totals should not be used to compare interface traffic rates.
+The reported results support the Stage 2 bounded-evidence and
+separation-of-provenance design; they do not authenticate device
+identity or establish address ownership, neighbor cache reachability
+or live physical topology.
+
+**Acceptance:** Full 759/759 regression suite and both real capture
+state replays passed. Ready for owner review and squash merge.
+No original private IPv6/MAC addresses, hostnames, PCAPs or
+screenshots are published in this GitHub note.
 
 ## Deferred
 
