@@ -1,7 +1,7 @@
 # Phase 1N-K Stage 3: Live IPv6 Neighbor Evidence in the 2D Debugger
 
 Date: 2026-11-07
-Status: Draft PR; M5 pytest and Safari live validation pending.
+Status: M5 full regression and live Safari evidence workflow accepted; ready for review.
 Baseline: PR #44 Stage 2 squash-merged on main at 21ca821;
 the developer's most recent full test run had 759 tests passed in 4.01s.
 
@@ -157,6 +157,69 @@ Check that:
 The tests use documentation IPv6 addresses and synthetic
 Ethernet values. Do not publish raw private PCAPs, device
 IP/MAC addresses, screenshots or service-instance names.
+
+## Initial live Safari acceptance (2026-11-07)
+
+The developer reported the complete M5 `python -m pytest` result:
+**794 passed in 4.01s** with no failures, 35 more than the
+previous 759-test Stage 2 baseline. Separate focused-suite output
+was not provided; the new live NDP and sidebar tests are included
+in the full suite.
+
+The developer supplied an approximately **183-second Safari
+screen recording** of the combined live ARP + dual-stack mDNS +
+IPv6 NDP debugger from one authorized `en5` interface. The bounded
+capture reaches `ended`. At the end of the recording, the
+visible read-only counts include:
+
+| Visible evidence | Value |
+| --- | ---: |
+| ARP address nodes | 22 |
+| ARP sender claims | 11 |
+| ARP binding updates | 59 |
+| mDNS messages | 178 |
+| NDP messages | 14 |
+| NS / NA / DAD | 7 / 7 / 0 |
+| Retained option-backed IPv6 claims | 3 |
+| Retained unlinked NDP observations | 3 |
+| Multiple advertised link-layer addresses | 0 |
+
+The **IPv6** sidebar is accessible and distinguishes NS source-SLLA
+claims from NA-without-TLLA observations. The NAs remain unlinked
+even though an Ethernet frame sender is displayed as original
+packet provenance. The original ARP nodes and lines remain in
+the 2D canvas while the IPv6 and Services tabs are inspected.
+
+Crucially, the recording shows a live DNS-SD AAAA address with an
+**Inspect independent IPv6 neighbor evidence** button. The
+developer activates the button and the existing IPv6 sidebar
+opens, filtered to the exact advertised IPv6 address. It shows
+a matching **NS source-SLLA claim** together with a separate
+`na_missing_tlla` observation, not a fabricated target-MAC
+association. The Services tab also displays a different AAAA
+address without a supporting same-interface option-backed NDP
+observation and correctly says **no match**. IPv4 A-to-ARP
+navigation remains visible beside the IPv6 option.
+
+This establishes **live Stage 3 manual validation** of a
+same-interface AAAA-to-existing-NDP cross-reference and preserved
+evidence-kind separation. It does **not** authenticate a device,
+prove that an advertised service runs on a specific physical host,
+or establish IPv6 neighbor-cache reachability. The absence of
+DAD/conflicting LLA evidence in this capture is normal; the
+deterministic test suite exercises those negative scenarios.
+
+A previously implemented DNS-SD **joined across responses**
+label also remains visible elsewhere in the recording. No
+explicit user interaction verifying ARP-only/offline mode or
+keyboard-only tab navigation was observed in this recording;
+those paths retain their automated test coverage.
+
+**Acceptance:** Full 794-test suite and live Safari evidence
+navigation passed. PR #45 is ready for owner review and squash
+merge. No device hostnames, personal MACs, original IPv4/IPv6
+addresses, PCAPNGs or video frames were added to the public
+GitHub repository.
 
 ## Deferred
 
