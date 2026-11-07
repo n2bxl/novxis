@@ -216,3 +216,13 @@ h2 { font-size: 18px; line-height: 1.35; margin-top: 10px; overflow-wrap: anywhe
   display: block; width: 100%; text-align: left;
   white-space: normal; line-height: 1.5; overflow-wrap: anywhere;
 }
+
+/* Colors distinguish source protocols but never imply verified ownership. */
+.legend-line.arp-claim, .map-edge.evidence-arp_sender { stroke: #60b6df; background: #60b6df; }
+.legend-line.ns-claim, .map-edge.evidence-ndp_ns_source_slla { stroke: #60cdb9; background: #60cdb9; }
+.legend-line.na-claim, .map-edge.evidence-ndp_na_target_tlla { stroke: #e2b36c; background: #e2b36c; }
+.map-edge.selected, .map-edge-group.selected .map-edge,
+.map-edge-group:hover .map-edge, .map-edge-group:focus .map-edge {
+  stroke: #f1faff; stroke-width: 3; opacity: 1;
+}
+.map-node.ipv6 .ipv6-address-text { font-size: 13px; }

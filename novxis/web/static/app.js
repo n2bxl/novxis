@@ -89,6 +89,8 @@ for (const name of sidebarTabNames) {
 
 
 let graph = null;
+let lastArpSummary = "";
+let lastUnifiedSummary = "";
 let activeMapMode = "arp";
 let selectedId = null;
 let selectedEdgeId = null;
@@ -137,6 +139,7 @@ function switchMapMode(mode) {
   camera = { ...mapCameras[mode] };
   updateMapModeControls();
   if (graph) {
+    summary.textContent = mode === "unified" ? lastUnifiedSummary : lastArpSummary;
     renderGraph();
     showInspector();
     selectSidebarTab("evidence");
@@ -892,7 +895,8 @@ function renderGraph() {
     const path = makeSVG("path", {
       d: "M " + x1 + " " + y1 + " C " + mid + " " + y1 + ", " +
         mid + " " + y2 + ", " + x2 + " " + y2,
-      class: "map-edge" + (
+      class: "map-edge" +
+        (activeMapMode === "unified" ? " evidence-" + claim.kind : "") + (
         (selectedId && (claim.source === selectedId || claim.target === selectedId)) ||
         (activeMapMode === "unified" && selectedEdgeId === claim.id)
           ? " selected" : ""
@@ -1156,17 +1160,19 @@ async function loadGraph() {
       payload.claims.length + " sender claims · " +
       (source.frames_replayed || 0) + " frames";
   }
-  if (live && activeMapMode === "unified") {
-    const unified = payload.unified_address_graph;
-    summary.textContent = "UNIFIED ARP + NDP · " + unified.interface +
-      " · " + status + " · " + unified.nodes.length +
-      " address nodes · " + unified.edges.length + " evidence edges";
-    if (unified.truncated) summary.textContent += " · CAP REACHED";
-  }
   const errors = (source.decode_errors || 0) + (source.stream_errors || 0);
-  if (errors) {
-    summary.textContent += " · " + errors + " errors";
+  const errorNote = errors ? " · " + errors + " errors" : "";
+  lastArpSummary = summary.textContent + errorNote;
+  lastUnifiedSummary = "";
+  if (live && payload.unified_address_graph) {
+    const unified = payload.unified_address_graph;
+    lastUnifiedSummary = "UNIFIED ARP + NDP · " + unified.interface +
+      " · " + status + " · " + unified.nodes.length +
+      " address nodes · " + unified.edges.length + " evidence edges" +
+      (unified.truncated ? " · CAP REACHED" : "") + errorNote;
   }
+  summary.textContent = activeMapMode === "unified"
+    ? lastUnifiedSummary : lastArpSummary;
   if (!graph || !live || lastRevision !== payload.revision) {
     const graphRevision = live
       ? (activeMapMode === "unified"
