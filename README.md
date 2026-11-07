@@ -83,6 +83,55 @@ but not across browser reloads; no changes are written to network state.
 See [the layout milestone](docs/implementation/2026-11-02-2d-relationship-aware-layout.md)
 for behavior, limitations and acceptance.
 
+## Phase 1N-K Stage 2: Interface-Scoped IPv6 Neighbor Evidence (Draft)
+
+Stage 2 layers a **bounded, typed observation state** over the existing
+ICMPv6 Neighbor Solicitation and Neighbor Advertisement decoder. It
+treats NDP as independently observed **packet assertions**, not an OS
+neighbor table, a verified device identity, or live reachability.
+
+- **NS Source Link-Layer Address (SLLA)** can support a *source IPv6
+  address → advertised Ethernet address* claim, never a claim for the
+  NS target. A source-unspecified DAD probe is kept separately as a
+  tentative target without any address association.
+- **NA Target Link-Layer Address (TLLA)** can support a *target IPv6
+  address → advertised Ethernet address* claim. NAs without usable
+  TLLA options remain **unlinked**, not replaced by the Ethernet
+  sender address.
+- Repeated claims are counted, while contradictory link-layer
+  assertions remain separate evidence, scoped by capture interface,
+  IPv6 address, source/target provenance and Ethernet address.
+  No override flag rewrites earlier observations.
+- Missing, ambiguous, non-Ethernet-sized and non-unicast link-layer
+  options are categorized explicitly. Observations and history are
+  bounded, with visible truncation indicators. There is **no invented
+  NDP TTL or liveness determination**.
+
+Replay local PCAP or PCAPNG files through the new state command:
+
+~~~bash
+python -m novxis.cli.ndp_state_replay /path/to/capture.pcapng --summary-only
+~~~
+
+This prints counts and reasons without device addresses. Omit
+`--summary-only` for local evidence inspection of IPv6 and MAC claims.
+The original Stage 1 `novxis.cli.ndp_replay` remains available.
+
+M5 regression commands:
+
+~~~bash
+git fetch origin
+git switch --track origin/ai/phase1n-k-ndp-evidence-state-2026-11-07
+python -m pytest tests/state/test_ndp_evidence_state.py tests/cli/test_ndp_replay.py -q
+python -m pytest
+~~~
+
+See [Stage 2 handoff](docs/implementation/2026-11-07-ndp-neighbor-evidence-state.md).
+The existing 2D debugger, ARP graph and DNS-SD Services tab are
+unchanged. Future Stage 3 can expose read-only IPv6 neighbor evidence
+and AAAA-to-neighbor cross-references without claiming a device is
+verified.
+
 ## Phase 1N-K: Passive IPv6 Neighbor Discovery Decoder (Stage 1 Draft)
 
 Stage 1 adds a bounded, Scapy-independent **ICMPv6 NS (135) / NA (136)**
