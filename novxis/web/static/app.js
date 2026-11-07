@@ -350,7 +350,7 @@ function showMDNSEvidence(evidence) {
       const addresses = Array.isArray(target.addresses) ? target.addresses : [];
       if (!addresses.length) {
         const absent = document.createElement("p");
-        absent.textContent = "No A/AAAA address was present in the same response.";
+        absent.textContent = "No matching A/AAAA address supported by observed responses.";
         claim.append(absent);
       }
       for (const address of addresses) {
