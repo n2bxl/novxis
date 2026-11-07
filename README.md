@@ -30,7 +30,7 @@ exploration, and troubleshooting.
   reachability, or the configured settings of other endpoints.
   Encrypted DNS/application traffic is not decrypted.
 
-**Last reported M5 acceptance (2026-11-07): 794 passing Python tests.**
+**Last reported M5 acceptance (2026-11-07): 876 passing Python tests** after Stage 2 full-suite validation on the feature branch.
 This is an observed test baseline, not a claim of an automated CI run
 for every subsequent documentation change.
 
@@ -100,7 +100,7 @@ capture / replay                   separately sourced local OS context
 
 ## Current milestone: Phase 1N-L
 
-**Stage 1 projection implemented in a draft branch; 2D integration pending.** Reuse
+**Stage 1 merged; Stage 2 live adapter accepted on its feature branch (PR #48 ready for review); 2D unified graph visualization remains Stage 3 work.** Reuse
 existing ARP sender and ICMPv6 NS-source/NA-target observations to show
 **separate IPv4 and IPv6 address nodes** connected to shared,
 **capture-scope/interface-qualified hardware-address nodes**, with
@@ -109,6 +109,7 @@ Preserve conflicts and the existing ARP-only debugger. This milestone
 does **not** add DNS-SD graph nodes, gateway/topology inference, LLDP,
 active probing, or device identity fusion.
 
+- [Stage 2 live metadata adapter and validation](docs/implementation/2026-11-07-unified-address-graph-stage2.md)
 - [Stage 1 projection handoff and tests](docs/implementation/2026-11-07-unified-address-graph-stage1.md)
 - [Phase 1N-L implementation scope and acceptance](docs/implementation/2026-11-07-phase1n-l-unified-address-graph-scope.md)
 - [ADR 0002: Evidence-first address relationships](docs/architecture/0002-evidence-first-address-relationships.md)

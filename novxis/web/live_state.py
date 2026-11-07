@@ -6,6 +6,7 @@ The live snapshot uses the same projection and JSON schema as offline replay.
 
 import json
 import time
+from uuid import uuid4
 from decimal import Decimal, InvalidOperation
 from threading import Lock
 from typing import TextIO
@@ -17,6 +18,7 @@ from novxis.views.mdns_arp_crossref import cross_reference_mdns_arp
 from novxis.web.graph_data import serialize_arp_snapshot
 from novxis.web.mdns_live import LiveMDNSState
 from novxis.web.ndp_live import LiveNDPState
+from novxis.web.unified_live import project_live_unified_address_graph
 from novxis.views.mdns_ndp_crossref import cross_reference_mdns_ndp
 
 MAX_LINE = 4096
@@ -46,6 +48,9 @@ class LiveARPGraphState:
         self._ndp = LiveNDPState()
         self._last_fresh_signature = ()
         self._graph_revision = 0
+        self._unified_graph_revision = 0
+        # Opaque unprivileged session identity; not supplied by NDJSON.
+        self._capture_scope = uuid4().hex
 
     def ingest(self, message: dict) -> None:
         """Validate untrusted NDJSON; never interpret it as a command."""
@@ -111,6 +116,8 @@ class LiveARPGraphState:
                     raise ValueError("NDP event outside authorized capture session")
                 if kind == "ndp":
                     self._ndp.observe(message, self._interface)
+                    if message.get("claim_kind") is not None:
+                        self._unified_graph_revision += 1
                 else:
                     self._ndp.decode_error()
                 self._revision += 1
@@ -199,6 +206,7 @@ class LiveARPGraphState:
             self._bindings[key] = binding
             self._updates += 1
             self._graph_revision += 1
+            self._unified_graph_revision += 1
             self._revision += 1
 
     def mark_error(self, _reason: str) -> None:
@@ -250,6 +258,8 @@ class LiveARPGraphState:
             }
             revision = self._revision
             graph_revision = self._graph_revision
+            unified_revision = self._unified_graph_revision
+            capture_scope = self._capture_scope
             status = self._status
             context = self._host_context
         snapshot = project_arp_address_map(bindings)
@@ -260,6 +270,12 @@ class LiveARPGraphState:
         result["graph_revision"] = graph_revision
         if ndp_evidence is not None:
             result["ndp_evidence"] = ndp_evidence
+            # Separate payload; original ARP nodes/claims/graph_revision intact.
+            result["unified_address_graph"] = project_live_unified_address_graph(
+                bindings, ndp_evidence, interface=metadata["interface"],
+                capture_scope=capture_scope, revision=unified_revision,
+                arp_truncated=metadata["truncated"],
+            )
         if mdns_evidence is not None:
             services = cross_reference_mdns_arp(
                 mdns_evidence, result["nodes"],
