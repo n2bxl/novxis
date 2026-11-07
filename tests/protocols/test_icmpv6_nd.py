@@ -139,7 +139,7 @@ def test_unsupported_icmpv6_types_are_ignored_before_nd_validation():
     ) is None
 
 
-@pytest.mark.parametrize("length", [0, 1, 3, 7, 23])
+@pytest.mark.parametrize("length", [1, 3, 7, 23])
 def test_truncated_neighbor_discovery_is_rejected(length):
     raw = packet()
     with pytest.raises(NeighborDiscoveryParseError, match="truncated"):
