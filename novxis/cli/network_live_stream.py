@@ -19,36 +19,94 @@ MAX_ADS_PER_MESSAGE = 6
 MAX_NAME_LENGTH = 180
 
 
-def mdns_message(observed, advertisements) -> dict:
-    """Bound, preserve and label PTR-backed *response* service evidence."""
-    candidates = []
-    if observed.message.is_response:
-        for item in advertisements:
-            service_type = item.service_type.text
-            instance = item.instance.text
-            if not (
-                1 <= len(service_type) <= MAX_NAME_LENGTH
-                and 1 <= len(instance) <= MAX_NAME_LENGTH
-            ):
-                continue
-            if len(candidates) == MAX_ADS_PER_MESSAGE:
-                break
-            candidates.append({
-                "service_type": service_type,
-                "instance": instance,
-                "ttl": item.ptr_record.wire.ttl,
-            })
-    total = len(advertisements) if observed.message.is_response else 0
+MAX_SERVICE_TARGETS = 2
+MAX_TARGET_ADDRESSES = 3
+MAX_ENCODED_EVENT = 3700  # leave space under consumer MAX_LINE=4096
+
+
+def _safe_name(value: str) -> bool:
+    return 1 <= len(value) <= MAX_NAME_LENGTH and value.isprintable()
+
+
+def _target_details(claim) -> dict | None:
+    """One same-message SRV assertion with its exact owner-matched A/AAAA."""
+    target = claim.srv.target.text
+    if not _safe_name(target):
+        return None
+    addresses = []
+    for rr in claim.address_records[:MAX_TARGET_ADDRESSES]:
+        wire = rr.wire
+        if wire.rtype not in (1, 28) or wire.decoded_data is None:
+            continue
+        addresses.append({
+            "address": wire.decoded_data,
+            "family": 4 if wire.rtype == 1 else 6,
+            "ttl": wire.ttl,
+        })
     return {
+        "target": target,
+        "port": claim.srv.port,
+        "ttl": claim.srv_record.wire.ttl,
+        "addresses": addresses,
+    }
+
+
+def mdns_message(observed, advertisements) -> dict:
+    """Bound same-response PTR -> SRV -> A/AAAA evidence, never a device."""
+    total = len(advertisements) if observed.message.is_response else 0
+    result = {
         "type": "mdns",
         "interface": observed.interface,
         "observed_at": str(observed.timestamp),
         "ip_version": observed.ip_version,
         "role": "response" if observed.message.is_response else "query",
         "advertisement_count": total,
-        "advertisements": candidates,
+        "advertisements": [],
+        "relationships_omitted": False,
     }
+    if not observed.message.is_response:
+        return result
 
+    for item in advertisements:
+        service_type = item.service_type.text
+        instance = item.instance.text
+        if not (_safe_name(service_type) and _safe_name(instance)):
+            continue
+        if len(result["advertisements"]) >= MAX_ADS_PER_MESSAGE:
+            break
+        record = {
+            "service_type": service_type, "instance": instance,
+            "ttl": item.ptr_record.wire.ttl,
+            "targets": [],
+        }
+        for claim in item.targets[:MAX_SERVICE_TARGETS]:
+            target = _target_details(claim)
+            if target is None:
+                result["relationships_omitted"] = True
+                continue
+            # Keep a bounded message even with long DNS names and IPv6 RRs.
+            record["targets"].append(target)
+            candidate = [*result["advertisements"], record]
+            encoded = {**result, "advertisements": candidate}
+            if len(json.dumps(encoded, ensure_ascii=True)) > MAX_ENCODED_EVENT:
+                record["targets"].pop()
+                result["relationships_omitted"] = True
+                break
+        if len(item.targets) > MAX_SERVICE_TARGETS or any(
+            len(target.address_records) > MAX_TARGET_ADDRESSES
+            for target in item.targets
+        ):
+            result["relationships_omitted"] = True
+        candidate = [*result["advertisements"], record]
+        if len(json.dumps({**result, "advertisements": candidate},
+                          ensure_ascii=True)) > MAX_ENCODED_EVENT:
+            # No room even for the existing PTR-only observation.
+            result["relationships_omitted"] = True
+            continue
+        result["advertisements"].append(record)
+    if len(result["advertisements"]) < total:
+        result["relationships_omitted"] = True
+    return result
 
 def build_handler(emit):
     """Demultiplex one capture stream into existing ARP/mDNS interpreters."""
