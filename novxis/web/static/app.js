@@ -5,6 +5,11 @@ const svg = document.getElementById("map");
 const canvas = document.querySelector(".canvas-wrap");
 const viewport = document.getElementById("viewport");
 const summary = document.getElementById("summary");
+const mapTitle = document.getElementById("map-title");
+const mapModeArp = document.getElementById("map-mode-arp");
+const mapModeUnified = document.getElementById("map-mode-unified");
+const arpLegend = document.getElementById("arp-legend");
+const unifiedLegend = document.getElementById("unified-legend");
 const inspectorTitle = document.getElementById("inspector-title");
 const inspector = document.getElementById("inspector-content");
 const hostPanel = document.getElementById("host-context");
@@ -84,7 +89,84 @@ for (const name of sidebarTabNames) {
 
 
 let graph = null;
+let activeMapMode = "arp";
 let selectedId = null;
+let selectedEdgeId = null;
+const mapSelections = {
+  arp: { node: null, edge: null },
+  unified: { node: null, edge: null },
+};
+const mapCameras = {
+  arp: { x: 0, y: 0, scale: 1 },
+  unified: { x: 0, y: 0, scale: 1 },
+};
+
+function visibleAddressGraph() {
+  return activeMapMode === "unified" ? graph?.unified_address_graph : graph;
+}
+
+function columnKind(kind) {
+  return kind === "hardware" ? "hardware" : "protocol";
+}
+
+function manualOrderForView() {
+  return activeMapMode === "unified" ? unifiedManualOrders : manualOrders;
+}
+
+function updateMapModeControls() {
+  mapModeArp.setAttribute("aria-pressed", String(activeMapMode === "arp"));
+  mapModeUnified.setAttribute("aria-pressed", String(activeMapMode === "unified"));
+  mapTitle.textContent = activeMapMode === "unified"
+    ? "Unified address evidence map" : "Observed address map";
+  arpLegend.hidden = activeMapMode !== "arp";
+  unifiedLegend.hidden = activeMapMode !== "unified";
+  svg.setAttribute("aria-label", activeMapMode === "unified"
+    ? "Interactive evidence graph of IPv4, IPv6, and hardware address claims"
+    : "Interactive graph of observed ARP protocol and hardware addresses");
+}
+
+function switchMapMode(mode) {
+  if (mode !== "arp" && mode !== "unified") return;
+  if (mode === "unified" && mapModeUnified.disabled) return;
+  if (mode === activeMapMode) return;
+  mapSelections[activeMapMode] = { node: selectedId, edge: selectedEdgeId };
+  mapCameras[activeMapMode] = { ...camera };
+  activeMapMode = mode;
+  selectedId = mapSelections[mode].node;
+  selectedEdgeId = mapSelections[mode].edge;
+  camera = { ...mapCameras[mode] };
+  updateMapModeControls();
+  if (graph) {
+    renderGraph();
+    showInspector();
+    selectSidebarTab("evidence");
+  }
+}
+
+function updateMapModes(payload) {
+  const unified = payload.unified_address_graph;
+  const available = payload.mode === "live-arp" &&
+    unified?.schema_version === 1 &&
+    unified?.origin === "passive-arp-ndp" &&
+    unified.interface === payload.source?.interface &&
+    Array.isArray(unified.nodes) && Array.isArray(unified.edges);
+  mapModeUnified.disabled = !available;
+  mapModeUnified.title = available
+    ? "Show independently observed IPv4, IPv6 and MAC address claims"
+    : "Requires a live ARP + mDNS + NDP capture";
+  if (!available && activeMapMode === "unified") {
+    mapSelections.unified = { node: selectedId, edge: selectedEdgeId };
+    mapCameras.unified = { ...camera };
+    activeMapMode = "arp";
+    selectedId = mapSelections.arp.node;
+    selectedEdgeId = mapSelections.arp.edge;
+    camera = { ...mapCameras.arp };
+  }
+  updateMapModeControls();
+}
+
+mapModeArp.addEventListener("click", () => switchMapMode("arp"));
+mapModeUnified.addEventListener("click", () => switchMapMode("unified"));
 let stageHeight = 620;
 let camera = { x: 0, y: 0, scale: 1 };
 let dragging = null;
@@ -94,6 +176,7 @@ const ROW_STEP = 76;
 const ROW_START = 105;
 const COLUMN_X = { protocol: 114, hardware: 708 };
 const manualOrders = { protocol: null, hardware: null };
+const unifiedManualOrders = { protocol: null, hardware: null };
 let orderedByKind = { protocol: [], hardware: [] };
 let moveNodesMode = false;
 const openSubnetGroups = new Set();
@@ -183,7 +266,9 @@ function appendAddressButton(parent, item) {
   button.addEventListener("click", () => {
     // Explicit select, rather than toggle: multiple prefix groups can
     // correctly refer to one interface-scoped protocol address node.
+    if (activeMapMode === "unified") switchMapMode("arp");
     selectedId = item.node_id;
+    selectedEdgeId = null;
     renderGraph();
     showInspector();
     selectSidebarTab("evidence");
@@ -465,7 +550,9 @@ function showMDNSEvidence(evidence) {
           button.className = "mdns-arp-link";
           button.textContent = "Inspect independent ARP address";
           button.addEventListener("click", () => {
+            if (activeMapMode === "unified") switchMapMode("arp");
             selectedId = address.arp_node_id;
+            selectedEdgeId = null;
             renderGraph();
             showInspector();
             selectSidebarTab("evidence");
@@ -531,6 +618,10 @@ function clearInspector(message) {
 }
 
 function showInspector() {
+  if (activeMapMode === "unified") {
+    showUnifiedInspector();
+    return;
+  }
   if (!graph || !selectedId) {
     clearInspector("Select an address node to inspect its captured ARP evidence.");
     return;
@@ -591,6 +682,7 @@ function showInspector() {
 }
 
 function setSelected(id) {
+  selectedEdgeId = null;
   selectedId = selectedId === id ? null : id;
   renderGraph();
   showInspector();
@@ -606,7 +698,8 @@ function computeAutoOrders(snapshot) {
     a.address_hex.localeCompare(b.address_hex) ||
     a.id.localeCompare(b.id);
   const protocol = snapshot.nodes
-    .filter((node) => node.kind === "protocol").sort(addressOrder);
+    .filter((node) => node.kind === "protocol" ||
+      node.kind === "ipv4" || node.kind === "ipv6").sort(addressOrder);
   const hardware = snapshot.nodes
     .filter((node) => node.kind === "hardware").sort(addressOrder);
   const protocolRank = new Map(protocol.map((node, index) => [node.id, index]));
@@ -628,7 +721,7 @@ function computeAutoOrders(snapshot) {
 }
 
 function preserveManualOrder(kind, automatic) {
-  const ids = manualOrders[kind];
+  const ids = manualOrderForView()[kind];
   if (!ids) return automatic;
   const byId = new Map(automatic.map((node) => [node.id, node]));
   const seen = new Set();
@@ -654,12 +747,14 @@ function reorderNode(kind, id, targetIndex) {
   const updated = current.map((node) => node.id);
   updated.splice(startIndex, 1);
   updated.splice(endIndex, 0, id);
-  manualOrders[kind] = updated;
+  manualOrderForView()[kind] = updated;
   return true;
 }
 
 function layoutGraph() {
-  const automatic = computeAutoOrders(graph);
+  const active = visibleAddressGraph();
+  const automatic = computeAutoOrders(activeMapMode === "unified"
+    ? { ...active, claims: active.edges } : active);
   orderedByKind = {
     protocol: preserveManualOrder("protocol", automatic.protocol),
     hardware: preserveManualOrder("hardware", automatic.hardware),
@@ -683,11 +778,15 @@ function renderGraph() {
   if (!graph) return;
   viewport.replaceChildren();
 
+  const active = visibleAddressGraph();
+  if (!active) return;
   const locations = layoutGraph();
-  addSVGText(viewport, 114, 59, "PROTOCOL ADDRESSES", "column-title");
+  addSVGText(viewport, 114, 59, activeMapMode === "unified"
+    ? "IPV4 / IPV6 ADDRESSES" : "PROTOCOL ADDRESSES", "column-title");
   addSVGText(viewport, 708, 59, "HARDWARE ADDRESSES", "column-title");
 
-  for (const claim of graph.claims) {
+  const edges = activeMapMode === "unified" ? active.edges : graph.claims;
+  for (const claim of edges) {
     const source = locations.get(claim.source);
     const target = locations.get(claim.target);
     if (!source || !target) continue;
@@ -700,14 +799,36 @@ function renderGraph() {
       d: "M " + x1 + " " + y1 + " C " + mid + " " + y1 + ", " +
         mid + " " + y2 + ", " + x2 + " " + y2,
       class: "map-edge" + (
-        selectedId && (claim.source === selectedId || claim.target === selectedId)
+        (selectedId && (claim.source === selectedId || claim.target === selectedId)) ||
+        (activeMapMode === "unified" && selectedEdgeId === claim.id)
           ? " selected" : ""
       ),
     });
-    viewport.append(path);
+    if (activeMapMode === "unified") {
+      const group = makeSVG("g", {
+        class: "map-edge-group" + (selectedEdgeId === claim.id ? " selected" : ""),
+        "data-edge-id": claim.id,
+        role: "button",
+        tabindex: "0",
+        "aria-label": claim.kind.replaceAll("_", " ") + " evidence relationship",
+      });
+      const hit = makeSVG("path", {
+        d: path.getAttribute("d"), class: "map-edge-hit",
+      });
+      group.append(path, hit);
+      group.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          setSelectedEdge(claim.id);
+        }
+      });
+      viewport.append(group);
+    } else {
+      viewport.append(path);
+    }
   }
 
-  for (const node of graph.nodes) {
+  for (const node of active.nodes) {
     const position = locations.get(node.id);
     if (!position) continue;
     const selected = node.id === selectedId;
@@ -730,8 +851,9 @@ function renderGraph() {
       } else if (moveNodesMode && event.shiftKey &&
                  (event.key === "ArrowUp" || event.key === "ArrowDown")) {
         event.preventDefault();
-        const index = orderedByKind[node.kind].findIndex((item) => item.id === node.id);
-        if (reorderNode(node.kind, node.id,
+        const kind = columnKind(node.kind);
+        const index = orderedByKind[kind].findIndex((item) => item.id === node.id);
+        if (reorderNode(kind, node.id,
                         index + (event.key === "ArrowUp" ? -1 : 1))) {
           renderGraph();
           const replacement = Array.from(
@@ -791,8 +913,13 @@ moveButton.addEventListener("click", () => {
     : "Scroll to zoom · Drag to pan · Select an address";
 });
 document.getElementById("auto-arrange").addEventListener("click", () => {
-  manualOrders.protocol = null;
-  manualOrders.hardware = null;
+  if (activeMapMode === "unified") {
+    unifiedManualOrders.protocol = null;
+    unifiedManualOrders.hardware = null;
+  } else {
+    manualOrders.protocol = null;
+    manualOrders.hardware = null;
+  }
   renderGraph();
 });
 
@@ -813,12 +940,17 @@ svg.addEventListener("pointerdown", (event) => {
   const point = svgPoint(event);
   const targetNode = event.target.closest("[data-node-id]");
   const nodeId = targetNode ? targetNode.getAttribute("data-node-id") : null;
-  const node = nodeId && graph ? graph.nodes.find((item) => item.id === nodeId) : null;
+  const targetEdge = event.target.closest("[data-edge-id]");
+  const edgeId = !nodeId && targetEdge
+    ? targetEdge.getAttribute("data-edge-id") : null;
+  const active = visibleAddressGraph();
+  const node = nodeId && active ? active.nodes.find((item) => item.id === nodeId) : null;
   dragging = {
     pointerId: event.pointerId, start: point,
     x: camera.x, y: camera.y, moved: false,
-    nodeId, kind: node ? node.kind : null,
-    fromIndex: node ? orderedByKind[node.kind].findIndex((item) => item.id === nodeId) : -1,
+    nodeId, edgeId, kind: node ? columnKind(node.kind) : null,
+    fromIndex: node ? orderedByKind[columnKind(node.kind)].findIndex(
+      (item) => item.id === nodeId) : -1,
     mode: moveNodesMode && node ? "reorder" : "pan",
   };
   svg.setPointerCapture(event.pointerId);
@@ -852,13 +984,16 @@ function endPan(event) {
   if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
   if (event.type === "pointerup" && !gesture.moved && gesture.nodeId) {
     setSelected(gesture.nodeId);
+  } else if (event.type === "pointerup" && !gesture.moved && gesture.edgeId) {
+    setSelectedEdge(gesture.edgeId);
   }
 }
 svg.addEventListener("pointerup", endPan);
 svg.addEventListener("pointercancel", endPan);
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && selectedId) {
+  if (event.key === "Escape" && (selectedId || selectedEdgeId)) {
     selectedId = null;
+    selectedEdgeId = null;
     renderGraph();
     showInspector();
   }
@@ -868,6 +1003,7 @@ document.addEventListener("keydown", (event) => {
 // changes only when its semantic revision changes; camera and selection stay.
 let lastRevision = null;
 let lastGraphRevision = null;
+let lastRenderedMapMode = null;
 let pollHandle = null;
 
 async function loadGraph() {
@@ -880,6 +1016,7 @@ async function loadGraph() {
   }
   const source = payload.source || {};
   const live = payload.mode === "live-arp";
+  updateMapModes(payload);
   updateSidebarTabs(payload);
   showHostContext(live ? payload.host_context : null);
   const status = payload.capture_status || "waiting";
@@ -909,19 +1046,32 @@ async function loadGraph() {
       payload.claims.length + " sender claims · " +
       (source.frames_replayed || 0) + " frames";
   }
+  if (live && activeMapMode === "unified") {
+    const unified = payload.unified_address_graph;
+    summary.textContent = "UNIFIED ARP + NDP · " + unified.interface +
+      " · " + status + " · " + unified.nodes.length +
+      " address nodes · " + unified.edges.length + " evidence edges";
+    if (unified.truncated) summary.textContent += " · CAP REACHED";
+  }
   const errors = (source.decode_errors || 0) + (source.stream_errors || 0);
   if (errors) {
     summary.textContent += " · " + errors + " errors";
   }
   if (!graph || !live || lastRevision !== payload.revision) {
     const graphRevision = live
-      ? (payload.graph_revision ?? payload.revision) : null;
+      ? (activeMapMode === "unified"
+        ? payload.unified_address_graph.revision
+        : (payload.graph_revision ?? payload.revision)) : null;
     const redrawGraph = !graph || !live ||
-      lastGraphRevision !== graphRevision;
+      lastGraphRevision !== graphRevision ||
+      lastRenderedMapMode !== activeMapMode;
     graph = payload;
     lastRevision = payload.revision;
     lastGraphRevision = graphRevision;
-    if (redrawGraph) renderGraph();
+    if (redrawGraph) {
+      renderGraph();
+      lastRenderedMapMode = activeMapMode;
+    }
     showSubnetEvidence(live ? payload.subnet_evidence : null);
     showMDNSEvidence(live ? payload.mdns_evidence : null);
     showNDPEvidence(live ? payload.ndp_evidence : null);
