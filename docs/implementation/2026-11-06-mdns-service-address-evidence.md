@@ -1,7 +1,7 @@
 # Phase 1N-I: DNS-SD Service-to-Address Evidence in the 2D Debugger
 
 Date: 2026-11-06
-Status: Draft implementation PR; M5 Python and Safari acceptance pending.
+Status: Draft implementation PR; M5 live Safari evidence navigation observed, pytest pending.
 Baseline: Phase 1N-H PR #40 squash-merged to main (95bbdfc).
 
 ## Goal
@@ -131,6 +131,48 @@ Then inspect http://127.0.0.1:8765/ in Safari. Verify:
 Real SRV/A/AAAA co-location is traffic-dependent: no target records
 in a capture is **not** a failed capture. The synthetic regression
 fixtures cover the complete chain deterministically.
+
+## Initial live Safari acceptance (2026-11-06)
+
+The developer supplied a roughly 174-second Safari screen recording of
+the opt-in live ARP + dual-stack mDNS debugger, captured on a single
+authorized Ethernet interface. The browser session reached its bounded
+capture `ended` state and retained a live Services view alongside a
+populated ARP address map.
+
+One response-derived DNS-SD instance, advertised with a native
+Apple mobile-device service type, displayed a same-response SRV target,
+its advertised port, an A record and AAAA records, each with record
+TTL/freshness information. The A record offered **Inspect independent
+ARP address**. The video shows the button opening **Evidence** and
+selecting the matching existing same-interface IPv4 protocol address
+node, including its one observed ARP sender claim. Other service
+instances explicitly displayed missing SRV detail when none was
+co-observed.
+
+The developer independently checked the advertised IPv4 and IPv6
+addresses against their iPhone's device configuration and reported
+matches. Their observation that additional local service traffic
+appeared around phone unlock is useful **temporal correlation**.
+The simultaneously visible AirPlay record was named for the user's
+MacBook Air, not independently demonstrated to originate from the
+iPhone. These observations do not establish authenticated service
+ownership or prove the physical identity of the responding sender.
+
+**Verified by recording:** Service tab rendering, same-response PTR/
+SRV/A/AAAA presentation, IPv4-to-existing-ARP navigation, original
+Evidence inspector, independent interface scope, and no invented
+cross-protocol graph edge.
+
+**Still outstanding:** The developer has not yet supplied focused or
+full Python pytest results for Phase 1N-I; the PR remains draft.
+Manual proof of TTL transitions while idle, ARP-only mode and offline
+replay on this feature branch was not included. Those behaviors have
+regression coverage, but are not being reported as separately observed.
+
+Public GitHub documentation omits real RFC1918 IP addresses, MACs,
+IPv6 values, hostnames, personally identifying service-instance
+strings, raw captures and unredacted screenshots.
 
 ## Privacy / security
 
