@@ -1,7 +1,7 @@
 # Phase 1N-I: DNS-SD Service-to-Address Evidence in the 2D Debugger
 
 Date: 2026-11-06
-Status: Draft implementation PR; M5 live Safari evidence navigation observed, pytest pending.
+Status: M5 live Safari core workflow and full 637-test regression suite accepted; ready for review.
 Baseline: Phase 1N-H PR #40 squash-merged to main (95bbdfc).
 
 ## Goal
@@ -167,11 +167,26 @@ SRV/A/AAAA presentation, IPv4-to-existing-ARP navigation, original
 Evidence inspector, independent interface scope, and no invented
 cross-protocol graph edge.
 
-**Still outstanding:** The developer has not yet supplied focused or
-full Python pytest results for Phase 1N-I; the PR remains draft.
-Manual proof of TTL transitions while idle, ARP-only mode and offline
-replay on this feature branch was not included. Those behaviors have
-regression coverage, but are not being reported as separately observed.
+**Automated suite accepted:** On 2026-11-06, the developer provided
+the complete M5 full-suite pytest output:
+
+- Platform: Darwin, Python 3.14.6
+- pytest 9.1.1, pluggy 1.6.0
+- **637 collected; 637 passed in 4.00 seconds; no failures**
+- `tests/cli/test_mdns_address_links.py`: all 16 cases passed
+- `tests/cli/test_network_live_stream.py`: all 8 cases passed
+- `tests/web/test_mdns_service_links.py`: all 3 cases passed
+- The existing ARP, mDNS, host context, subnet, offline replay and
+  sidebar regression suites also ran in this full test invocation.
+
+The focused test command was suggested, but its separate output was not
+provided; the full suite includes the listed feature tests. The Safari
+recording already confirms service-to-ARP navigation and core live
+rendering. Manual idle-expiry, ARP-only mode, and offline replay checks
+on this branch were not separately reported. Those behaviors have test
+coverage but must not be described as independently browser-verified.
+
+PR #41 is **ready for review and the owner's squash merge**.
 
 Public GitHub documentation omits real RFC1918 IP addresses, MACs,
 IPv6 values, hostnames, personally identifying service-instance
