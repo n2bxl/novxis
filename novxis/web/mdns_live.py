@@ -6,10 +6,13 @@ It is not an mDNS cache and does not infer device identity or liveness.
 """
 
 from decimal import Decimal, InvalidOperation
+from ipaddress import ip_address
 
 MAX_ADVERTISEMENTS_PER_MESSAGE = 6
 MAX_SERVICE_INSTANCES = 128
 MAX_NAME_LENGTH = 180
+MAX_SERVICE_TARGETS = 2
+MAX_TARGET_ADDRESSES = 3
 MAX_TIMESTAMP = Decimal("10000000000000")
 
 
@@ -59,6 +62,9 @@ class LiveMDNSState:
             raise ValueError("query cannot assert service advertisements")
         at = _time(message.get("observed_at"))
 
+        relation_omissions = message.get("relationships_omitted", False)
+        if type(relation_omissions) is not bool:
+            raise ValueError("invalid relationship omission marker")
         normalized = []
         for record in ads:
             if not isinstance(record, dict):
@@ -71,7 +77,58 @@ class LiveMDNSState:
                 raise ValueError("invalid mDNS service name")
             if type(ttl) is not int or not 0 <= ttl <= 0xFFFFFFFF:
                 raise ValueError("invalid mDNS PTR TTL")
-            normalized.append((service_type, instance, ttl))
+            claims = record.get("targets", [])
+            if not isinstance(claims, list) or len(claims) > MAX_SERVICE_TARGETS:
+                raise ValueError("invalid SRV target list")
+            targets = []
+            for claim in claims:
+                if not isinstance(claim, dict):
+                    raise ValueError("invalid SRV target claim")
+                target = claim.get("target")
+                port = claim.get("port")
+                srv_ttl = claim.get("ttl")
+                if not isinstance(target, str) or not (
+                    1 <= len(target) <= MAX_NAME_LENGTH and target.isprintable()
+                ):
+                    raise ValueError("invalid SRV target name")
+                if type(port) is not int or not 0 <= port <= 65535:
+                    raise ValueError("invalid SRV port")
+                if type(srv_ttl) is not int or not 0 <= srv_ttl <= 0xFFFFFFFF:
+                    raise ValueError("invalid SRV TTL")
+                claimed_addresses = claim.get("addresses")
+                if not isinstance(claimed_addresses, list) or (
+                    len(claimed_addresses) > MAX_TARGET_ADDRESSES
+                ):
+                    raise ValueError("invalid A/AAAA list")
+                addresses = []
+                for address_record in claimed_addresses:
+                    if not isinstance(address_record, dict):
+                        raise ValueError("invalid A/AAAA claim")
+                    raw = address_record.get("address")
+                    family = address_record.get("family")
+                    address_ttl = address_record.get("ttl")
+                    if not isinstance(raw, str) or len(raw) > 45:
+                        raise ValueError("invalid A/AAAA address")
+                    if type(family) is not int or family not in (4, 6):
+                        raise ValueError("invalid A/AAAA family")
+                    if type(address_ttl) is not int or not (
+                        0 <= address_ttl <= 0xFFFFFFFF
+                    ):
+                        raise ValueError("invalid A/AAAA TTL")
+                    try:
+                        parsed = ip_address(raw)
+                    except ValueError as exc:
+                        raise ValueError("invalid A/AAAA address") from exc
+                    if parsed.version != family or str(parsed) != raw:
+                        raise ValueError("noncanonical or mismatched A/AAAA address")
+                    addresses.append({
+                        "address": raw, "family": family, "ttl": address_ttl,
+                    })
+                targets.append({
+                    "target": target, "port": port, "ttl": srv_ttl,
+                    "addresses": addresses,
+                })
+            normalized.append((service_type, instance, ttl, targets))
 
         # Validate all metadata before modifying counters or service state.
         self.messages += 1
@@ -81,10 +138,10 @@ class LiveMDNSState:
         self.ipv6 += int(family == 6)
         self.advertisement_count += count
         self.omitted_advertisements += count - len(normalized)
-        if count != len(normalized):
+        if count != len(normalized) or relation_omissions:
             self.truncated = True
 
-        for service_type, instance, ttl in normalized:
+        for service_type, instance, ttl, targets in normalized:
             key = (interface, service_type.lower(), instance.lower())
             previous = self._instances.get(key)
             if previous is None and len(self._instances) >= MAX_SERVICE_INSTANCES:
@@ -99,6 +156,7 @@ class LiveMDNSState:
                 "instance": instance,
                 "last_seen": at,
                 "ttl": ttl,
+                "targets": targets,
                 "observations": (previous["observations"] if previous else 0) + 1,
             }
 
@@ -109,6 +167,7 @@ class LiveMDNSState:
         if not isinstance(at, Decimal) or not at.is_finite():
             raise ValueError("snapshot time must be finite")
         instances = []
+        signature = []
         for entry in sorted(
             self._instances.values(),
             key=lambda x: (x["service_type"].lower(), x["instance"].lower()),
@@ -117,6 +176,33 @@ class LiveMDNSState:
                 entry["last_seen"] <= at <
                 entry["last_seen"] + Decimal(entry["ttl"])
             )
+            targets = []
+            target_signature = []
+            for target in entry["targets"]:
+                srv_fresh = target["ttl"] > 0 and (
+                    entry["last_seen"] <= at <
+                    entry["last_seen"] + Decimal(target["ttl"])
+                )
+                addresses = []
+                address_signature = []
+                for rr in target["addresses"]:
+                    address_fresh = rr["ttl"] > 0 and (
+                        entry["last_seen"] <= at <
+                        entry["last_seen"] + Decimal(rr["ttl"])
+                    )
+                    addresses.append({
+                        **rr, "fresh": address_fresh,
+                        "path_fresh": fresh and srv_fresh and address_fresh,
+                    })
+                    address_signature.append(address_fresh)
+                targets.append({
+                    "target": target["target"], "port": target["port"],
+                    "ttl_seconds": target["ttl"], "fresh": srv_fresh,
+                    "path_fresh": fresh and srv_fresh,
+                    "addresses": addresses,
+                    "source": "same-mdns-response",
+                })
+                target_signature.append((srv_fresh, tuple(address_signature)))
             instances.append({
                 "service_type": entry["service_type"],
                 "instance": entry["instance"],
@@ -124,11 +210,13 @@ class LiveMDNSState:
                 "ttl_seconds": entry["ttl"],
                 "fresh": fresh,
                 "observations": entry["observations"],
+                "targets": targets,
             })
-        signature = tuple(
-            (item["service_type"], item["instance"], item["fresh"])
-            for item in instances
-        )
+            signature.append((
+                entry["service_type"], entry["instance"], fresh,
+                tuple(target_signature),
+            ))
+        signature = tuple(signature)
         result = {
             "schema_version": 1,
             "origin": "mdns-observation",
