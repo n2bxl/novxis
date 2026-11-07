@@ -95,15 +95,26 @@ class LiveARPGraphState:
         if kind == "error":
             self.mark_error("Capture helper reported an error; see terminal.")
             return
-        if kind in ("mdns", "mdns_decode_error"):
+        if kind in (
+            "mdns", "mdns_decode_error", "mdns_reconciliation",
+            "mdns_reconciliation_clear", "mdns_reconciliation_omitted",
+        ):
             with self._lock:
                 if not self._mdns_enabled or message.get("interface") != self._interface:
                     raise ValueError("mDNS event outside authorized capture session")
+                changed = True
                 if kind == "mdns":
                     self._mdns.observe(message, self._interface)
+                elif kind == "mdns_reconciliation":
+                    changed = self._mdns.observe_reconciliation(message, self._interface)
+                elif kind == "mdns_reconciliation_clear":
+                    changed = self._mdns.clear_reconciliation(message, self._interface)
+                elif kind == "mdns_reconciliation_omitted":
+                    self._mdns.truncated = True
                 else:
                     self._mdns.decode_error()
-                self._revision += 1
+                if changed:
+                    self._revision += 1
             return
         if kind != "binding":
             raise ValueError("unknown message type")
