@@ -1,7 +1,7 @@
 # Phase 1N-L: Unified Address Evidence Graph, sprint scope
 
 - **Date:** 2026-11-07
-- **Status:** Stage 1 merged and accepted (849 M5 tests); Stage 2 live adapter implemented on draft branch pending validation; Stage 3 UI not started.
+- **Status:** Stage 1 merged and accepted (849 M5 tests); Stage 2 live adapter validated with 876 passing M5 tests and en5 unified JSON inspection, PR ready for review; Stage 3 UI not started.
 - **Starting baseline:** 794 passing M5 Python tests after Phase 1N-K Stage 3
 - **Target:** one read-only, typed IPv4/IPv6/MAC evidence graph without inferred devices
 
