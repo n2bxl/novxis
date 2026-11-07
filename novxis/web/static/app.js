@@ -885,9 +885,9 @@ function renderGraph() {
     const target = locations.get(claim.target);
     if (!source || !target) continue;
     const x1 = source.x + 256;
-    const y1 = source.y + 25;
+    const y1 = source.y + (activeMapMode === "unified" ? 32 : 25);
     const x2 = target.x;
-    const y2 = target.y + 25;
+    const y2 = target.y + (activeMapMode === "unified" ? 32 : 25);
     const mid = (x1 + x2) / 2;
     const path = makeSVG("path", {
       d: "M " + x1 + " " + y1 + " C " + mid + " " + y1 + ", " +
@@ -935,9 +935,25 @@ function renderGraph() {
         " on " + node.interface,
       "data-node-id": node.id,
     });
-    group.append(makeSVG("rect", { x: 0, y: 0, width: 256, height: NODE_HEIGHT, rx: 8 }));
-    addSVGText(group, 13, 22, node.display_address);
-    addSVGText(group, 13, 39, "interface: " + node.interface, "node-meta");
+    group.append(makeSVG("rect", {
+      x: 0, y: 0, width: 256,
+      height: activeMapMode === "unified" ? 64 : NODE_HEIGHT, rx: 8,
+    }));
+    if (activeMapMode === "unified" &&
+        node.kind === "ipv6" && node.display_address.length > 28) {
+      // Do not silently truncate a protocol address in the evidence graph.
+      // Long expanded IPv6 addresses wrap at a colon; inspector retains full.
+      const midpoint = node.display_address.lastIndexOf(":", 24);
+      const splitAt = midpoint > 8 ? midpoint + 1 : 24;
+      addSVGText(group, 13, 20, node.display_address.slice(0, splitAt),
+        "ipv6-address-text");
+      addSVGText(group, 13, 37, node.display_address.slice(splitAt),
+        "ipv6-address-text");
+    } else {
+      addSVGText(group, 13, 22, node.display_address);
+    }
+    addSVGText(group, 13, activeMapMode === "unified" ? 54 : 39,
+      "interface: " + node.interface, "node-meta");
     group.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
@@ -1162,10 +1178,8 @@ async function loadGraph() {
     graph = payload;
     lastRevision = payload.revision;
     lastGraphRevision = graphRevision;
-    if (redrawGraph) {
-      renderGraph();
-      lastRenderedMapMode = activeMapMode;
-    }
+    if (redrawGraph) renderGraph();
+    if (redrawGraph) lastRenderedMapMode = activeMapMode;
     showSubnetEvidence(live ? payload.subnet_evidence : null);
     showMDNSEvidence(live ? payload.mdns_evidence : null);
     showNDPEvidence(live ? payload.ndp_evidence : null);
