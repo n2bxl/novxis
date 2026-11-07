@@ -120,6 +120,7 @@ def build_handler(emit):
         max_instances=128, max_records_per_instance=16,
         max_history=256, max_unassociated=256,
     )
+    published: dict[tuple[str, str, str], str] = {}
 
     def on_frame(frame):
         arp_handler(frame)
@@ -134,16 +135,39 @@ def build_handler(emit):
                 emitted = 0
                 omitted = False
                 for item in reconciliation.snapshots(observed.timestamp):
-                    if item.snapshot.interface != frame.interface:
+                    snap = item.snapshot
+                    if snap.interface != frame.interface:
                         continue
+                    key = (snap.interface, snap.service_type.text.lower(),
+                           snap.instance.text.lower())
                     event = project_live_reconciliation(item)
-                    if event is None:
+                    signature = (
+                        json.dumps(event, sort_keys=True, ensure_ascii=True)
+                        if event is not None else None
+                    )
+                    if published.get(key) == signature:
+                        continue
+                    if event is None and key not in published:
                         continue
                     if emitted >= 4:
                         omitted = True
-                        break
-                    event["as_of"] = str(observed.timestamp)
-                    emit(event)
+                        continue
+                    if event is None:
+                        # A goodbye/expiration invalidated the previously
+                        # published relationship. Explicitly retract it.
+                        emit({
+                            "type": "mdns_reconciliation_clear",
+                            "interface": snap.interface,
+                            "service_type": snap.service_type.text,
+                            "instance": snap.instance.text,
+                            "ptr_observed_at": str(snap.last_seen),
+                            "as_of": str(observed.timestamp),
+                        })
+                        del published[key]
+                    else:
+                        event["as_of"] = str(observed.timestamp)
+                        emit(event)
+                        published[key] = signature
                     emitted += 1
                 if omitted:
                     emit({"type": "mdns_reconciliation_omitted",
