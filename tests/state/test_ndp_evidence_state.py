@@ -160,6 +160,24 @@ def test_unknown_tlv_does_not_create_binding():
     assert state.snapshot().claims == ()
 
 
+def test_unlinked_na_with_different_ethernet_senders_remains_distinct():
+    state = NDNeighborEvidenceState()
+    observe(
+        state, kind=136, options=b"", ethernet_source=MAC_A,
+        timestamp="100",
+    )
+    observe(
+        state, kind=136, options=b"", ethernet_source=MAC_B,
+        timestamp="101",
+    )
+    snap = state.snapshot()
+    assert not snap.claims
+    assert len(snap.unlinked) == 2
+    assert {x.latest_observation.ethernet.source for x in snap.unlinked} == {
+        MAC_A, MAC_B,
+    }
+
+
 def test_conflicting_distinct_link_layers_remain_separate_evidence():
     state = NDNeighborEvidenceState()
     observe(state, options=b"\x01\x01" + MAC_A, timestamp="100")
