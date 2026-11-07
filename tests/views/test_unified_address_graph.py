@@ -242,11 +242,13 @@ def test_unlinked_ndp_is_not_a_supported_claim_input():
         project([], [unlinked])
 
 
-def test_unlinked_or_dad_only_inputs_do_not_add_any_nodes():
-    # Stage 2 excludes these from NDStateSnapshot.claims.
-    assert project([], []).nodes == ()
-    assert project([arp()], []).nodes == project([arp()], []).nodes
-    assert len(project([arp()], []).edges) == 1
+def test_empty_ndp_claim_collection_never_invents_ip_to_mac_edges():
+    # Stage 2 excludes DAD and unlinked NA observations from .claims.
+    snapshot = project([arp()], [])
+    assert len(snapshot.nodes) == 2
+    assert len(snapshot.edges) == 1
+    assert snapshot.edges[0].evidence_kind == "arp_sender"
+    assert not any(node.kind == "ipv6" for node in snapshot.nodes)
 
 
 @pytest.mark.parametrize("mac", [
