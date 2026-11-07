@@ -21,8 +21,13 @@
       <section class="map-panel" aria-label="Network evidence map">
         <div class="panel-head">
           <div>
-            <h1>Observed address map</h1>
+            <h1 id="map-title">Observed address map</h1>
             <p id="summary">Loading replay evidence...</p>
+          </div>
+          <div class="map-view-switch" role="group" aria-label="Address map view">
+            <button id="map-mode-arp" type="button" aria-pressed="true">ARP only</button>
+            <button id="map-mode-unified" type="button" aria-pressed="false"
+              disabled title="Requires a live ARP + mDNS + NDP capture">Unified addresses</button>
           </div>
           <div class="controls" aria-label="Map controls">
             <button id="zoom-out" type="button" title="Zoom out" aria-label="Zoom out">−</button>
@@ -42,9 +47,17 @@
           <p class="canvas-hint">Scroll to zoom · Drag to pan · Select an address</p>
         </div>
         <div class="canvas-footer">
-          <span><span class="legend-dot protocol"></span>Protocol address</span>
-          <span><span class="legend-dot hardware"></span>Hardware address</span>
-          <span><span class="legend-line"></span>Observed ARP sender claim</span>
+          <span id="arp-legend" class="map-legend-group">
+            <span><span class="legend-dot protocol"></span>IPv4 protocol address</span>
+            <span><span class="legend-dot hardware"></span>Hardware address</span>
+            <span><span class="legend-line"></span>Observed ARP sender claim</span>
+          </span>
+          <span id="unified-legend" class="map-legend-group" hidden>
+            <span><span class="legend-dot protocol"></span>IPv4 address</span>
+            <span><span class="legend-dot ipv6"></span>IPv6 address</span>
+            <span><span class="legend-dot hardware"></span>Hardware address</span>
+            <span><span class="legend-line"></span>ARP / NS / NA evidence edges</span>
+          </span>
         </div>
       </section>
       <aside class="inspector" aria-label="Network evidence and context">

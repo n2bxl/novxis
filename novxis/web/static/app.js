@@ -617,6 +617,92 @@ function clearInspector(message) {
   inspector.append(p);
 }
 
+const UNIFIED_EVIDENCE_LABELS = {
+  arp_sender: "ARP IPv4 sender",
+  ndp_ns_source_slla: "NS source SLLA",
+  ndp_na_target_tlla: "NA target TLLA",
+};
+
+function unifiedEvidenceLabel(kind) {
+  return UNIFIED_EVIDENCE_LABELS[kind] || "Unrecognized address claim";
+}
+
+function showUnifiedInspector() {
+  const snapshot = graph?.unified_address_graph;
+  if (!snapshot) {
+    clearInspector("Unified graph is unavailable for this capture.");
+    return;
+  }
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const edge = selectedEdgeId &&
+    snapshot.edges.find((item) => item.id === selectedEdgeId);
+  const node = selectedId && nodes.get(selectedId);
+  if (selectedEdgeId && !edge) selectedEdgeId = null;
+  if (selectedId && !node) selectedId = null;
+  if (!edge && !node) {
+    clearInspector("Select an IPv4, IPv6 or hardware address node, or an " +
+      "evidence edge, to inspect its observed ARP/NDP provenance.");
+    return;
+  }
+
+  inspector.replaceChildren();
+  if (edge) {
+    const source = nodes.get(edge.source);
+    const target = nodes.get(edge.target);
+    inspectorTitle.textContent = unifiedEvidenceLabel(edge.kind);
+    appendDetail("Evidence type", unifiedEvidenceLabel(edge.kind), inspector);
+    appendDetail("Protocol address", source?.display_address || "Unavailable", inspector);
+    appendDetail("Advertised Ethernet address",
+      target?.display_address || "Unavailable", inspector);
+    appendDetail("Capture interface", edge.interface, inspector);
+    appendDetail("Capture scope", edge.capture_scope, inspector);
+    appendDetail("First observed (Unix seconds)", edge.first_seen, inspector);
+    appendDetail("Last observed (Unix seconds)", edge.last_seen, inspector);
+    appendDetail("Observation count", edge.observation_count, inspector);
+    appendDetail("Aggregated source record key", edge.source_record_key, inspector);
+    const note = document.createElement("p");
+    note.className = "inspector-note";
+    note.textContent = "This edge is an observed protocol address claim, not " +
+      "a physical cable, verified device, or reachability result. Its source " +
+      "record key identifies a retained aggregate, not a raw packet.";
+    inspector.append(note);
+    return;
+  }
+
+  inspectorTitle.textContent = node.display_address;
+  appendDetail("Evidence node",
+    node.kind === "hardware" ? "Hardware address evidence" :
+    node.kind === "ipv6" ? "IPv6 protocol address" : "IPv4 protocol address",
+    inspector);
+  appendDetail("Observed interface", node.interface, inspector);
+  appendDetail("Capture scope", node.capture_scope, inspector);
+  appendDetail("Address", node.display_address, inspector);
+  const related = snapshot.edges.filter((item) =>
+    item.source === node.id || item.target === node.id);
+  const heading = document.createElement("h3");
+  heading.textContent = "Supporting address claims (" + related.length + ")";
+  inspector.append(heading);
+  for (const item of related) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "claim-card unified-edge-card";
+    const from = nodes.get(item.source);
+    const to = nodes.get(item.target);
+    button.textContent = unifiedEvidenceLabel(item.kind) + " · " +
+      (from?.display_address || "?") + " → " +
+      (to?.display_address || "?") + " · " +
+      item.observation_count + " observation(s)";
+    button.addEventListener("click", () => setSelectedEdge(item.id));
+    inspector.append(button);
+  }
+  const caveat = document.createElement("p");
+  caveat.className = "inspector-note";
+  caveat.textContent = "These are independently observed, capture-scoped " +
+    "ARP/NDP address claims, not verified physical-device identities. " +
+    "DAD and NDP observations without an option-backed MAC stay unlinked.";
+  inspector.append(caveat);
+}
+
 function showInspector() {
   if (activeMapMode === "unified") {
     showUnifiedInspector();
@@ -684,6 +770,14 @@ function showInspector() {
 function setSelected(id) {
   selectedEdgeId = null;
   selectedId = selectedId === id ? null : id;
+  renderGraph();
+  showInspector();
+  selectSidebarTab("evidence");
+}
+
+function setSelectedEdge(id) {
+  selectedId = null;
+  selectedEdgeId = selectedEdgeId === id ? null : id;
   renderGraph();
   showInspector();
   selectSidebarTab("evidence");
