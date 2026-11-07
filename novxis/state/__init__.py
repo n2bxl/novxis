@@ -16,6 +16,10 @@ from novxis.state.dhcpv4 import (
 )
 from novxis.state.dns import DNSRecordEvidence, DNSRelationshipState
 from novxis.state.network import NetworkState
+from novxis.state.ndp import (
+    NDAddressClaim, NDUnlinkedObservation, NDStateSnapshot,
+    NDNeighborEvidenceState,
+)
 from novxis.state.mdns_services import (
     MDNSServiceEvidenceState,
     MDNSServiceInstanceSnapshot,
@@ -37,6 +41,10 @@ __all__ = [
     "DNSRecordEvidence",
     "DNSRelationshipState",
     "NetworkState",
+    "NDAddressClaim",
+    "NDUnlinkedObservation",
+    "NDStateSnapshot",
+    "NDNeighborEvidenceState",
     "MDNSServiceEvidenceState",
     "MDNSServiceInstanceSnapshot",
     "MDNSServiceObservation",
