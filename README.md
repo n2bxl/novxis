@@ -100,7 +100,7 @@ capture / replay                   separately sourced local OS context
 
 ## Current milestone: Phase 1N-L
 
-**Unified Address Evidence Graph (planned, not implemented).** Reuse
+**Stage 1 projection implemented in a draft branch; 2D integration pending.** Reuse
 existing ARP sender and ICMPv6 NS-source/NA-target observations to show
 **separate IPv4 and IPv6 address nodes** connected to shared,
 **capture-scope/interface-qualified hardware-address nodes**, with
@@ -109,6 +109,7 @@ Preserve conflicts and the existing ARP-only debugger. This milestone
 does **not** add DNS-SD graph nodes, gateway/topology inference, LLDP,
 active probing, or device identity fusion.
 
+- [Stage 1 projection handoff and tests](docs/implementation/2026-11-07-unified-address-graph-stage1.md)
 - [Phase 1N-L implementation scope and acceptance](docs/implementation/2026-11-07-phase1n-l-unified-address-graph-scope.md)
 - [ADR 0002: Evidence-first address relationships](docs/architecture/0002-evidence-first-address-relationships.md)
 - [ADR 0001: Permanent 2D reference and shared semantic graph](docs/architecture/0001-permanent-2d-reference-and-shared-graph.md)
