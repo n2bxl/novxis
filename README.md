@@ -30,7 +30,7 @@ exploration, and troubleshooting.
   reachability, or the configured settings of other endpoints.
   Encrypted DNS/application traffic is not decrypted.
 
-**Last reported M5 acceptance (2026-11-07): 849 passing Python tests** after merged Stage 1. Stage 2 results are pending.
+**Last reported M5 acceptance (2026-11-07): 876 passing Python tests** after Stage 2 full-suite validation on the feature branch.
 This is an observed test baseline, not a claim of an automated CI run
 for every subsequent documentation change.
 
@@ -100,7 +100,7 @@ capture / replay                   separately sourced local OS context
 
 ## Current milestone: Phase 1N-L
 
-**Stage 1 merged; Stage 2 read-only live adapter implemented in a draft PR, M5 validation pending; 2D graph visualization still deferred to Stage 3.** Reuse
+**Stage 1 merged; Stage 2 live adapter accepted on its feature branch (PR #48 ready for review); 2D unified graph visualization remains Stage 3 work.** Reuse
 existing ARP sender and ICMPv6 NS-source/NA-target observations to show
 **separate IPv4 and IPv6 address nodes** connected to shared,
 **capture-scope/interface-qualified hardware-address nodes**, with
