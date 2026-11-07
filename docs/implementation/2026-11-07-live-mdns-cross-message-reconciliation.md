@@ -1,7 +1,7 @@
 # Phase 1N-J: Live Cross-Message DNS-SD Reconciliation
 
 Date: 2026-11-07
-Status: Draft PR; developer M5 focused/full regressions and Safari validation pending.
+Status: M5 full regression 647/647 passed and live Safari core behavior observed; ready for review.
 Base: Phase 1N-I PR #41 squash-merged to main at c7c3d34.
 
 ## Scope
@@ -151,6 +151,54 @@ Real service names/addresses can identify private devices; do not
 commit unredacted screenshots, MACs, IPv4/IPv6 addresses, or TXT
 contents. The synthetic tests use RFC documentation addresses
 (e.g. 192.0.2.25 and 2001:db8::25).
+
+## M5 acceptance report (2026-11-06 local)
+
+The developer reported a **clean full Python regression run** for this
+Phase 1N-J branch: **647 passed in 3.97s**, an increase of 10 passing
+cases over the previously reported Phase 1N-I baseline of 637. The
+separate focused-test command output was not supplied, but the
+cross-message integration tests and web checks are included in the
+full suite. No failures were reported.
+
+The developer also supplied a roughly **176-second Safari recording**
+of a live, bounded, authorized **en5** Ethernet capture. The video
+shows the read-only ARP address map and Services tab populating
+together, query/response and IPv4/IPv6 counts updating, PTR-backed
+service entries with record-level target, address, capture-time and
+TTL information, and the usual independent ARP evidence navigation
+where a same-interface IPv4 sender observation exists. Service
+entries remain present after capture.
+
+A visible Apple **`_companion-link._tcp.local`** advertisement had
+an iPad-related service instance, a target hostname, a port and
+both A and AAAA records, all shown with their original TTL status.
+The advertised A address did **not** have a matching independently
+observed same-interface ARP sender address; the UI correctly reported
+the absent match instead of inventing a device or network edge.
+The developer proposed Sidecar as a possible cause of the iPad
+discovery, **not a verified conclusion** from the packet evidence.
+
+**Visual coverage limitation:** In the inspected portion of this live
+recording, the displayed SRV and A/AAAA records were labeled
+**same response**. We did not establish from the video that the
+new **joined across responses** label occurred on a naturally
+observed multi-message chain. The new deterministic synthetic tests
+cover joining before/after PTR, source scope, query exclusion, TTL
+expiry, and withdrawal, so the absence of such a live packet sequence
+is not a test failure. A future capture that naturally displays a
+cross-response join would provide additional manual validation.
+
+The recording was reviewed privately. No actual local IPv4/IPv6 or
+MAC addresses, device hostnames, full service-instance identifiers,
+screenshots, video or raw packets are committed to public GitHub
+documentation.
+
+**Acceptance:** 647/647 full regressions passed, with positive live
+Services and ARP rendering evidence. Ready for review and owner-managed
+squash merge. ARP-only/offline and live idle-expiry were not
+individually demonstrated in this recording; they retain automated
+coverage and can be checked separately if useful.
 
 ## Deferred
 
