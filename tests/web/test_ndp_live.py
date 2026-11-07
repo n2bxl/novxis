@@ -262,3 +262,45 @@ def test_repeated_and_out_of_order_records_preserve_seen_bounds():
     assert claim["first_seen"] == "100"
     assert claim["last_seen"] == "102"
     assert claim["observations"] == 2
+
+
+def test_malformed_icmpv6_does_not_abort_next_valid_neighbor_packet():
+    out = []
+    helper = build_handler(out.append)
+    good = wire_frame()
+    corrupted = good.data[:-1] + bytes((good.data[-1] ^ 1,))
+    helper(CapturedFrame(
+        timestamp=good.timestamp, interface=good.interface,
+        data=corrupted, captured_length=len(corrupted), link_type=1,
+    ))
+    helper(good)
+    assert [item["type"] for item in out] == ["ndp_decode_error", "ndp"]
+    obj = state()
+    for message in out:
+        obj.ingest(message)
+    assert obj.snapshot()["ndp_evidence"]["decode_errors"] == 1
+    assert obj.snapshot()["ndp_evidence"]["messages"] == 1
+
+
+def test_wire_ns_source_claim_never_targets_solicited_address():
+    out = []
+    build_handler(out.append)(wire_frame(kind=135))
+    (message,) = out
+    assert message["claim_kind"] == "ns_source_slla"
+    assert message["claim_ipv6"] == SOURCE
+    assert message["target_ipv6"] == TARGET
+    assert message["claim_mac_hex"] == MAC
+
+
+def test_unlinked_error_cannot_be_ingested_from_non_ndp_session():
+    obj = state(ndp=False)
+    with pytest.raises(ValueError, match="authorized"):
+        obj.ingest({"type": "ndp_decode_error", "interface": "en0"})
+    assert "ndp_evidence" not in obj.snapshot()
+
+
+def test_wrong_interface_rejected_for_ndp_decode_error():
+    obj = state()
+    with pytest.raises(ValueError, match="authorized"):
+        obj.ingest({"type": "ndp_decode_error", "interface": "en5"})
+    assert obj.snapshot()["ndp_evidence"]["decode_errors"] == 0
