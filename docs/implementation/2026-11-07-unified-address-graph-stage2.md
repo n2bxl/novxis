@@ -1,7 +1,7 @@
 # Phase 1N-L Stage 2: Unprivileged live Unified Address Graph adapter
 
 - **Date:** 2026-11-07
-- **Status:** Implemented on a draft PR; focused and full M5 tests pending
+- **Status:** M5 full-suite regression and en5 unified JSON field validation accepted; ready for owner review
 - **Starting regression baseline:** 849 passed on M5 after Stage 1 merged (PR #47)
 - **Scope:** A separate JSON-ready evidence graph assembled from existing
   bounded, validated live ARP and NDP metadata, without new capture traffic.
@@ -104,8 +104,7 @@ python -m pytest tests/web/test_unified_live.py tests/web/test_ndp_live.py \
 python -m pytest
 ```
 
-Expected full-suite baseline is **849 prior passing tests plus Stage 2
-tests**, but no new total is claimed before execution on the M5.
+**M5 full regression acceptance (2026-11-07):** `pytest` collected **876 tests** and reported **876 passed in 4.55s**, on macOS Python 3.14.6 with pytest 9.1.1. This is **27 additional passing cases** beyond the prior Stage 1 baseline of 849. The complete suite includes `tests/web/test_unified_live.py`, which passed all of its collected cases. A separate focused run was not supplied and is not required to establish the passing full-suite result.
 
 The Stage 2 payload can be inspected without changing the Safari UI:
 
@@ -152,10 +151,18 @@ show the new JSON graph field, cross-session UUID isolation,
 truncation branches, synthetic error handling or the full
 Python regression suite.
 
-**Still pending for Stage 2 acceptance:** focused and full
-M5 pytest results, plus inspection of `/api/graph`'s additive
-`unified_address_graph` field (node/edge types and counts).
-Keep the PR in draft until those are confirmed.
+**Stage 2 acceptance evidence, also reported on 2026-11-07:** The developer queried the actual local `/api/graph` response on `en5` and summarized the additive `unified_address_graph` payload without publishing addresses:
+
+| Field | Observed value |
+| --- | --- |
+| Capture interface | `en5` |
+| Nodes | 13 IPv4, 3 IPv6, 13 hardware (29 total) |
+| Edges | 13 `arp_sender`, 1 `ndp_na_target_tlla`, 3 `ndp_ns_source_slla` (17 total) |
+| Shared IPv4/IPv6 hardware evidence nodes | 3 |
+| Unified graph revision | 74 |
+| Truncated | `False` |
+
+These are *observed protocol-address relationships*, not identified devices. Four NDP edges sharing three IPv6 nodes are consistent with multiple option-backed assertions involving at least one address; counts alone do not prove which exact records overlap. The original ARP-only canvas still functioned during the same capture, and the full M5 test suite passed. This closes Stage 2 validation; the new unified canvas remains deferred to Stage 3.
 
 ## Deferred
 
