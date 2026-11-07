@@ -44,3 +44,15 @@ def test_service_relationships_are_text_only_and_no_new_capture_api():
     assert 'not a verified' in segment
     assert 'renderGraph()' in segment  # existing ARP node selection only
     assert 'document.createElement("line")' not in segment
+
+
+
+def test_service_relationships_label_cross_response_provenance_and_time():
+    script, _ = _assets()
+    assert 'target.source === "cross-mdns-response"' in script
+    assert 'address.source === "cross-mdns-response"' in script
+    assert '" · joined across responses"' in script
+    assert 'String(target.observed_at || item.last_seen)' in script
+    assert 'String(address.observed_at || item.last_seen)' in script
+    assert 'Cross-response joins require fresh matching DNS owner names' in script
+    assert 'An ARP address match is separate evidence' in script
