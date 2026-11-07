@@ -8,7 +8,7 @@ Base: Phase 1N-I PR #41 squash-merged to main at c7c3d34.
 
 Extend the passive local Services tab from **same-response PTR/SRV/A/AAAA
 claims** to **separately observed response records**, using the existing
-\`MDNSServiceReconciliation\` state engine, not a new name-matching
+`MDNSServiceReconciliation` state engine, not a new name-matching
 heuristic. This is a single-capture-interface, read-only extension.
 
 The design preserves the PR #41 defaults: ARP graph nodes and claims,
@@ -70,11 +70,11 @@ The underlying engine requires:
    timestamp. A query known-answer record is not authoritative response
    evidence and cannot join a service.
 
-The resulting browser event includes \`service_type\`, \`instance\`,
-\`ptr_observed_at\`, \`as_of\`, and up to two SRV targets each with up to
+The resulting browser event includes `service_type`, `instance`,
+`ptr_observed_at`, `as_of`, and up to two SRV targets each with up to
 three A/AAAA addresses. Each nested record has an original observation
-timestamp, original TTL, and one of \`same-mdns-response\` or
-\`cross-mdns-response\` provenance. The unprivileged receiver validates
+timestamp, original TTL, and one of `same-mdns-response` or
+`cross-mdns-response` provenance. The unprivileged receiver validates
 every field atomically, refuses to create a service without an already
 accepted PTR, refuses to attach to a different PTR epoch, and keeps
 the current interface scope.
@@ -83,7 +83,7 @@ the current interface scope.
 fresh status and the whole path's status change without a new packet.
 The API revision advances, but the ARP SVG only redraws when ARP
 evidence changes. An explicit TTL-zero withdrawal (goodbye) or other
-invalidating response can generate a \`mdns_reconciliation_clear\` event
+invalidating response can generate a `mdns_reconciliation_clear` event
 that removes the previously published overlay. The original
 same-response targets remain available if independently supported.
 No stale cross-response association may be promoted to a fresh claim.
@@ -99,7 +99,7 @@ claim that the service or target resides on a verified physical host.
 - Cross-message association runs in the capture process from bounded
   protocol state and is ephemeral. It is not a persistent OS DNS cache,
   device inventory, discovery probe or network scanner.
-- \`MDNSServiceReconciliation\` currently stages orphan SRV/TXT/A/AAAA
+- `MDNSServiceReconciliation` currently stages orphan SRV/TXT/A/AAAA
   evidence **only in responses without a PTR-backed projection**.
   Unrelated records carried in a PTR-containing packet are not promoted
   as independently associated orphans by this engine.
