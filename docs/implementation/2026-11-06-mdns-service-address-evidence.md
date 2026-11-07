@@ -140,9 +140,11 @@ authorized Ethernet interface. The browser session reached its bounded
 capture `ended` state and retained a live Services view alongside a
 populated ARP address map.
 
-One response-derived DNS-SD instance, advertised with a native
-Apple mobile-device service type, displayed a same-response SRV target,
-its advertised port, an A record and AAAA records, each with record
+One response-derived DNS-SD instance of
+`_apple-mobdev2._tcp.local` (the Apple mobile-device service type
+correlated with the developer's iPhone) displayed a same-response
+SRV target, its advertised port, an A record and AAAA records, each
+with record
 TTL/freshness information. The A record offered **Inspect independent
 ARP address**. The video shows the button opening **Evidence** and
 selecting the matching existing same-interface IPv4 protocol address
@@ -154,9 +156,10 @@ The developer independently checked the advertised IPv4 and IPv6
 addresses against their iPhone's device configuration and reported
 matches. Their observation that additional local service traffic
 appeared around phone unlock is useful **temporal correlation**.
-The simultaneously visible AirPlay record was named for the user's
-MacBook Air, not independently demonstrated to originate from the
-iPhone. These observations do not establish authenticated service
+The separately visible `_airplay._tcp.local` advertisement
+was named for the user's MacBook Air, not independently demonstrated
+to originate from the iPhone. The iPhone-correlated service in this
+validation is `_apple-mobdev2._tcp.local`, **not** the AirPlay record. These observations do not establish authenticated service
 ownership or prove the physical identity of the responding sender.
 
 **Verified by recording:** Service tab rendering, same-response PTR/
