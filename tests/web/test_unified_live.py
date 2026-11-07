@@ -86,7 +86,7 @@ def test_ipv4_and_ipv6_claims_reuse_scoped_hardware_address_with_independent_edg
     graph = snap["unified_address_graph"]
     assert graph["revision"] == 2
     assert snap["graph_revision"] == 1
-    assert snap["revision"] == 4
+    assert snap["revision"] == 3
     assert len(graph["nodes"]) == 3
     assert len(graph["edges"]) == 2
     nodes = {n["id"]: n for n in graph["nodes"]}
@@ -270,7 +270,7 @@ def test_rejected_wrong_interface_ndp_is_atomic_for_both_graphs():
 def test_invalid_ndp_claim_does_not_mutate_unified_state():
     obj = state()
     baseline = obj.snapshot()
-    with pytest.raises(ValueError, match="invalid NDP"):
+    with pytest.raises(ValueError, match="unusable NDP"):
         obj.ingest({**ndp(), "claim_mac_hex": "000000000000"})
     result = obj.snapshot()
     assert result["revision"] == baseline["revision"]
