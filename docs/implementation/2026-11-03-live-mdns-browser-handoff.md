@@ -1,7 +1,7 @@
 # Phase 1N-H: Passive Live mDNS Handoff to Local 2D Debugger
 
 Date: 2026-11-03
-Status: Draft implementation PR, M5 regression and live Safari acceptance pending.
+Status: Draft PR; M5 live Safari visual validation observed, automated regression pending.
 Base: Phase 1N-G merged in PR #39 (49881f3).
 
 ## Objective
@@ -131,6 +131,48 @@ http://127.0.0.1:8765/, and check:
 
 Before collecting screenshots or posting GitHub commentary, redact
 real host names, service instance labels, local IPs and MACs.
+
+## First M5 dual-interface Safari validation (2026-11-06)
+
+The developer provided two screen recordings of the opt-in combined
+ARP + mDNS live debugger. Both sessions reached `ended`; the recorded
+browser views showed a working address map and the new Services tab,
+with normal navigation between evidence, subnet and host context.
+
+The completed snapshots show these **capture-scoped observation totals**:
+
+| Metric | en5 Ethernet | en0 Wi-Fi |
+| --- | ---: | ---: |
+| ARP address nodes | 18 | 16 |
+| ARP sender claims | 9 | 8 |
+| ARP binding updates | 47 | 37 |
+| mDNS observations | 110 | 180 |
+| mDNS queries | 65 | 102 |
+| mDNS responses | 45 | 78 |
+| mDNS IPv4 / IPv6 | 54 / 56 | 90 / 90 |
+| PTR advertisements | 41 | 66 |
+| Retained PTR-backed service instances | 3 | 4 |
+| Fresh PTR-backed instances | 2 | 3 |
+
+The interface-specific local OS context was reported independently
+from ARP evidence. The two interfaces had different host IPv4
+addresses but shared a reported IPv4 network prefix. Services in
+the recordings included real DNS-SD service types; no full private
+service instance labels, IP addresses or MAC addresses are included
+in this public note.
+
+**Interpretation limitations:** These recordings do not establish
+equal-duration captures, an identical traffic workload or complete
+visibility of all multicast groups. The higher mDNS count on one
+interface should not be interpreted as a performance difference or
+proof of different physical LAN membership. Same numeric addresses
+must continue to retain separate interface-scoped evidence provenance.
+
+This is positive **manual live rendering acceptance** for capture
+events, the Services tab, query/response breakdown, PTR service
+claims and freshness indicators. The Python focused/full test suites,
+TTL expiry after packet inactivity, and independent ARP-only/offline
+regression checks have not yet been reported for PR #40.
 
 ## Deferred
 
