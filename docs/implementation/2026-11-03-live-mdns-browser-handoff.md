@@ -1,7 +1,7 @@
 # Phase 1N-H: Passive Live mDNS Handoff to Local 2D Debugger
 
 Date: 2026-11-03
-Status: Draft PR; M5 live Safari visual validation observed, automated regression pending.
+Status: M5 focused and full automated tests passing; live Safari behavior observed; ready for review.
 Base: Phase 1N-G merged in PR #39 (49881f3).
 
 ## Objective
@@ -170,9 +170,34 @@ must continue to retain separate interface-scoped evidence provenance.
 
 This is positive **manual live rendering acceptance** for capture
 events, the Services tab, query/response breakdown, PTR service
-claims and freshness indicators. The Python focused/full test suites,
-TTL expiry after packet inactivity, and independent ARP-only/offline
-regression checks have not yet been reported for PR #40.
+claims and freshness indicators. The developer subsequently reported **clean automated test results**
+for PR #40, after completing the branch's focused and full-suite
+validation workflow. Exact test counts and timings were not supplied
+and are intentionally not inferred. Existing ARP-only/offline behavior
+has automated regression coverage in the suite; separate manual
+rechecks of those modes and a real-time no-packet PTR TTL expiration
+were not specifically reported. The browser demonstration and automated
+results support moving the PR to review, with those manual scenarios
+available as optional follow-up checks.
+
+## Automated acceptance (2026-11-06)
+
+The developer confirmed that the automated test suite returned clean
+results for the Phase 1N-H branch after the focused/full regression
+commands were requested. No individual pytest output or total test
+count accompanied the confirmation; do not invent a count.
+
+The existing ARP-only, sanitized offline replay and TTL behavior are
+represented by regression tests. These checks complement the
+developer's real `en0` and `en5` Safari capture recordings.
+
+The remaining optional manual checks are continued PTR freshness
+transition after capture inactivity and a separate ARP-only/offline
+browser session. Neither is being reported as a failure or as a
+separately confirmed manual pass.
+
+PR #40 can be marked **ready for review**, leaving the owner's
+squash-merge decision unchanged.
 
 ## Deferred
 
