@@ -20,11 +20,14 @@ from novxis.pipeline.icmp import ICMPEventPipeline, ICMPProcessingResult
 from novxis.pipeline.ipv4 import IPv4EvidencePipeline, IPv4ProcessingResult
 from novxis.pipeline.link import UnsupportedLinkTypeError
 from novxis.pipeline.mdns import MDNSEventPipeline
+from novxis.pipeline.ndp import NeighborDiscoveryPipeline, NeighborDiscoveryObserved
 from novxis.pipeline.udp import UDPEventPipeline
 
 __all__ = [
     "DNSEventPipeline",
     "MDNSEventPipeline",
+    "NeighborDiscoveryPipeline",
+    "NeighborDiscoveryObserved",
     "DNSStatePipeline",
     "DNSStateProcessingResult",
     "DHCPv4EventPipeline",
