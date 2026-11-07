@@ -1,7 +1,7 @@
 # Phase 1N-L: Unified Address Evidence Graph, sprint scope
 
 - **Date:** 2026-11-07
-- **Status:** Scoped and planned, **not implemented**
+- **Status:** Stage 1 pure projection implemented on a draft branch; 2D/UI integration not implemented. M5 regression pending.
 - **Starting baseline:** 794 passing M5 Python tests after Phase 1N-K Stage 3
 - **Target:** one read-only, typed IPv4/IPv6/MAC evidence graph without inferred devices
 

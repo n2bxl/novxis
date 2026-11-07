@@ -6,6 +6,12 @@ from novxis.views.arp_address_map import (
     ARPSenderClaim,
     project_arp_address_map,
 )
+from novxis.views.unified_address_graph import (
+    UnifiedAddressNode,
+    UnifiedAddressEdge,
+    UnifiedAddressGraphSnapshot,
+    project_unified_address_graph,
+)
 from novxis.views.dns_groups import (
     DNSGroupedSnapshot,
     DNSRelationshipGroup,
@@ -22,6 +28,10 @@ __all__ = [
     "ARPAddressNode",
     "ARPSenderClaim",
     "project_arp_address_map",
+    "UnifiedAddressNode",
+    "UnifiedAddressEdge",
+    "UnifiedAddressGraphSnapshot",
+    "project_unified_address_graph",
     "DNSGroupedSnapshot",
     "DNSRelationshipGroup",
     "group_dns_relationships",
