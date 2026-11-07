@@ -76,7 +76,7 @@ def test_live_capture_filter_and_protocol_optin_are_explicit():
     assert 'bpf_filter="arp or udp port 5353 or icmp6"' in source
     assert '"protocols": ["arp", "mdns", "ndp"]' in source
     assert "provider.start(" in source
-    assert "--count" not in source  # argparse is in build_parser()
+    assert 'emit({"type": "completed"})' in source
 
 
 def test_no_new_web_api_or_auto_device_fusion():
