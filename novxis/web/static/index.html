@@ -55,6 +55,8 @@
             aria-controls="panel-subnet" tabindex="-1" type="button" disabled>Subnet</button>
           <button id="tab-host" role="tab" aria-selected="false"
             aria-controls="panel-host" tabindex="-1" type="button" disabled>Host</button>
+          <button id="tab-services" role="tab" aria-selected="false"
+            aria-controls="panel-services" tabindex="-1" type="button" disabled>Services</button>
         </div>
         <div id="panel-evidence" class="sidebar-page" role="tabpanel"
           aria-labelledby="tab-evidence" tabindex="0">
@@ -81,6 +83,14 @@
             <h2>Host IPv4 context</h2>
             <div id="host-context-content"></div>
             <p class="context-caveat">Reported by the local Mac at session start. Not derived from ARP and not proof that any address is reachable.</p>
+          </section>
+        </div>
+        <div id="panel-services" class="sidebar-page" role="tabpanel"
+          aria-labelledby="tab-services" tabindex="0" hidden>
+          <section id="mdns-evidence" class="mdns-evidence"
+            aria-label="Passive mDNS and DNS-SD evidence" hidden>
+            <h2>Passive mDNS discovery</h2>
+            <div id="mdns-evidence-content"></div>
           </section>
         </div>
       </aside>

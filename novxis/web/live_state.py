@@ -5,6 +5,7 @@ The live snapshot uses the same projection and JSON schema as offline replay.
 """
 
 import json
+import time
 from decimal import Decimal, InvalidOperation
 from threading import Lock
 from typing import TextIO
@@ -13,12 +14,14 @@ from novxis.state.arp import ARPBinding
 from novxis.views.arp_address_map import project_arp_address_map
 from novxis.views.subnet_evidence import project_subnet_evidence
 from novxis.web.graph_data import serialize_arp_snapshot
+from novxis.web.mdns_live import LiveMDNSState
 
 MAX_LINE = 4096
 
 
 class LiveARPGraphState:
-    def __init__(self, *, max_bindings: int = 256, context_provider=None):
+    def __init__(self, *, max_bindings: int = 256, context_provider=None,
+                 clock=time.time):
         if not 1 <= max_bindings <= 4096:
             raise ValueError("max_bindings must be between 1 and 4096")
         self._lock = Lock()
@@ -33,6 +36,11 @@ class LiveARPGraphState:
         self._context_provider = context_provider
         self._host_context = None
         self._context_attempted = False
+        self._clock = clock
+        self._mdns_enabled = False
+        self._mdns = LiveMDNSState()
+        self._last_fresh_signature = ()
+        self._graph_revision = 0
 
     def ingest(self, message: dict) -> None:
         """Validate untrusted NDJSON; never interpret it as a command."""
@@ -45,11 +53,17 @@ class LiveARPGraphState:
                 1 <= len(interface) <= 128 and interface.isprintable()
             ):
                 raise ValueError("invalid capture interface")
+            protocols = message.get("protocols", ["arp"])
+            if protocols not in (["arp"], ["arp", "mdns"]):
+                raise ValueError("unsupported capture protocol set")
             needs_context = False
             with self._lock:
                 if self._interface is not None and self._interface != interface:
                     raise ValueError("unexpected interface change")
+                if self._interface is not None and self._mdns_enabled != ("mdns" in protocols):
+                    raise ValueError("unexpected capture protocol change")
                 self._interface = interface
+                self._mdns_enabled = "mdns" in protocols
                 # A previous malformed pipe record remains visible as error.
                 if self._status != "error":
                     self._status = "capturing"
@@ -79,6 +93,16 @@ class LiveARPGraphState:
             return
         if kind == "error":
             self.mark_error("Capture helper reported an error; see terminal.")
+            return
+        if kind in ("mdns", "mdns_decode_error"):
+            with self._lock:
+                if not self._mdns_enabled or message.get("interface") != self._interface:
+                    raise ValueError("mDNS event outside authorized capture session")
+                if kind == "mdns":
+                    self._mdns.observe(message, self._interface)
+                else:
+                    self._mdns.decode_error()
+                self._revision += 1
             return
         if kind != "binding":
             raise ValueError("unknown message type")
@@ -142,6 +166,7 @@ class LiveARPGraphState:
                     raise ValueError("non-increasing observation count")
             self._bindings[key] = binding
             self._updates += 1
+            self._graph_revision += 1
             self._revision += 1
 
     def mark_error(self, _reason: str) -> None:
@@ -168,8 +193,17 @@ class LiveARPGraphState:
     def snapshot(self) -> dict:
         with self._lock:
             bindings = tuple(self._bindings.values())
+            mdns_evidence = None
+            if self._mdns_enabled:
+                mdns_evidence, signature = self._mdns.snapshot(
+                    Decimal(str(self._clock())),
+                )
+                mdns_evidence["interface"] = self._interface
+                if signature != self._last_fresh_signature:
+                    self._last_fresh_signature = signature
+                    self._revision += 1
             metadata = {
-                "capture_name": "Live ARP",
+                "capture_name": "Live ARP + mDNS" if self._mdns_enabled else "Live ARP",
                 "interface": self._interface,
                 "updates_seen": self._updates,
                 "stream_errors": self._errors,
@@ -177,6 +211,7 @@ class LiveARPGraphState:
                 "max_bindings": self._max_bindings,
             }
             revision = self._revision
+            graph_revision = self._graph_revision
             status = self._status
             context = self._host_context
         snapshot = project_arp_address_map(bindings)
@@ -184,6 +219,9 @@ class LiveARPGraphState:
             snapshot, mode="live-arp", source=metadata,
             revision=revision, capture_status=status,
         )
+        result["graph_revision"] = graph_revision
+        if mdns_evidence is not None:
+            result["mdns_evidence"] = mdns_evidence
         if context is not None:
             result["host_context"] = context
             subnet = project_subnet_evidence(

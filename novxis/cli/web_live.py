@@ -1,10 +1,10 @@
-"""Serve a read-only local 2D view driven by stdin from ARP capture helper.
+"""Serve a read-only local 2D view driven by structured local capture streams.
 
 Recommended:
   sudo .venv/bin/python -m novxis.cli.arp_live_stream en0 |
     .venv/bin/python -m novxis.cli.web_live
 
-The web process is the non-privileged right side of the pipeline.
+The web process is always the unprivileged right side of the pipe.
 """
 
 import argparse
@@ -18,7 +18,7 @@ from novxis.web.server import create_server
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="Local, read-only ARP map receiving bounded NDJSON over stdin."
+        description="Local, read-only ARP/mDNS evidence view receiving bounded NDJSON."
     )
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--max-bindings", type=int, default=256)
@@ -44,7 +44,7 @@ def main():
     # The producer (potentially root) never runs the HTTP server.
     consumer = Thread(target=consume_stream, args=(sys.stdin, state), daemon=True)
     consumer.start()
-    print(f"NOVXIS Live ARP 2D Debugger: http://127.0.0.1:{server.server_port}/",
+    print(f"NOVXIS Live Evidence 2D Debugger: http://127.0.0.1:{server.server_port}/",
           flush=True)
     print("Read-only localhost. Capture source is stdin. Ctrl+C stops the view.",
           flush=True)
