@@ -328,6 +328,60 @@ function showMDNSEvidence(evidence) {
       String(item.observations) + " observation(s) · " +
       "last captured " + String(item.last_seen) + " (Unix seconds)";
     record.append(heading, type, detail);
+    const targets = Array.isArray(item.targets) ? item.targets : [];
+    if (!targets.length) {
+      const noTarget = document.createElement("p");
+      noTarget.textContent =
+        "No SRV target was observed alongside this PTR in the latest response.";
+      record.append(noTarget);
+    }
+    for (const target of targets) {
+      const claim = document.createElement("div");
+      claim.className = "mdns-target-claim";
+      const label = document.createElement("p");
+      label.textContent = "SRV target " + String(target.target) +
+        " · port " + String(target.port) +
+        " · TTL " + String(target.ttl_seconds) + "s" +
+        (target.path_fresh ? " · PTR+SRV fresh" : " · PTR/SRV path not fresh");
+      claim.append(label);
+      const addresses = Array.isArray(target.addresses) ? target.addresses : [];
+      if (!addresses.length) {
+        const absent = document.createElement("p");
+        absent.textContent = "No A/AAAA address was present in the same response.";
+        claim.append(absent);
+      }
+      for (const address of addresses) {
+        const line = document.createElement("div");
+        line.className = "mdns-target-address";
+        const summary = document.createElement("span");
+        summary.textContent = (address.family === 4 ? "A " : "AAAA ") +
+          String(address.address) + " · TTL " +
+          String(address.ttl) + "s" +
+          (address.path_fresh ? " · chain fresh" : " · chain not fresh");
+        line.append(summary);
+        if (typeof address.arp_node_id === "string" && graph &&
+            graph.nodes.some((node) => node.id === address.arp_node_id)) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "mdns-arp-link";
+          button.textContent = "Inspect independent ARP address";
+          button.addEventListener("click", () => {
+            selectedId = address.arp_node_id;
+            renderGraph();
+            showInspector();
+            selectSidebarTab("evidence");
+          });
+          line.append(button);
+        } else {
+          const absent = document.createElement("span");
+          absent.className = "mdns-address-unmatched";
+          absent.textContent = "No same-interface ARP address match";
+          line.append(absent);
+        }
+        claim.append(line);
+      }
+      record.append(claim);
+    }
     list.append(record);
   }
   if (!services.length) {
@@ -344,8 +398,10 @@ function showMDNSEvidence(evidence) {
   mdnsBody.append(list);
   const note = document.createElement("p");
   note.className = "mdns-limitation";
-  note.textContent = "Service names and PTR TTLs are packet claims, " +
-    "not verified application availability or physical device identities.";
+  note.textContent = "PTR, SRV and A/AAAA records are independent packet claims. " +
+    "Only records linked within the same response appear here. " +
+    "An ARP address match is a separate address observation, not a verified " +
+    "device identity, physical link or running service.";
   mdnsBody.append(note);
 }
 
