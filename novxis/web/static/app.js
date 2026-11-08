@@ -748,7 +748,173 @@ function showUnifiedInspector() {
   inspector.append(caveat);
 }
 
+
+// Each DNS-SD connector is a shortcut to its three independent retained
+// record claims. It does not represent a directly observed running service.
+function showDNSRecordDetails(title, record, kind) {
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+  inspector.append(heading);
+  appendDetail("Aggregated source record key", record.source_record_key, inspector);
+  if (kind === "ptr") {
+    appendDetail("PTR service type", record.service_type, inspector);
+    appendDetail("PTR advertised instance", record.instance, inspector);
+    appendDetail("PTR observation count", record.observation_count, inspector);
+  } else if (kind === "srv") {
+    appendDetail("SRV owner name", record.owner_name, inspector);
+    appendDetail("SRV advertised target name", record.target_name, inspector);
+    appendDetail("SRV advertised port", record.port, inspector);
+  } else {
+    appendDetail("A/AAAA owner name", record.owner_name, inspector);
+    appendDetail("Record type", record.kind.toUpperCase(), inspector);
+    appendDetail("Advertised IP address", record.address, inspector);
+  }
+  appendDetail("Observed (Unix seconds)", record.observed_at, inspector);
+  appendDetail("TTL (seconds)", record.ttl_seconds, inspector);
+  appendDetail("Record freshness", record.fresh ? "Fresh" : "Not fresh / TTL expired",
+    inspector);
+  appendDetail("Record provenance", record.source, inspector);
+}
+
+function showServiceInspector() {
+  const snapshot = graph?.unified_service_graph;
+  if (!snapshot) {
+    clearInspector("Service graph is unavailable for this capture.");
+    return;
+  }
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const edge = selectedEdgeId &&
+    snapshot.edges.find((item) => item.id === selectedEdgeId);
+  const node = selectedId && nodes.get(selectedId);
+  if (selectedEdgeId && !edge) selectedEdgeId = null;
+  if (selectedId && !node) selectedId = null;
+  if (!edge && !node) {
+    clearInspector("Select a hardware or IP address, an advertised service, " +
+      "or any evidence connector to inspect its source claims.");
+    return;
+  }
+  if (edge && edge.kind !== "dnssd_advertised_endpoint") {
+    // These identifiers are identical to the Unified addresses evidence
+    // graph, so its existing ARP/NDP inspector remains authoritative.
+    showUnifiedInspector();
+    return;
+  }
+
+  inspector.replaceChildren();
+  if (edge) {
+    const source = nodes.get(edge.source);
+    const target = nodes.get(edge.target);
+    inspectorTitle.textContent = "DNS-SD advertised endpoint path";
+    appendDetail("Evidence type", "DNS-SD PTR → SRV → A/AAAA", inspector);
+    appendDetail("Advertised IP address",
+      source?.display_address || edge.address?.address || "Unavailable", inspector);
+    appendDetail("Advertised service instance",
+      target?.instance || edge.ptr.instance, inspector);
+    appendDetail("Path freshness", edge.path_fresh
+      ? "Fresh at captured snapshot time" : "Not fresh / TTL expired", inspector);
+    if (!edge.path_fresh) {
+      const expired = [];
+      if (!edge.ptr?.fresh) expired.push("PTR");
+      if (!edge.srv?.fresh) expired.push("SRV");
+      if (!edge.address?.fresh) expired.push("A/AAAA");
+      appendDetail("Not-fresh supporting records",
+        expired.length ? expired.join(", ") : "Unavailable", inspector);
+    }
+    appendDetail("Capture interface", edge.interface, inspector);
+    appendDetail("Capture scope", edge.capture_scope, inspector);
+    appendDetail("Freshness evaluated as of (Unix seconds)",
+      snapshot.as_of, inspector);
+    appendDetail("Distinct endpoint evidence path ID", edge.id, inspector);
+    showDNSRecordDetails("PTR: advertised service instance", edge.ptr, "ptr");
+    showDNSRecordDetails("SRV: advertised target and port", edge.srv, "srv");
+    showDNSRecordDetails(
+      "A/AAAA: advertised address for the SRV target", edge.address, "address");
+    const note = document.createElement("p");
+    note.className = "inspector-note";
+    note.textContent = "This visual connector summarizes separately captured " +
+      "PTR, SRV and A/AAAA packet claims. A fresh advertised path does not " +
+      "prove a listening process, an open port, reachability, verified device " +
+      "identity, physical cabling or service ownership. Record keys identify " +
+      "retained aggregates, not raw packet identities.";
+    inspector.append(note);
+    if (snapshot.truncated) appendDetail("Evidence coverage",
+      "Receiver retention limits were reached; this is not a complete inventory.",
+      inspector);
+    return;
+  }
+
+  if (node.kind === "dnssd_service") {
+    inspectorTitle.textContent = node.instance;
+    appendDetail("Evidence node", "PTR-backed advertised DNS-SD service", inspector);
+    appendDetail("Service type", node.service_type, inspector);
+    appendDetail("Service instance", node.instance, inspector);
+    appendDetail("Capture interface", node.interface, inspector);
+    appendDetail("Capture scope", node.capture_scope, inspector);
+    appendDetail("Freshness evaluated as of (Unix seconds)", snapshot.as_of, inspector);
+    showDNSRecordDetails("PTR: retained service advertisement", node.ptr, "ptr");
+  } else {
+    inspectorTitle.textContent = node.display_address;
+    appendDetail("Evidence node", node.kind === "hardware"
+      ? "Hardware address evidence" : node.kind === "ipv6"
+      ? "IPv6 protocol address" : "IPv4 protocol address", inspector);
+    appendDetail("Address", node.display_address, inspector);
+    appendDetail("Capture interface", node.interface, inspector);
+    appendDetail("Capture scope", node.capture_scope, inspector);
+    if (node.kind === "ipv4" || node.kind === "ipv6") {
+      const hardwareClaims = snapshot.edges.filter((item) =>
+        item.source === node.id && item.kind !== "dnssd_advertised_endpoint");
+      if (!hardwareClaims.length) appendDetail(
+        "Independent hardware evidence",
+        "No retained same-scope option-backed ARP/NDP association; " +
+        "DNS-SD alone does not establish a hardware owner.",
+        inspector,
+      );
+    }
+  }
+  const related = snapshot.edges.filter((item) =>
+    item.source === node.id || item.target === node.id);
+  const heading = document.createElement("h3");
+  heading.textContent = "Supporting evidence relationships (" + related.length + ")";
+  inspector.append(heading);
+  if (!related.length && node.kind === "dnssd_service") {
+    const absent = document.createElement("p");
+    absent.textContent = "No complete retained PTR → SRV → A/AAAA endpoint " +
+      "path supports an IP address for this service advertisement.";
+    inspector.append(absent);
+  }
+  for (const item of related) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "claim-card unified-edge-card services-endpoint-card";
+    const from = nodes.get(item.source);
+    const to = nodes.get(item.target);
+    button.textContent = item.kind === "dnssd_advertised_endpoint"
+      ? "DNS-SD advertised endpoint · " +
+        (from?.display_address || item.address?.address || "?") + " → " +
+        (to?.instance || "?") + " · port " + item.srv.port +
+        " · " + (item.path_fresh ? "chain fresh" : "chain TTL expired")
+      : unifiedEvidenceLabel(item.kind) + " · " +
+        (from?.display_address || "?") + " → " +
+        (to?.display_address || "?") + " · " +
+        item.observation_count + " observation(s)";
+    button.addEventListener("click", () => setSelectedEdge(item.id));
+    inspector.append(button);
+  }
+  const note = document.createElement("p");
+  note.className = "inspector-note";
+  note.textContent = "Connections here are independent ARP/NDP claims or " +
+    "advertised DNS-SD endpoint record chains, not verified physical links " +
+    "or proof that any service is running.";
+  inspector.append(note);
+  if (snapshot.truncated) appendDetail("Evidence coverage",
+    "Some observations were omitted at retention limits.", inspector);
+}
+
 function showInspector() {
+  if (activeMapMode === "services") {
+    showServiceInspector();
+    return;
+  }
   if (activeMapMode === "unified") {
     showUnifiedInspector();
     return;
