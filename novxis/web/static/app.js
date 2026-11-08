@@ -138,6 +138,9 @@ function updateMapModeControls() {
   arpLegend.hidden = activeMapMode !== "arp";
   unifiedLegend.hidden = activeMapMode !== "unified";
   servicesLegend.hidden = activeMapMode !== "services";
+  if (!moveNodesMode) canvasHint.textContent = activeMapMode === "services"
+    ? "Scroll to zoom · Drag to pan · Select an address, service or evidence connector"
+    : "Scroll to zoom · Drag to pan · Select an address";
   svg.setAttribute("aria-label", activeMapMode === "services"
     ? "Interactive three-column map of hardware, IP addresses, and advertised DNS-SD services"
     : activeMapMode === "unified"
@@ -1550,7 +1553,9 @@ moveButton.addEventListener("click", () => {
   svg.classList.toggle("move-mode", moveNodesMode);
   canvasHint.textContent = moveNodesMode
     ? "Drag nodes to reorder · Shift + ↑/↓ to move selected row · Drag empty space to pan"
-    : "Scroll to zoom · Drag to pan · Select an address";
+    : (activeMapMode === "services"
+      ? "Scroll to zoom · Drag to pan · Select an address, service or evidence connector"
+      : "Scroll to zoom · Drag to pan · Select an address");
 });
 document.getElementById("auto-arrange").addEventListener("click", () => {
   if (activeMapMode === "services") {
@@ -1694,6 +1699,20 @@ async function loadGraph() {
   const errorNote = errors ? " · " + errors + " errors" : "";
   lastArpSummary = summary.textContent + errorNote;
   lastUnifiedSummary = "";
+  lastServiceSummary = "";
+  if (live && payload.unified_service_graph) {
+    const services = payload.unified_service_graph;
+    const nodeCount = services.nodes.filter((node) =>
+      node.kind === "dnssd_service").length;
+    const endpoints = services.edges.filter((edge) =>
+      edge.kind === "dnssd_advertised_endpoint").length;
+    lastServiceSummary = "PASSIVE ARP + NDP + DNS-SD · " + services.interface +
+      " · " + status + " · " + nodeCount + " advertised services · " +
+      endpoints + " endpoint paths · " + services.nodes.length +
+      " nodes · " + services.edges.length + " evidence edges" +
+      (services.truncated ? " · CAP REACHED (incomplete evidence)" : "") +
+      errorNote;
+  }
   if (live && payload.unified_address_graph) {
     const unified = payload.unified_address_graph;
     lastUnifiedSummary = "UNIFIED ARP + NDP · " + unified.interface +
@@ -1701,11 +1720,16 @@ async function loadGraph() {
       " address nodes · " + unified.edges.length + " evidence edges" +
       (unified.truncated ? " · CAP REACHED" : "") + errorNote;
   }
-  summary.textContent = activeMapMode === "unified"
-    ? lastUnifiedSummary : lastArpSummary;
-  if (!graph || !live || lastRevision !== payload.revision) {
+  summary.textContent = activeMapMode === "services" ? lastServiceSummary :
+    activeMapMode === "unified" ? lastUnifiedSummary : lastArpSummary;
+  const serviceRevisionChanged = live && activeMapMode === "services" &&
+    payload.unified_service_graph?.revision !== lastGraphRevision;
+  if (!graph || !live || lastRevision !== payload.revision ||
+      serviceRevisionChanged) {
     const graphRevision = live
-      ? (activeMapMode === "unified"
+      ? (activeMapMode === "services"
+        ? payload.unified_service_graph.revision
+        : activeMapMode === "unified"
         ? payload.unified_address_graph.revision
         : (payload.graph_revision ?? payload.revision)) : null;
     const redrawGraph = !graph || !live ||
