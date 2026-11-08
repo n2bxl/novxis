@@ -1133,6 +1133,42 @@ function layoutUnifiedGraph(snapshot) {
 // third independently arranged service column. Placement is not identity.
 const SERVICE_COLUMN_X = { hardware: 24, protocol: 395, services: 765 };
 const SERVICE_CARD_WIDTH = 282;
+
+const SERVICE_NAME_CHARS_PER_LINE = 32;
+const SERVICE_NAME_LINE_HEIGHT = 16;
+
+// Preserve every Unicode code point in the advertised instance, including
+// literal DNS escaping, without relying on SVG text auto-wrapping (which SVG
+// does not provide). Prefer separators, but split overlong tokens as needed.
+function serviceNameLines(instance) {
+  const name = String(instance);
+  const tokens = name.match(/[^._\\s-]+[._\\s-]*|[._\\s-]+/gu) || [name];
+  const lines = [];
+  let line = "";
+  for (const token of tokens) {
+    const points = Array.from(token);
+    if (line && Array.from(line).length + points.length >
+        SERVICE_NAME_CHARS_PER_LINE) {
+      lines.push(line);
+      line = "";
+    }
+    for (const point of points) {
+      if (Array.from(line).length >= SERVICE_NAME_CHARS_PER_LINE) {
+        lines.push(line);
+        line = "";
+      }
+      line += point;
+    }
+  }
+  if (line || !lines.length) lines.push(line);
+  return lines;
+}
+
+function serviceCardHeight(node) {
+  return 72 + (serviceNameLines(node.instance).length - 1) *
+    SERVICE_NAME_LINE_HEIGHT;
+}
+
 function layoutServiceGraph(snapshot) {
   const automatic = computeUnifiedAutoOrders(snapshot);
   const hardware = preserveManualOrder("hardware", automatic.hardware);
@@ -1209,13 +1245,19 @@ function layoutServiceGraph(snapshot) {
     lastServiceSlot = Math.max(lastServiceSlot + 1, desired);
     serviceSlots.push(lastServiceSlot);
   }
-  services.forEach((service, index) => locations.set(service.id, {
-    x: SERVICE_COLUMN_X.services,
-    y: ROW_START + serviceSlots[index] * ROW_STEP,
-  }));
+  // Keep the original sparse service-slot ordering, but expand only the
+  // rows that need space for multi-line labels. Manual rearrangement swaps
+  // services into the existing ordered slots without bunching the column.
+  let lastServiceBottom = ROW_START;
+  services.forEach((service, index) => {
+    const slotY = ROW_START + serviceSlots[index] * ROW_STEP;
+    const y = Math.max(slotY, lastServiceBottom + (index ? 12 : 0));
+    locations.set(service.id, { x: SERVICE_COLUMN_X.services, y });
+    lastServiceBottom = y + serviceCardHeight(service);
+  });
   stageHeight = Math.max(
     620, Math.max(row, protocol.length, lastServiceSlot + 1) *
-      ROW_STEP + 175,
+      ROW_STEP + 175, lastServiceBottom + 175,
   );
   svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);
   return locations;
@@ -1351,7 +1393,8 @@ function renderServicesCanvas(snapshot, locations) {
     const fromId = dnssd ? edge.source : edge.target;
     const toId = dnssd ? edge.target : edge.source;
     const y1 = from.y + 32 + portOffset("out:" + fromId, edge.id);
-    const y2 = to.y + 32 + portOffset("in:" + toId, edge.id);
+    const y2 = to.y + (dnssd ? serviceCardHeight(targetNode) / 2 : 32) +
+      portOffset("in:" + toId, edge.id);
     const ids = parallels.get(edge.source + "|" + edge.target) || [edge.id];
     const middle = (x1 + x2) / 2;
     const path = makeSVG("path", {
@@ -1414,21 +1457,23 @@ function renderServicesCanvas(snapshot, locations) {
     });
     group.append(makeSVG("rect", {
       x: 0, y: 0, width: service ? SERVICE_CARD_WIDTH : 256,
-      height: service ? 72 : 64, rx: service ? 3 : 8,
+      height: service ? serviceCardHeight(node) : 64, rx: service ? 3 : 8,
     }));
     if (service) {
-      // Full name is always present in the inspector/accessible label
-      // and SVG title. Ellipsis explicitly marks a condensed card label.
+      // Render the entire advertised service instance in legible SVG lines;
+      // title and accessible label retain the unchanged original string.
       const fullName = String(node.instance);
-      const limit = 35;
-      const cardName = fullName.length > limit
-        ? fullName.slice(0, limit - 1) + "…" : fullName;
+      const nameLines = serviceNameLines(fullName);
+      const extraHeight = (nameLines.length - 1) * SERVICE_NAME_LINE_HEIGHT;
       const title = makeSVG("title");
       title.textContent = fullName + " (" + node.service_type + ")";
       group.append(title);
-      addSVGText(group, 12, 21, cardName, "service-name-text");
-      addSVGText(group, 12, 41, node.service_type, "service-type-text");
-      addSVGText(group, 12, 59,
+      nameLines.forEach((line, index) =>
+        addSVGText(group, 12, 21 + index * SERVICE_NAME_LINE_HEIGHT,
+          line, "service-name-text"));
+      addSVGText(group, 12, 41 + extraHeight, node.service_type,
+        "service-type-text");
+      addSVGText(group, 12, 59 + extraHeight,
         "PTR " + (node.ptr?.fresh ? "fresh" : "TTL expired") +
         " · " + node.interface, "service-status-text");
     } else {
