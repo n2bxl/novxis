@@ -1,8 +1,7 @@
 # Phase 1N-M Stage 3: Three-column Services evidence map
 
 - **Date:** 2026-11-07
-- **Status:** Implemented on feature branch; focused and full M5 regressions
-  and live Safari acceptance pending
+- **Status:** Live browser screen-recording review confirms three-column service rendering and TTL freshness transitions; focused/full M5 regressions and remaining Safari acceptance pending
 - **Prerequisites:** Phase 1N-M Stage 1 pure projector and Stage 2 local
   `unified_service_graph` JSON merged into `main`
 - **Accepted Stage 2 merged baseline (M5):** 966 passing tests in 5.23 s
@@ -196,6 +195,35 @@ Open `http://127.0.0.1:8765/` in Safari.
 
 Only sanitized counts, anonymized descriptions and test results
 belong in the public PR discussion.
+
+## Screen-recording observation (2026-11-07)
+
+Owner shared an approximately four-minute **private local Safari recording**
+of Stage 3 in use. Observed visually, without retaining or publishing
+any screen frames or private service/address labels:
+
+- The selected **Services** map renders **hardware**, **IPv4/IPv6** and
+  **advertised service** cards in three distinct columns.
+- The canvas contains independent typed relationship lines. The
+  Evidence Inspector can display a selected advertised service and
+  record-chain details, including a target and port; another view
+  shows independent NDP evidence.
+- As the capture's retained DNS-SD records age beyond TTL freshness,
+  the service paths visibly transition to the **dashed expired**
+  presentation without removing the service and address map.
+- The recording shows pan and zoom interactions, including a zoomed-out
+  overview of the graph.
+
+This is **qualitative live UI evidence**, not a complete scripted Safari
+acceptance run. It does **not** establish that every keyboard shortcut,
+every parallel-edge hit target, cross-mode camera retention, or all
+freshness expiry/retraction fixtures were manually exercised. The
+owner has not yet supplied Stage 3 focused/full M5 pytest results.
+Keep the PR in draft until those remaining checkpoints are confirmed.
+
+The project's underlying semantics remain unchanged: TTL expiration
+marks previously retained advertisement evidence **not fresh**, not
+an offline device or a verified closed service port.
 
 ## Exit criteria
 
