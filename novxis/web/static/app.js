@@ -139,8 +139,11 @@ function updateMapModeControls() {
   unifiedLegend.hidden = activeMapMode !== "unified";
   servicesLegend.hidden = activeMapMode !== "services";
   if (!moveNodesMode) canvasHint.textContent = activeMapMode === "services"
-    ? "Scroll to zoom · Drag to pan · Select an address, service or evidence connector"
+    ? "Scroll to zoom · Drag to pan · Select an evidence connector · Reset view fits all retained rows"
     : "Scroll to zoom · Drag to pan · Select an address";
+  document.getElementById("fit").title = activeMapMode === "services"
+    ? "Fit all retained service, IP and hardware rows into the map viewport"
+    : "Reset zoom and pan";
   svg.setAttribute("aria-label", activeMapMode === "services"
     ? "Interactive three-column map of hardware, IP addresses, and advertised DNS-SD services"
     : activeMapMode === "unified"
@@ -1605,7 +1608,7 @@ moveButton.addEventListener("click", () => {
   canvasHint.textContent = moveNodesMode
     ? "Drag nodes to reorder · Shift + ↑/↓ to move selected row · Drag empty space to pan"
     : (activeMapMode === "services"
-      ? "Scroll to zoom · Drag to pan · Select an address, service or evidence connector"
+      ? "Scroll to zoom · Drag to pan · Select an evidence connector · Reset view fits all retained rows"
       : "Scroll to zoom · Drag to pan · Select an address");
 });
 document.getElementById("auto-arrange").addEventListener("click", () => {
@@ -1762,6 +1765,15 @@ async function loadGraph() {
       endpoints + " endpoint paths · " + services.nodes.length +
       " nodes · " + services.edges.length + " evidence edges" +
       (services.truncated ? " · CAP REACHED (incomplete evidence)" : "") +
+      (services.omitted_mdns_advertisements
+        ? " · " + services.omitted_mdns_advertisements +
+          " mDNS advertisements omitted" : "") +
+      (services.omitted_ndp_claims
+        ? " · " + services.omitted_ndp_claims + " NDP claims omitted" : "") +
+      (services.omitted_ndp_unlinked
+        ? " · " + services.omitted_ndp_unlinked +
+          " unlinked NDP observations omitted" : "") +
+      (services.arp_bindings_truncated ? " · ARP retention cap reached" : "") +
       errorNote;
   }
   if (live && payload.unified_address_graph) {
