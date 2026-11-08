@@ -86,5 +86,5 @@ def test_optional_small_size_raster_is_nonblank_and_transparent(name, size):
     assert image.size == (size, size)
     alpha = image.getchannel("A")
     assert alpha.getextrema() == (0, 255)
-    opaque_pixels = sum(1 for a in alpha.getdata() if a >= 128)
+    opaque_pixels = sum(1 for a in alpha.tobytes() if a >= 128)
     assert size <= opaque_pixels < (size * size * 0.65)
