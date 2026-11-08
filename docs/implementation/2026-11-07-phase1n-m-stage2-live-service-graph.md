@@ -139,6 +139,30 @@ An empty service graph is valid if no PTR-backed service chain was
 observed in the finite capture; do not infer absence of services from
 the local network. The server remains loopback-only.
 
+## Observed live API validation (M5, 2026-11-07)
+
+The owner ran the existing authorized live stream and inspected
+*aggregate metadata only* from the loopback `/api/graph` response.
+Observed:
+
+- `schema_version: 1`, `origin: passive-arp-ndp-mdns`
+- Service graph revision: `5`
+- Node kinds: `ipv4: 4`, `ipv6: 1`, `hardware: 4`
+- Edge kinds: `arp_sender: 4`, `ndp_ns_source_slla: 1`
+- `truncated: false`
+- No `dnssd_service` nodes or `dnssd_advertised_endpoint` edges in
+  this particular snapshot.
+
+**Interpretation:** this verifies the local API includes the new
+versioned graph and projects retained ARP/NDP evidence correctly
+without reporting truncation. It does **not** verify live DNS-SD
+endpoint-chain projection because no PTR-backed service instance was
+retained at inspection time. The synthetic Stage 1 and Stage 2 tests
+cover PTR/SRV/A/AAAA path construction and record provenance. A
+future optional controlled service advertisement can validate that
+path end to end. Absence of observed advertisements in one finite
+capture is not evidence of absence of services on the network.
+
 ## Synthetic acceptance cases
 
 - Empty combined session and original ARP-only/ARP+mDNS/offline behavior.
