@@ -1170,11 +1170,11 @@ function layoutServiceGraph(snapshot) {
     x: SERVICE_COLUMN_X.protocol,
     y: ROW_START + addressSlots[index] * ROW_STEP,
   }));
-  // In automatic layout, position each service near the mean row of its
-  // evidenced IP endpoints. The card still appears only once and every
-  // independent path remains drawn. Manually reordered services instead
-  // occupy consecutive slots so a Shift+Arrow/drag reorder is predictable.
-  const autoServiceRows = serviceManualOrders.services === null;
+  // The automatic layout has a sparse set of service row positions,
+  // aligned to supporting IP addresses. Preserve that EXACT set of row
+  // slots during manual reorder: reorder swaps which service occupies a
+  // slot, rather than repacking every service into consecutive rows.
+  // This prevents the entire column jumping/bunching on first drag.
   const preferredServiceSlot = (service) => {
     const ranks = Array.from(serviceRanks.get(service.id));
     const ipSlots = ranks.map((rank) =>
@@ -1183,24 +1183,19 @@ function layoutServiceGraph(snapshot) {
       ? Math.round(ipSlots.reduce((sum, slot) => sum + slot, 0) /
           ipSlots.length) : row;
   };
-  // When the user first manually reorders a densely grouped service
-  // column, keep its established vertical area rather than jumping to
-  // row zero. Only the order changes, never the evidence graph.
-  const initialServiceSlot = services.length
-    ? Math.min(...services.map(preferredServiceSlot)) : 0;
-  let previousServiceSlot = autoServiceRows ? -1 : initialServiceSlot - 1;
-  for (const service of services) {
+  const serviceSlots = [];
+  let lastServiceSlot = -1;
+  for (const service of automaticServices) {
     const desired = preferredServiceSlot(service);
-    const slot = autoServiceRows
-      ? Math.max(previousServiceSlot + 1, desired)
-      : previousServiceSlot + 1;
-    locations.set(service.id, {
-      x: SERVICE_COLUMN_X.services, y: ROW_START + slot * ROW_STEP,
-    });
-    previousServiceSlot = slot;
+    lastServiceSlot = Math.max(lastServiceSlot + 1, desired);
+    serviceSlots.push(lastServiceSlot);
   }
+  services.forEach((service, index) => locations.set(service.id, {
+    x: SERVICE_COLUMN_X.services,
+    y: ROW_START + serviceSlots[index] * ROW_STEP,
+  }));
   stageHeight = Math.max(
-    620, Math.max(row, protocol.length, previousServiceSlot + 1) *
+    620, Math.max(row, protocol.length, lastServiceSlot + 1) *
       ROW_STEP + 175,
   );
   svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);
@@ -1284,6 +1279,27 @@ function renderServicesCanvas(snapshot, locations) {
   }
   for (const ids of parallels.values()) ids.sort();
 
+  // Fan each visible connector into its own port on shared endpoints,
+  // even when the other endpoint differs. Otherwise 10 service paths
+  // may converge exactly on top of each other and appear to be one.
+  const ports = new Map();
+  for (const edge of snapshot.edges) {
+    const dnssd = edge.kind === "dnssd_advertised_endpoint";
+    const fromId = dnssd ? edge.source : edge.target;
+    const toId = dnssd ? edge.target : edge.source;
+    for (const key of ["out:" + fromId, "in:" + toId]) {
+      if (!ports.has(key)) ports.set(key, []);
+      ports.get(key).push(edge.id);
+    }
+  }
+  for (const ids of ports.values()) ids.sort();
+  const portOffset = (key, edgeId) => {
+    const ids = ports.get(key) || [edgeId];
+    if (ids.length <= 1) return 0;
+    const spacing = Math.min(16, 52 / (ids.length - 1));
+    return (ids.indexOf(edgeId) - (ids.length - 1) / 2) * spacing;
+  };
+
   for (const edge of snapshot.edges) {
     const sourceNode = nodes.get(edge.source);
     const targetNode = nodes.get(edge.target);
@@ -1311,16 +1327,13 @@ function renderServicesCanvas(snapshot, locations) {
     // direction on this mode is HARDWARE -> ADDRESS -> SERVICE.
     const from = dnssd ? source : target;
     const to = dnssd ? target : source;
-    const fromWidth = dnssd ? 256 : 256;
-    const x1 = from.x + fromWidth;
+    const x1 = from.x + 256;
     const x2 = to.x;
-    let y1 = from.y + 32;
-    let y2 = to.y + 32;
+    const fromId = dnssd ? edge.source : edge.target;
+    const toId = dnssd ? edge.target : edge.source;
+    const y1 = from.y + 32 + portOffset("out:" + fromId, edge.id);
+    const y2 = to.y + 32 + portOffset("in:" + toId, edge.id);
     const ids = parallels.get(edge.source + "|" + edge.target) || [edge.id];
-    const index = ids.indexOf(edge.id);
-    const offset = (index - (ids.length - 1) / 2) * 24;
-    y1 += offset;
-    y2 += offset;
     const middle = (x1 + x2) / 2;
     const path = makeSVG("path", {
       d: "M " + x1 + " " + y1 + " C " + middle + " " + y1 +
