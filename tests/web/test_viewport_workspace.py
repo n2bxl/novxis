@@ -58,14 +58,18 @@ def test_narrow_viewports_return_to_stack_and_page_scrolling():
     assert "max-height: none;" in responsive
 
 
-def test_tall_graph_zoom_maximum_scales_with_viewbox_height():
+def test_zoom_maximum_uses_actual_css_viewport_and_svg_viewbox():
     js = resources.files("novxis.web.static").joinpath("app.js").read_text(
         encoding="utf-8"
     )
     maximum = js.split("function maximumZoomScale() {", 1)[1].split(
         "function zoomAt(", 1
     )[0]
-    assert "3.5 * Math.max(1, stageHeight / 620)" in maximum
+    assert "const rect = svg.getBoundingClientRect();" in maximum
+    assert "const view = svg.viewBox.baseVal;" in maximum
+    assert "rect.width / view.width, rect.height / view.height" in maximum
+    assert "return Math.max(3.5, 5 / cssPixelsPerUnit);" in maximum
+    assert "3.5 * Math.max(1, stageHeight / 620)" not in maximum
     assert "Math.min(maximumZoomScale(), Math.max(0.05, camera.scale * factor))" in js
     assert 'document.getElementById("zoom-in").addEventListener("click"' in js
     assert 'canvas.addEventListener("wheel"' in js
