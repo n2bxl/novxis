@@ -940,6 +940,77 @@ function layoutUnifiedGraph(snapshot) {
   return locations;
 }
 
+
+// Services mode builds on the same MAC-first address clustering, but keeps a
+// third independently arranged service column. Placement is not identity.
+const SERVICE_COLUMN_X = { hardware: 24, protocol: 395, services: 765 };
+const SERVICE_CARD_WIDTH = 282;
+function layoutServiceGraph(snapshot) {
+  const automatic = computeUnifiedAutoOrders(snapshot);
+  const hardware = preserveManualOrder("hardware", automatic.hardware);
+  const defaultProtocol = hardware.flatMap((mac) =>
+    automatic.groups.get(mac.id) || []).concat(automatic.ungrouped);
+  const protocol = preserveManualOrder("protocol", defaultProtocol);
+  const protocolRank = new Map(protocol.map((node, index) => [node.id, index]));
+  const serviceNodes = snapshot.nodes.filter((node) =>
+    node.kind === "dnssd_service");
+  const serviceById = new Map(serviceNodes.map((node) => [node.id, node]));
+  const serviceRanks = new Map(serviceNodes.map((node) => [node.id, new Set()]));
+  for (const edge of snapshot.edges) {
+    if (edge.kind !== "dnssd_advertised_endpoint" ||
+        !protocolRank.has(edge.source) || !serviceById.has(edge.target)) continue;
+    const ip = protocol[protocolRank.get(edge.source)];
+    const service = serviceById.get(edge.target);
+    if (edge.interface !== ip.interface || edge.interface !== service.interface ||
+        edge.capture_scope !== ip.capture_scope ||
+        edge.capture_scope !== service.capture_scope) continue;
+    serviceRanks.get(service.id).add(protocolRank.get(ip.id));
+  }
+  // Median/average rank approximates grouping without assigning one
+  // "owner" when a service advertises multiple addresses.
+  const meanRank = (node) => {
+    const ranks = Array.from(serviceRanks.get(node.id));
+    return ranks.length
+      ? ranks.reduce((sum, rank) => sum + rank, 0) / ranks.length
+      : Number.POSITIVE_INFINITY;
+  };
+  const automaticServices = serviceNodes.slice().sort((a, b) =>
+    meanRank(a) - meanRank(b) ||
+    a.service_type.localeCompare(b.service_type) ||
+    a.instance.localeCompare(b.instance) || a.id.localeCompare(b.id));
+  const services = preserveManualOrder("services", automaticServices);
+  orderedByKind = { protocol, hardware, services };
+
+  const locations = new Map();
+  const addressSlots = [];
+  let row = 0;
+  for (const mac of hardware) {
+    const count = (automatic.groups.get(mac.id) || []).length;
+    const span = Math.max(count, 1);
+    locations.set(mac.id, {
+      x: SERVICE_COLUMN_X.hardware,
+      y: ROW_START + (row + (span - 1) / 2) * ROW_STEP,
+    });
+    for (let index = 0; index < count; index++) {
+      addressSlots.push(row + index);
+    }
+    row += span;
+  }
+  for (const ip of automatic.ungrouped) addressSlots.push(row++);
+  protocol.forEach((ip, index) => locations.set(ip.id, {
+    x: SERVICE_COLUMN_X.protocol,
+    y: ROW_START + addressSlots[index] * ROW_STEP,
+  }));
+  services.forEach((service, index) => locations.set(service.id, {
+    x: SERVICE_COLUMN_X.services, y: ROW_START + index * ROW_STEP,
+  }));
+  stageHeight = Math.max(
+    620, Math.max(row, protocol.length, services.length) * ROW_STEP + 175,
+  );
+  svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);
+  return locations;
+}
+
 function preserveManualOrder(kind, automatic) {
   const ids = manualOrderForView()[kind];
   if (!ids) return automatic;
@@ -973,6 +1044,7 @@ function reorderNode(kind, id, targetIndex) {
 
 function layoutGraph() {
   const active = visibleAddressGraph();
+  if (activeMapMode === "services") return layoutServiceGraph(active);
   if (activeMapMode === "unified") return layoutUnifiedGraph(active);
   const automatic = computeAutoOrders(active);
   orderedByKind = {
@@ -994,13 +1066,178 @@ function layoutGraph() {
   return locations;
 }
 
+
+// Services SVG is deliberately a separate presentation path. ARP-only and
+// Unified addresses retain their existing geometry and edge inspectors.
+function renderServicesCanvas(snapshot, locations) {
+  addSVGText(viewport, SERVICE_COLUMN_X.hardware, 59,
+    "HARDWARE ADDRESSES", "column-title");
+  addSVGText(viewport, SERVICE_COLUMN_X.protocol, 59,
+    "IPV4 / IPV6 ADDRESSES", "column-title");
+  addSVGText(viewport, SERVICE_COLUMN_X.services, 59,
+    "ADVERTISED SERVICES", "column-title");
+
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const parallels = new Map();
+  for (const edge of snapshot.edges) {
+    if (edge.kind !== "dnssd_advertised_endpoint") continue;
+    const pair = edge.source + "|" + edge.target;
+    if (!parallels.has(pair)) parallels.set(pair, []);
+    parallels.get(pair).push(edge.id);
+  }
+  for (const ids of parallels.values()) ids.sort();
+
+  for (const edge of snapshot.edges) {
+    const sourceNode = nodes.get(edge.source);
+    const targetNode = nodes.get(edge.target);
+    const source = locations.get(edge.source);
+    const target = locations.get(edge.target);
+    if (!source || !target || !sourceNode || !targetNode ||
+        edge.interface !== sourceNode.interface ||
+        edge.interface !== targetNode.interface ||
+        edge.capture_scope !== sourceNode.capture_scope ||
+        edge.capture_scope !== targetNode.capture_scope) continue;
+    const dnssd = edge.kind === "dnssd_advertised_endpoint";
+    if (dnssd && !(sourceNode.kind === "ipv4" || sourceNode.kind === "ipv6"
+        ) || dnssd && targetNode.kind !== "dnssd_service") continue;
+    if (!dnssd && !(
+      (sourceNode.kind === "ipv4" && edge.kind === "arp_sender") ||
+      (sourceNode.kind === "ipv6" && (
+        edge.kind === "ndp_ns_source_slla" ||
+        edge.kind === "ndp_na_target_tlla"))
+    )) continue;
+    if (!dnssd && targetNode.kind !== "hardware") continue;
+
+    // Address-to-MAC provenance is preserved, but the visual reading
+    // direction on this mode is HARDWARE -> ADDRESS -> SERVICE.
+    const from = dnssd ? source : target;
+    const to = dnssd ? target : source;
+    const fromWidth = dnssd ? 256 : 256;
+    const x1 = from.x + fromWidth;
+    const x2 = to.x;
+    let y1 = from.y + 32;
+    let y2 = to.y + 32;
+    if (dnssd) {
+      const ids = parallels.get(edge.source + "|" + edge.target) || [edge.id];
+      const index = ids.indexOf(edge.id);
+      const offset = (index - (ids.length - 1) / 2) * 9;
+      y1 += offset;
+      y2 += offset;
+    }
+    const middle = (x1 + x2) / 2;
+    const path = makeSVG("path", {
+      d: "M " + x1 + " " + y1 + " C " + middle + " " + y1 +
+        ", " + middle + " " + y2 + ", " + x2 + " " + y2,
+      class: "map-edge evidence-" + edge.kind +
+        (dnssd && !edge.path_fresh ? " stale-path" : "") +
+        ((selectedEdgeId === edge.id ||
+          (selectedId && (edge.source === selectedId ||
+                          edge.target === selectedId))) ? " selected" : ""),
+    });
+    const group = makeSVG("g", {
+      class: "map-edge-group" + (selectedEdgeId === edge.id ? " selected" : ""),
+      "data-edge-id": edge.id, role: "button", tabindex: "0",
+      "aria-label": (dnssd
+        ? "DNS-SD advertised endpoint path" + (edge.path_fresh ? "" : ", TTL expired")
+        : unifiedEvidenceLabel(edge.kind)) + " evidence relationship",
+    });
+    const hit = makeSVG("path", {
+      d: path.getAttribute("d"), class: "map-edge-hit",
+    });
+    group.append(path, hit);
+    group.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        setSelectedEdge(edge.id);
+      }
+    });
+    viewport.append(group);
+  }
+
+  for (const node of snapshot.nodes) {
+    const position = locations.get(node.id);
+    if (!position) continue;
+    const service = node.kind === "dnssd_service";
+    const selected = node.id === selectedId;
+    const group = makeSVG("g", {
+      class: "map-node " + node.kind + (selected ? " selected" : "") +
+        (service && !node.ptr?.fresh ? " stale-ptr" : ""),
+      transform: "translate(" + position.x + " " + position.y + ")",
+      role: "button", tabindex: "0",
+      "aria-label": service
+        ? "Advertised DNS-SD service " + node.instance + " on " + node.interface
+        : node.kind + " address " + node.display_address + " on " + node.interface,
+      "data-node-id": node.id,
+    });
+    group.append(makeSVG("rect", {
+      x: 0, y: 0, width: service ? SERVICE_CARD_WIDTH : 256,
+      height: service ? 72 : 64, rx: service ? 3 : 8,
+    }));
+    if (service) {
+      // Full name is always present in the inspector/accessible label
+      // and SVG title. Ellipsis explicitly marks a condensed card label.
+      const fullName = String(node.instance);
+      const limit = 35;
+      const cardName = fullName.length > limit
+        ? fullName.slice(0, limit - 1) + "…" : fullName;
+      const title = makeSVG("title");
+      title.textContent = fullName + " (" + node.service_type + ")";
+      group.append(title);
+      addSVGText(group, 12, 21, cardName, "service-name-text");
+      addSVGText(group, 12, 41, node.service_type, "service-type-text");
+      addSVGText(group, 12, 59,
+        "PTR " + (node.ptr?.fresh ? "fresh" : "TTL expired") +
+        " · " + node.interface, "service-status-text");
+    } else {
+      if (node.kind === "ipv6" && node.display_address.length > 28) {
+        const midpoint = node.display_address.lastIndexOf(":", 24);
+        const splitAt = midpoint > 8 ? midpoint + 1 : 24;
+        addSVGText(group, 13, 20, node.display_address.slice(0, splitAt),
+          "ipv6-address-text");
+        addSVGText(group, 13, 37, node.display_address.slice(splitAt),
+          "ipv6-address-text");
+      } else {
+        addSVGText(group, 13, 22, node.display_address);
+      }
+      addSVGText(group, 13, 54,
+        "interface: " + node.interface, "node-meta");
+    }
+    group.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        setSelected(node.id);
+      } else if (moveNodesMode && event.shiftKey &&
+                 (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+        event.preventDefault();
+        const kind = columnKind(node.kind);
+        const index = orderedByKind[kind].findIndex((item) => item.id === node.id);
+        if (reorderNode(kind, node.id,
+                        index + (event.key === "ArrowUp" ? -1 : 1))) {
+          renderGraph();
+          const replacement = Array.from(
+            svg.querySelectorAll("[data-node-id]"),
+          ).find((item) => item.getAttribute("data-node-id") === node.id);
+          if (replacement) replacement.focus();
+        }
+      }
+    });
+    viewport.append(group);
+  }
+}
+
 function renderGraph() {
   if (!graph) return;
   viewport.replaceChildren();
+  viewport.classList.toggle("map-services-canvas", activeMapMode === "services");
 
   const active = visibleAddressGraph();
   if (!active) return;
   const locations = layoutGraph();
+  if (activeMapMode === "services") {
+    renderServicesCanvas(active, locations);
+    updateCamera();
+    return;
+  }
   addSVGText(viewport, 114, 59, activeMapMode === "unified"
     ? "IPV4 / IPV6 ADDRESSES" : "PROTOCOL ADDRESSES", "column-title");
   addSVGText(viewport, 708, 59, "HARDWARE ADDRESSES", "column-title");
