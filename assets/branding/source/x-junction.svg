@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-labelledby="title desc">
+  <title id="title">NOVXIS X-Junction icon</title>
+  <desc id="desc">Four substantial angular gold arms converge toward a separate green plus, framed by four cyan square corner brackets.</desc>
+  <!-- Source geometry: symmetric paths, not an auto-trace of the concept bitmap. -->
+  <!-- Color tokens from the NOVXIS visual-system proposal, not sampled raster colors. -->
+  <g fill="#76D8DE">
+    <path d="M 14 38 V 14 H 38 V 22 H 22 V 38 Z"/>
+    <path d="M 90 14 H 114 V 38 H 106 V 22 H 90 Z"/>
+    <path d="M 14 90 H 22 V 106 H 38 V 114 H 14 Z"/>
+    <path d="M 106 90 H 114 V 114 H 90 V 106 H 106 Z"/>
+  </g>
+  <g fill="#AF9600">
+    <path d="M 28 29 H 45 L 56 41 V 52 H 45 L 32 39 H 28 Z"/>
+    <path d="M 100 29 H 83 L 72 41 V 52 H 83 L 96 39 H 100 Z"/>
+    <path d="M 28 99 H 45 L 56 87 V 76 H 45 L 32 89 H 28 Z"/>
+    <path d="M 100 99 H 83 L 72 87 V 76 H 83 L 96 89 H 100 Z"/>
+  </g>
+  <path fill="#88E6A1" d="M 60 54 H 68 V 60 H 74 V 68 H 68 V 74 H 60 V 68 H 54 V 60 H 60 Z"/>
+</svg>
