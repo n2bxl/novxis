@@ -132,7 +132,8 @@ def test_automatic_services_follow_supported_ip_rows_and_manual_order_preserves_
     assert 'lastServiceSlot = Math.max(lastServiceSlot + 1, desired);' in view
     assert 'serviceSlots.push(lastServiceSlot);' in view
     assert 'const services = preserveManualOrder("services", automaticServices);' in view
-    assert 'y: ROW_START + serviceSlots[index] * ROW_STEP' in view
+    assert 'const slotY = ROW_START + serviceSlots[index] * ROW_STEP;' in view
+    assert 'const y = Math.max(slotY, lastServiceBottom + (index ? 12 : 0));' in view
     assert 'Math.max(row, protocol.length, lastServiceSlot + 1)' in view
     assert 'previousServiceSlot + 1' not in view
     assert 'initialServiceSlot' not in view
@@ -160,7 +161,8 @@ def test_service_node_renders_full_accessible_name_and_explicit_shortened_label(
         'node.kind === "dnssd_service"',
         '"aria-label": service',
         'const fullName = String(node.instance);',
-        'fullName.slice(0, limit - 1) + "…"',
+        'const nameLines = serviceNameLines(fullName);',
+        'nameLines.forEach((line, index) =>',
         'const title = makeSVG("title");',
         'title.textContent = fullName + " (" + node.service_type + ")";',
         '"service-name-text"',
@@ -211,7 +213,7 @@ def test_parallel_and_convergent_paths_have_distinct_port_offsets_and_hit_target
     assert 'const portOffset = (key, edgeId) => {' in view
     assert 'Math.min(16, 52 / (ids.length - 1))' in view
     assert 'from.y + 32 + portOffset("out:" + fromId, edge.id)' in view
-    assert 'to.y + 32 + portOffset("in:" + toId, edge.id)' in view
+    assert 'to.y + (dnssd ? serviceCardHeight(targetNode) / 2 : 32)' in view
     assert 'const hasSharedEndpoint =' in view
     assert 'ids.length > 1 || hasSharedEndpoint' in view
     assert '" services-parallel-hit"' in view
