@@ -50,9 +50,14 @@ network center, gateway or identity record.
   not a fabricated service-to-device graph edge.
 - Pan/zoom, camera reset, move-node mode, keyboard row
   rearrangement and automatic address arrangement remain
-  available. Manual order, camera and selected node/edge state
-  are stored **separately per map mode**. Switching modes never
-  changes the producer's observations or the semantic graph IDs.
+  available. In Unified addresses, **MAC evidence nodes anchor**
+  deterministic layout groups: same-MAC IPv4 and IPv6 addresses
+  are stacked together, and the MAC card is vertically centered
+  beside its observed address group. The original ARP-only layout
+  algorithm is unchanged. Manual order, camera and selected
+  node/edge state are stored **separately per map mode**.
+  Switching modes never changes the producer's observations or
+  the semantic graph IDs.
 - Live polling still reads only `/api/graph` once per second.
   ARP-only redraws use top-level `graph_revision`, while the
   Unified addresses view uses `unified_address_graph.revision`.
@@ -63,6 +68,57 @@ network center, gateway or identity record.
 No active probes, new endpoints, web access, remote hosting,
 LLDP topology, DNS-SD graph branches, router-root inference,
 agent execution, or verified device identity is added.
+
+## MAC-first layout refinement following the private en0 Safari review
+
+The developer reviewed a local, authorized **133-second Safari capture**
+showing the Stage 3 graph successfully rendering typed ARP and NDP edges.
+At the end, the owner manually rearranged three observed protocol
+addresses (one IPv4, two IPv6) adjacent to their shared hardware-address
+evidence node. The relationship becomes materially easier to read when
+the hardware column, not the lexically sorted IP column, anchors the
+automatic layout. No private identifiers, recording or packet data are
+committed.
+
+The refined **Unified addresses / Auto arrange** algorithm:
+
+1. Sort scoped MAC evidence nodes deterministically by capture scope,
+   interface, MAC bytes and stable node ID, rather than using the mean
+   IP-row rank as the MAC's order.
+2. For each IP address, inspect **only retained typed Stage 2 edges**
+   with matching interface and capture scope. Use observed ARP IPv4
+   sender edges or NDP option-backed IPv6 NS/NA edges, never DAD,
+   frame-source coincidence, link-local guesswork or DNS name matches.
+3. Group observed IPv4 and IPv6 nodes under each MAC in a stable
+   family/address order, with IPv4 first. A MAC card is placed beside
+   the vertical **center** of its IP cluster. Separate MAC anchors
+   receive enough vertical space to avoid overlapping clusters.
+4. An IP with multiple legitimately observed MAC associations is shown
+   **once**. It receives one deterministic *layout position* using
+   the first sorted eligible MAC as a tie-break; **all edges remain
+   drawn and inspectable**. This never marks one MAC as the true owner.
+5. If an unassociated protocol node or orphan hardware node appears,
+   reserve space for it without inventing a relation.
+6. Preserve user-controlled per-mode manual order and camera. Reordering
+   a MAC in the unified mode moves its cluster in the automatic IP
+   ordering unless the user has deliberately rearranged IP addresses.
+   Resetting **Auto arrange** clears manual placements only in the
+   active map mode. The legacy ARP-only arrangement is unchanged.
+
+The refinement adds four Python source-contract tests to
+`tests/web/test_unified_canvas.py` for MAC-first sorting, conflict
+handling, vertical centering and ARP-only regression isolation.
+A developer-side V8 exercise passed synthetic deterministic-order,
+cross-claim, orphan, and manual order cases; a mocked-DOM exercise
+rendered six separate nodes and four independent edges, selected an
+NS-source claim, then switched back to ARP without losing selection.
+**These checks do not replace the M5 Python regression or actual Safari
+validation of this follow-up commit.**
+
+The hardware evidence node is a useful visual **anchor**, not a
+permanent physical-device record. Randomized/private MAC addresses,
+multiple capture scopes and changing evidence must not be fused into
+device identity or physical links.
 
 ## Tests
 
@@ -125,6 +181,12 @@ completion until Ctrl+C.
 - [ ] Matching ARP and NDP MAC options on one capture interface
       converge on the same *hardware evidence* node without
       claiming one proven physical device.
+- [ ] The initial Unified **Auto arrange** stacks same-MAC IPv4/IPv6
+      addresses contiguously and vertically centers the MAC card
+      beside the cluster; the original ARP-only auto arrangement is unchanged.
+- [ ] A synthetic conflicting IPv6-to-multiple-MAC claim, if replayed,
+      has a single IP node with all original typed evidence edges,
+      not duplicated addresses or an inferred permanent owner.
 - [ ] Pan/zoom, keyboard selection, rearrangement and camera
       controls work in **both** modes; switching away/back
       preserves independent arrangements and selection.
