@@ -12,10 +12,13 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); }
-.shell { min-height: 100vh; display: flex; flex-direction: column; }
+.shell {
+  height: 100vh; height: 100dvh;
+  min-height: 0; display: flex; flex-direction: column;
+}
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  min-height: 72px; padding: 13px 26px; border-bottom: 1px solid var(--border);
+  flex: 0 0 auto; min-height: 72px; padding: 13px 26px; border-bottom: 1px solid var(--border);
 }
 .brand { display: flex; align-items: center; gap: 12px; letter-spacing: .08em; }
 .brand strong { display: block; font-size: 18px; letter-spacing: .19em; }
@@ -25,12 +28,12 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .mode { font-size: 11px; color: var(--accent); letter-spacing: .12em; }
 .workspace {
   flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 14px; padding: 16px; min-height: 660px;
+  gap: 14px; padding: 16px; min-height: 0; min-width: 0;
 }
 .map-panel, .inspector { border: 1px solid var(--border); background: var(--panel);
   border-radius: 11px; min-width: 0; overflow: hidden; }
-.map-panel { display: flex; flex-direction: column; }
- .panel-head { display: flex; flex-wrap: wrap; justify-content: space-between;
+.map-panel { display: flex; flex-direction: column; min-height: 0; }
+ .panel-head { display: flex; flex: 0 0 auto; flex-wrap: wrap; justify-content: space-between;
   align-items: center; gap: 12px; padding: 19px 20px; }
 h1, h2, p { margin: 0; }
 h1 { font-size: 18px; font-weight: 650; }
@@ -45,11 +48,11 @@ button.active, button[aria-pressed="true"] {
   background: #1d4053;
   color: #e9f9ff;
 }
-.canvas-wrap { position: relative; flex: 1; min-height: 440px; border-block:
+.canvas-wrap { position: relative; flex: 1 1 auto; min-height: 0; border-block:
   1px solid var(--border); background-color: #0e1825;
   background-image: radial-gradient(#304357 0.8px, transparent 0.8px);
   background-size: 23px 23px; }
-#map { width: 100%; height: 100%; min-height: 440px; display: block;
+#map { width: 100%; height: 100%; min-height: 0; display: block;
   cursor: grab; touch-action: none; }
 /* WebKit/Safari can still start selecting descendant SVG text during a pan.
    Scope suppression to the map; inspector text remains copyable. */
@@ -62,7 +65,7 @@ button.active, button[aria-pressed="true"] {
 #map.reordering, #map.reordering .map-node { cursor: grabbing; }
 .canvas-hint { pointer-events: none; position: absolute; left: 18px; bottom: 13px;
   color: var(--muted); font-size: 11px; }
-.canvas-footer { padding: 14px 19px; display: flex; gap: 24px; flex-wrap: wrap;
+.canvas-footer { flex: 0 0 auto; padding: 14px 19px; display: flex; gap: 24px; flex-wrap: wrap;
   align-items: center; font-size: 11px; color: var(--muted); }
 .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
   margin-right: 6px; }
@@ -86,7 +89,7 @@ button.active, button[aria-pressed="true"] {
 
 .host-context h2 { font-size: 14px; margin: 0 0 10px; color: var(--accent); }
 .context-caveat { color: var(--muted); font-size: 11px; line-height: 1.5; margin-top: 12px; }
-.inspector { display: flex; flex-direction: column; min-height: 0; }
+.inspector { display: flex; flex-direction: column; min-height: 0; max-height: 100%; }
 .sidebar-tabs {
   display: flex; flex-shrink: 0; gap: 5px; padding: 11px;
   border-bottom: 1px solid var(--border); background: var(--panel);
@@ -100,7 +103,7 @@ button.active, button[aria-pressed="true"] {
 }
 .sidebar-tabs button:disabled { opacity: .43; cursor: not-allowed; }
 .sidebar-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.sidebar-page { flex: 1; min-height: 0; overflow-y: auto; }
+.sidebar-page { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .sidebar-page[hidden] { display: none; }
 .sidebar-page .host-context,
 .sidebar-page .subnet-evidence { border-bottom: 0; }
@@ -119,7 +122,7 @@ h2 { font-size: 18px; line-height: 1.35; margin-top: 10px; overflow-wrap: anywhe
 .claim-card strong { color: var(--text); overflow-wrap: anywhere; }
 .claim-card p { font-size: 11px; margin-top: 4px; }
 .inspector-note { margin-top: 16px; }
-.footnote { padding: 12px 22px; border-top: 1px solid var(--border);
+.footnote { flex: 0 0 auto; padding: 12px 22px; border-top: 1px solid var(--border);
   color: var(--muted); font-size: 11px; line-height: 1.5; }
 .map-node { cursor: pointer; }
 #map.move-mode .map-node { cursor: ns-resize; }
@@ -134,8 +137,13 @@ h2 { font-size: 18px; line-height: 1.35; margin-top: 10px; overflow-wrap: anywhe
 .map-edge.selected { stroke: #b6eaff; stroke-width: 3; opacity: 1; }
 .column-title { fill: #a8bacb; font-size: 14px; letter-spacing: 1px; }
 @media (max-width: 900px) {
-  .workspace { grid-template-columns: 1fr; min-height: unset; }
-  .inspector { min-height: 220px; }
+  /* On narrower screens, keep stacked panels usable rather than forcing
+     both into the remaining viewport height. Page scrolling is intentional. */
+  .shell { height: auto; min-height: 100dvh; }
+  .workspace { flex: none; grid-template-columns: 1fr; min-height: 0; }
+  .map-panel { min-height: 500px; }
+  .canvas-wrap, #map { min-height: 360px; }
+  .inspector { height: min(70dvh, 700px); min-height: 320px; max-height: none; }
 }
 @media (max-width: 580px) {
   .topbar { padding: 14px; }
@@ -267,3 +275,18 @@ h2 { font-size: 18px; line-height: 1.35; margin-top: 10px; overflow-wrap: anywhe
 /* Parallel evidence paths must remain independently pointer-selectable. */
 .map-edge-hit.services-parallel-hit { stroke-width: 12; }
 .services-empty-label { fill: #a8bacb; font-size: 12px; }
+
+/* Stage 2: one preserved evidence field per readable line. The sidebar
+   scrolls within the viewport instead of making cards artificially short. */
+.evidence-metadata-line {
+  display: block;
+  margin: 3px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+.mdns-target-claim > .evidence-metadata-line:first-child,
+.mdns-target-address > .evidence-metadata-line:first-child {
+  color: var(--text);
+}

@@ -426,6 +426,18 @@ function showSubnetEvidence(lens) {
   subnetBody.append(caveat);
 }
 
+// Present retained evidence fields on separate lines without changing the
+// source strings, chronology, freshness, or independent claim boundaries.
+// Network-derived text is always assigned with textContent, never HTML.
+function appendEvidenceMetadata(parent, detail) {
+  String(detail).split(" · ").forEach((value, index) => {
+    const line = document.createElement("p");
+    line.className = "evidence-metadata-line";
+    line.textContent = (index === 0 ? "" : "· ") + value;
+    parent.append(line);
+  });
+}
+
 function showNDPEvidence(evidence) {
   if (!evidence || evidence.origin !== "ndp-observation") {
     ndpPanel.hidden = true;
@@ -478,7 +490,8 @@ function showNDPEvidence(evidence) {
       " · advertised Ethernet " + String(item.mac).match(/.{2}/g)?.join(":") +
       " · " + String(item.observations) + " observation(s)" +
       " · captured " + String(item.first_seen) + " to " + String(item.last_seen);
-    record.append(heading, detail);
+    record.append(heading);
+    appendEvidenceMetadata(record, detail.textContent);
     list.append(record);
   }
   for (const item of visibleUnlinked.slice(0, 48)) {
@@ -493,7 +506,8 @@ function showNDPEvidence(evidence) {
       " (not a target-MAC association) · " +
       String(item.observations) + " observation(s)" +
       " · captured " + String(item.last_seen);
-    record.append(heading, detail);
+    record.append(heading);
+    appendEvidenceMetadata(record, detail.textContent);
     list.append(record);
   }
   if (!visibleClaims.length && !visibleUnlinked.length) {
@@ -555,7 +569,9 @@ function showMDNSEvidence(evidence) {
     detail.textContent = "TTL " + String(item.ttl_seconds) + "s · " +
       String(item.observations) + " observation(s) · " +
       "last captured " + String(item.last_seen) + " (Unix seconds)";
-    record.append(heading, type, detail);
+    record.append(heading);
+    appendEvidenceMetadata(record, type.textContent);
+    appendEvidenceMetadata(record, detail.textContent);
     const targets = Array.isArray(item.targets) ? item.targets : [];
     if (!targets.length) {
       const noTarget = document.createElement("p");
@@ -574,7 +590,7 @@ function showMDNSEvidence(evidence) {
         (target.source === "cross-mdns-response"
           ? " · joined across responses" : " · same response") +
         " · observed " + String(target.observed_at || item.last_seen);
-      claim.append(label);
+      appendEvidenceMetadata(claim, label.textContent);
       const addresses = Array.isArray(target.addresses) ? target.addresses : [];
       if (!addresses.length) {
         const absent = document.createElement("p");
@@ -592,7 +608,7 @@ function showMDNSEvidence(evidence) {
           (address.source === "cross-mdns-response"
             ? " · joined across responses" : " · same response") +
           " · observed " + String(address.observed_at || item.last_seen);
-        line.append(summary);
+        appendEvidenceMetadata(line, summary.textContent);
         if (typeof address.arp_node_id === "string" && graph &&
             graph.nodes.some((node) => node.id === address.arp_node_id)) {
           const button = document.createElement("button");
@@ -1583,9 +1599,26 @@ function svgPoint(event) {
   return point.matrixTransform(matrix.inverse());
 }
 
+function maximumZoomScale() {
+  // Default SVG preserveAspectRatio is xMidYMid meet. The graph's real
+  // on-screen scale therefore depends on BOTH viewBox dimensions and
+  // the available CSS viewport. A row-count multiplier is insufficient
+  // when Safari is resized, especially to a wide/short window.
+  const rect = svg.getBoundingClientRect();
+  const view = svg.viewBox.baseVal;
+  if (rect.width <= 0 || rect.height <= 0 ||
+      view.width <= 0 || view.height <= 0) return 3.5;
+  const cssPixelsPerUnit = Math.min(
+    rect.width / view.width, rect.height / view.height);
+  // Allow a node's 15-unit address text to reach roughly 75 CSS pixels
+  // at the upper limit, irrespective of window dimensions or graph rows.
+  // Keep the historical 3.5 floor for small graphs.
+  return Math.max(3.5, 5 / cssPixelsPerUnit);
+}
+
 function zoomAt(factor, point) {
   // Permit continued smooth zooming after fit scales a dense graph below 40%.
-  const next = Math.min(3.5, Math.max(0.05, camera.scale * factor));
+  const next = Math.min(maximumZoomScale(), Math.max(0.05, camera.scale * factor));
   const ratio = next / camera.scale;
   camera.x = point.x - (point.x - camera.x) * ratio;
   camera.y = point.y - (point.y - camera.y) * ratio;
