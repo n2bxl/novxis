@@ -1327,8 +1327,13 @@ function renderServicesCanvas(snapshot, locations) {
       class: "map-edge-group" + (selectedEdgeId === edge.id ? " selected" : ""),
       "data-edge-id": edge.id, role: "button", tabindex: "0",
       "aria-label": (dnssd
-        ? "DNS-SD advertised endpoint path" + (edge.path_fresh ? "" : ", TTL expired")
-        : unifiedEvidenceLabel(edge.kind)) + " evidence relationship",
+        ? "DNS-SD advertised endpoint: " + edge.ptr.instance +
+          " via " + edge.srv.target_name + " port " + edge.srv.port +
+          " to " + edge.address.address + " observed " +
+          edge.address.observed_at + (edge.path_fresh ? "" : ", TTL expired")
+        : unifiedEvidenceLabel(edge.kind) + " from " +
+          sourceNode.display_address + " to " + targetNode.display_address) +
+        " evidence relationship",
     });
     const hit = makeSVG("path", {
       d: path.getAttribute("d"),
