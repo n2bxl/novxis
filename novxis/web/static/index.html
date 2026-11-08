@@ -28,6 +28,8 @@
             <button id="map-mode-arp" type="button" aria-pressed="true">ARP only</button>
             <button id="map-mode-unified" type="button" aria-pressed="false"
               disabled title="Requires a live ARP + mDNS + NDP capture">Unified addresses</button>
+            <button id="map-mode-services" type="button" aria-pressed="false"
+              disabled title="Requires a live ARP + mDNS + NDP service graph">Services</button>
           </div>
           <div class="controls" aria-label="Map controls">
             <button id="zoom-out" type="button" title="Zoom out" aria-label="Zoom out">−</button>
@@ -59,6 +61,17 @@
             <span><span class="legend-line arp-claim"></span>ARP sender</span>
             <span><span class="legend-line ns-claim"></span>NS source-SLLA</span>
             <span><span class="legend-line na-claim"></span>NA target-TLLA</span>
+          </span>
+          <span id="services-legend" class="map-legend-group" hidden>
+            <span><span class="legend-dot hardware"></span>Hardware address</span>
+            <span><span class="legend-dot protocol"></span>IPv4</span>
+            <span><span class="legend-dot ipv6"></span>IPv6</span>
+            <span><span class="legend-dot service"></span>Advertised service</span>
+            <span><span class="legend-line arp-claim"></span>ARP</span>
+            <span><span class="legend-line ns-claim"></span>NS</span>
+            <span><span class="legend-line na-claim"></span>NA</span>
+            <span><span class="legend-line dnssd-claim"></span>DNS-SD path</span>
+            <span><span class="legend-line stale-claim"></span>TTL expired</span>
           </span>
         </div>
       </section>
