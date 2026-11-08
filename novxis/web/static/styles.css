@@ -193,3 +193,36 @@ h2 { font-size: 18px; line-height: 1.35; margin-top: 10px; overflow-wrap: anywhe
 .ndp-evidence-note { margin-top: 15px; font-size: 11px;
   line-height: 1.55; color: var(--muted); }
 .mdns-ndp-link { justify-self: start; padding: 5px 8px; }
+
+/* Stage 3: one permanent SVG renderer, two independently arranged views. */
+.map-view-switch { display: flex; flex-wrap: wrap; gap: 5px; }
+.map-view-switch button[aria-pressed="true"] {
+  color: #e9f9ff; border-color: var(--accent); background: #1d4053;
+}
+.map-view-switch button:disabled { opacity: .45; cursor: not-allowed; }
+.map-legend-group { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+.map-legend-group[hidden] { display: none; }
+.legend-dot.ipv6 { background: #6edcc7; }
+.map-node.ipv6 rect { fill: #173c42; stroke: #60b5a7; }
+.map-edge-group { cursor: pointer; }
+.map-edge-hit {
+  fill: none; stroke: transparent; stroke-width: 18;
+  pointer-events: stroke;
+}
+.map-edge-group:hover .map-edge,
+.map-edge-group:focus .map-edge { stroke: #b6eaff; stroke-width: 3; opacity: 1; }
+.map-edge-group:focus { outline: none; }
+.unified-edge-card {
+  display: block; width: 100%; text-align: left;
+  white-space: normal; line-height: 1.5; overflow-wrap: anywhere;
+}
+
+/* Colors distinguish source protocols but never imply verified ownership. */
+.legend-line.arp-claim, .map-edge.evidence-arp_sender { stroke: #60b6df; background: #60b6df; }
+.legend-line.ns-claim, .map-edge.evidence-ndp_ns_source_slla { stroke: #60cdb9; background: #60cdb9; }
+.legend-line.na-claim, .map-edge.evidence-ndp_na_target_tlla { stroke: #e2b36c; background: #e2b36c; }
+.map-edge.selected, .map-edge-group.selected .map-edge,
+.map-edge-group:hover .map-edge, .map-edge-group:focus .map-edge {
+  stroke: #f1faff; stroke-width: 3; opacity: 1;
+}
+.map-node.ipv6 .ipv6-address-text { font-size: 13px; }

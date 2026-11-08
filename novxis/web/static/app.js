@@ -5,6 +5,11 @@ const svg = document.getElementById("map");
 const canvas = document.querySelector(".canvas-wrap");
 const viewport = document.getElementById("viewport");
 const summary = document.getElementById("summary");
+const mapTitle = document.getElementById("map-title");
+const mapModeArp = document.getElementById("map-mode-arp");
+const mapModeUnified = document.getElementById("map-mode-unified");
+const arpLegend = document.getElementById("arp-legend");
+const unifiedLegend = document.getElementById("unified-legend");
 const inspectorTitle = document.getElementById("inspector-title");
 const inspector = document.getElementById("inspector-content");
 const hostPanel = document.getElementById("host-context");
@@ -84,7 +89,90 @@ for (const name of sidebarTabNames) {
 
 
 let graph = null;
+let lastArpSummary = "";
+let lastUnifiedSummary = "";
+let activeMapMode = "arp";
 let selectedId = null;
+let selectedEdgeId = null;
+const mapSelections = {
+  arp: { node: null, edge: null },
+  unified: { node: null, edge: null },
+};
+const mapCameras = {
+  arp: { x: 0, y: 0, scale: 1 },
+  unified: { x: 0, y: 0, scale: 1 },
+};
+
+function visibleAddressGraph() {
+  return activeMapMode === "unified" ? graph?.unified_address_graph : graph;
+}
+
+function columnKind(kind) {
+  return kind === "hardware" ? "hardware" : "protocol";
+}
+
+function manualOrderForView() {
+  return activeMapMode === "unified" ? unifiedManualOrders : manualOrders;
+}
+
+function updateMapModeControls() {
+  mapModeArp.setAttribute("aria-pressed", String(activeMapMode === "arp"));
+  mapModeUnified.setAttribute("aria-pressed", String(activeMapMode === "unified"));
+  mapTitle.textContent = activeMapMode === "unified"
+    ? "Unified address evidence map" : "Observed address map";
+  document.getElementById("auto-arrange").title = activeMapMode === "unified"
+    ? "Group IPv4 and IPv6 claims around MAC evidence anchors"
+    : "Minimize crossed ARP sender claims";
+  arpLegend.hidden = activeMapMode !== "arp";
+  unifiedLegend.hidden = activeMapMode !== "unified";
+  svg.setAttribute("aria-label", activeMapMode === "unified"
+    ? "Interactive evidence graph of IPv4, IPv6, and hardware address claims"
+    : "Interactive graph of observed ARP protocol and hardware addresses");
+}
+
+function switchMapMode(mode) {
+  if (mode !== "arp" && mode !== "unified") return;
+  if (mode === "unified" && mapModeUnified.disabled) return;
+  if (mode === activeMapMode) return;
+  mapSelections[activeMapMode] = { node: selectedId, edge: selectedEdgeId };
+  mapCameras[activeMapMode] = { ...camera };
+  activeMapMode = mode;
+  selectedId = mapSelections[mode].node;
+  selectedEdgeId = mapSelections[mode].edge;
+  camera = { ...mapCameras[mode] };
+  updateMapModeControls();
+  if (graph) {
+    summary.textContent = mode === "unified" ? lastUnifiedSummary : lastArpSummary;
+    renderGraph();
+    showInspector();
+    selectSidebarTab("evidence");
+  }
+}
+
+function updateMapModes(payload) {
+  const unified = payload.unified_address_graph;
+  const available = payload.mode === "live-arp" &&
+    unified?.schema_version === 1 &&
+    unified?.origin === "passive-arp-ndp" &&
+    unified.interface === payload.source?.interface &&
+    Array.isArray(unified.nodes) && Array.isArray(unified.edges);
+  mapModeUnified.disabled = !available;
+  mapModeUnified.title = available
+    ? "Show independently observed IPv4, IPv6 and MAC address claims"
+    : "Requires a live ARP + mDNS + NDP capture";
+  if (!available && activeMapMode === "unified") {
+    mapSelections.unified = { node: selectedId, edge: selectedEdgeId };
+    mapCameras.unified = { ...camera };
+    activeMapMode = "arp";
+    selectedId = mapSelections.arp.node;
+    selectedEdgeId = mapSelections.arp.edge;
+    camera = { ...mapCameras.arp };
+  }
+  updateMapModeControls();
+}
+
+mapModeArp.addEventListener("click", () => switchMapMode("arp"));
+mapModeUnified.addEventListener("click", () => switchMapMode("unified"));
 let stageHeight = 620;
 let camera = { x: 0, y: 0, scale: 1 };
 let dragging = null;
@@ -94,6 +182,7 @@ const ROW_STEP = 76;
 const ROW_START = 105;
 const COLUMN_X = { protocol: 114, hardware: 708 };
 const manualOrders = { protocol: null, hardware: null };
+const unifiedManualOrders = { protocol: null, hardware: null };
 let orderedByKind = { protocol: [], hardware: [] };
 let moveNodesMode = false;
 const openSubnetGroups = new Set();
@@ -183,7 +272,9 @@ function appendAddressButton(parent, item) {
   button.addEventListener("click", () => {
     // Explicit select, rather than toggle: multiple prefix groups can
     // correctly refer to one interface-scoped protocol address node.
+    if (activeMapMode === "unified") switchMapMode("arp");
     selectedId = item.node_id;
+    selectedEdgeId = null;
     renderGraph();
     showInspector();
     selectSidebarTab("evidence");
@@ -465,7 +556,9 @@ function showMDNSEvidence(evidence) {
           button.className = "mdns-arp-link";
           button.textContent = "Inspect independent ARP address";
           button.addEventListener("click", () => {
+            if (activeMapMode === "unified") switchMapMode("arp");
             selectedId = address.arp_node_id;
+            selectedEdgeId = null;
             renderGraph();
             showInspector();
             selectSidebarTab("evidence");
@@ -530,7 +623,97 @@ function clearInspector(message) {
   inspector.append(p);
 }
 
+const UNIFIED_EVIDENCE_LABELS = {
+  arp_sender: "ARP IPv4 sender",
+  ndp_ns_source_slla: "NS source SLLA",
+  ndp_na_target_tlla: "NA target TLLA",
+};
+
+function unifiedEvidenceLabel(kind) {
+  return UNIFIED_EVIDENCE_LABELS[kind] || "Unrecognized address claim";
+}
+
+function showUnifiedInspector() {
+  const snapshot = graph?.unified_address_graph;
+  if (!snapshot) {
+    clearInspector("Unified graph is unavailable for this capture.");
+    return;
+  }
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const edge = selectedEdgeId &&
+    snapshot.edges.find((item) => item.id === selectedEdgeId);
+  const node = selectedId && nodes.get(selectedId);
+  if (selectedEdgeId && !edge) selectedEdgeId = null;
+  if (selectedId && !node) selectedId = null;
+  if (!edge && !node) {
+    clearInspector("Select an IPv4, IPv6 or hardware address node, or an " +
+      "evidence edge, to inspect its observed ARP/NDP provenance.");
+    return;
+  }
+
+  inspector.replaceChildren();
+  if (edge) {
+    const source = nodes.get(edge.source);
+    const target = nodes.get(edge.target);
+    inspectorTitle.textContent = unifiedEvidenceLabel(edge.kind);
+    appendDetail("Evidence type", unifiedEvidenceLabel(edge.kind), inspector);
+    appendDetail("Protocol address", source?.display_address || "Unavailable", inspector);
+    appendDetail("Advertised Ethernet address",
+      target?.display_address || "Unavailable", inspector);
+    appendDetail("Capture interface", edge.interface, inspector);
+    appendDetail("Capture scope", edge.capture_scope, inspector);
+    appendDetail("First observed (Unix seconds)", edge.first_seen, inspector);
+    appendDetail("Last observed (Unix seconds)", edge.last_seen, inspector);
+    appendDetail("Observation count", edge.observation_count, inspector);
+    appendDetail("Aggregated source record key", edge.source_record_key, inspector);
+    const note = document.createElement("p");
+    note.className = "inspector-note";
+    note.textContent = "This edge is an observed protocol address claim, not " +
+      "a physical cable, verified device, or reachability result. Its source " +
+      "record key identifies a retained aggregate, not a raw packet.";
+    inspector.append(note);
+    return;
+  }
+
+  inspectorTitle.textContent = node.display_address;
+  appendDetail("Evidence node",
+    node.kind === "hardware" ? "Hardware address evidence" :
+    node.kind === "ipv6" ? "IPv6 protocol address" : "IPv4 protocol address",
+    inspector);
+  appendDetail("Observed interface", node.interface, inspector);
+  appendDetail("Capture scope", node.capture_scope, inspector);
+  appendDetail("Address", node.display_address, inspector);
+  const related = snapshot.edges.filter((item) =>
+    item.source === node.id || item.target === node.id);
+  const heading = document.createElement("h3");
+  heading.textContent = "Supporting address claims (" + related.length + ")";
+  inspector.append(heading);
+  for (const item of related) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "claim-card unified-edge-card";
+    const from = nodes.get(item.source);
+    const to = nodes.get(item.target);
+    button.textContent = unifiedEvidenceLabel(item.kind) + " · " +
+      (from?.display_address || "?") + " → " +
+      (to?.display_address || "?") + " · " +
+      item.observation_count + " observation(s)";
+    button.addEventListener("click", () => setSelectedEdge(item.id));
+    inspector.append(button);
+  }
+  const caveat = document.createElement("p");
+  caveat.className = "inspector-note";
+  caveat.textContent = "These are independently observed, capture-scoped " +
+    "ARP/NDP address claims, not verified physical-device identities. " +
+    "DAD and NDP observations without an option-backed MAC stay unlinked.";
+  inspector.append(caveat);
+}
+
 function showInspector() {
+  if (activeMapMode === "unified") {
+    showUnifiedInspector();
+    return;
+  }
   if (!graph || !selectedId) {
     clearInspector("Select an address node to inspect its captured ARP evidence.");
     return;
@@ -591,7 +774,16 @@ function showInspector() {
 }
 
 function setSelected(id) {
+  selectedEdgeId = null;
   selectedId = selectedId === id ? null : id;
+  renderGraph();
+  showInspector();
+  selectSidebarTab("evidence");
+}
+
+function setSelectedEdge(id) {
+  selectedId = null;
+  selectedEdgeId = selectedEdgeId === id ? null : id;
   renderGraph();
   showInspector();
   selectSidebarTab("evidence");
@@ -606,7 +798,8 @@ function computeAutoOrders(snapshot) {
     a.address_hex.localeCompare(b.address_hex) ||
     a.id.localeCompare(b.id);
   const protocol = snapshot.nodes
-    .filter((node) => node.kind === "protocol").sort(addressOrder);
+    .filter((node) => node.kind === "protocol" ||
+      node.kind === "ipv4" || node.kind === "ipv6").sort(addressOrder);
   const hardware = snapshot.nodes
     .filter((node) => node.kind === "hardware").sort(addressOrder);
   const protocolRank = new Map(protocol.map((node, index) => [node.id, index]));
@@ -627,8 +820,89 @@ function computeAutoOrders(snapshot) {
   return { protocol, hardware };
 }
 
+// Unified mode uses hardware-address evidence as a *presentation* anchor.
+// It is never promoted into a device identity, physical topology, or an
+// inferred relationship. Retain every edge, including conflicting options.
+function computeUnifiedAutoOrders(snapshot) {
+  const byAddress = (a, b) =>
+    a.capture_scope.localeCompare(b.capture_scope) ||
+    a.interface.localeCompare(b.interface) ||
+    a.address_hex.localeCompare(b.address_hex) ||
+    a.id.localeCompare(b.id);
+  const hardware = snapshot.nodes
+    .filter((node) => node.kind === "hardware").sort(byAddress);
+  const protocol = snapshot.nodes
+    .filter((node) => node.kind === "ipv4" || node.kind === "ipv6")
+    .sort((a, b) =>
+      (a.kind === "ipv4" ? 0 : 1) - (b.kind === "ipv4" ? 0 : 1) ||
+      byAddress(a, b));
+  const protocolById = new Map(protocol.map((node) => [node.id, node]));
+  const hardwareById = new Map(hardware.map((node) => [node.id, node]));
+  const candidates = new Map(protocol.map((node) => [node.id, new Set()]));
+
+  for (const edge of snapshot.edges) {
+    const ip = protocolById.get(edge.source);
+    const mac = hardwareById.get(edge.target);
+    if (!ip || !mac || ip.interface !== mac.interface ||
+        ip.capture_scope !== mac.capture_scope ||
+        edge.interface !== ip.interface ||
+        edge.capture_scope !== ip.capture_scope) continue;
+    const supported = (ip.kind === "ipv4" && edge.kind === "arp_sender") ||
+      (ip.kind === "ipv6" && (
+        edge.kind === "ndp_ns_source_slla" ||
+        edge.kind === "ndp_na_target_tlla"));
+    if (supported) candidates.get(ip.id).add(mac.id);
+  }
+
+  const groups = new Map(hardware.map((node) => [node.id, []]));
+  const ungrouped = [];
+  // Deterministic address-order tie-break for claims involving multiple
+  // MACs. This only chooses a position: all edges remain in the SVG.
+  for (const ip of protocol) {
+    const anchor = hardware.find((mac) => candidates.get(ip.id).has(mac.id));
+    if (anchor) groups.get(anchor.id).push(ip);
+    else ungrouped.push(ip);
+  }
+  return { hardware, groups, ungrouped };
+}
+
+// A MAC occupies the vertical center of its observed address cluster.
+// The left column receives a row per IP, including both address families.
+function layoutUnifiedGraph(snapshot) {
+  const automatic = computeUnifiedAutoOrders(snapshot);
+  const hardware = preserveManualOrder("hardware", automatic.hardware);
+  const defaultProtocol = hardware.flatMap((mac) =>
+    automatic.groups.get(mac.id) || []).concat(automatic.ungrouped);
+  const protocol = preserveManualOrder("protocol", defaultProtocol);
+  orderedByKind = { protocol, hardware };
+
+  const locations = new Map();
+  const addressSlots = [];
+  let row = 0;
+  for (const mac of hardware) {
+    const count = (automatic.groups.get(mac.id) || []).length;
+    const span = Math.max(count, 1);
+    locations.set(mac.id, {
+      x: COLUMN_X.hardware,
+      y: ROW_START + (row + (span - 1) / 2) * ROW_STEP,
+    });
+    for (let index = 0; index < count; index++) {
+      addressSlots.push(row + index);
+    }
+    row += span;
+  }
+  for (const ip of automatic.ungrouped) addressSlots.push(row++);
+  protocol.forEach((ip, index) => locations.set(ip.id, {
+    x: COLUMN_X.protocol,
+    y: ROW_START + addressSlots[index] * ROW_STEP,
+  }));
+  stageHeight = Math.max(620, Math.max(row, protocol.length) * ROW_STEP + 175);
+  svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);
+  return locations;
+}
+
 function preserveManualOrder(kind, automatic) {
-  const ids = manualOrders[kind];
+  const ids = manualOrderForView()[kind];
   if (!ids) return automatic;
   const byId = new Map(automatic.map((node) => [node.id, node]));
   const seen = new Set();
@@ -654,12 +928,14 @@ function reorderNode(kind, id, targetIndex) {
   const updated = current.map((node) => node.id);
   updated.splice(startIndex, 1);
   updated.splice(endIndex, 0, id);
-  manualOrders[kind] = updated;
+  manualOrderForView()[kind] = updated;
   return true;
 }
 
 function layoutGraph() {
-  const automatic = computeAutoOrders(graph);
+  const active = visibleAddressGraph();
+  if (activeMapMode === "unified") return layoutUnifiedGraph(active);
+  const automatic = computeAutoOrders(active);
   orderedByKind = {
     protocol: preserveManualOrder("protocol", automatic.protocol),
     hardware: preserveManualOrder("hardware", automatic.hardware),
@@ -683,31 +959,58 @@ function renderGraph() {
   if (!graph) return;
   viewport.replaceChildren();
 
+  const active = visibleAddressGraph();
+  if (!active) return;
   const locations = layoutGraph();
-  addSVGText(viewport, 114, 59, "PROTOCOL ADDRESSES", "column-title");
+  addSVGText(viewport, 114, 59, activeMapMode === "unified"
+    ? "IPV4 / IPV6 ADDRESSES" : "PROTOCOL ADDRESSES", "column-title");
   addSVGText(viewport, 708, 59, "HARDWARE ADDRESSES", "column-title");
 
-  for (const claim of graph.claims) {
+  const edges = activeMapMode === "unified" ? active.edges : graph.claims;
+  for (const claim of edges) {
     const source = locations.get(claim.source);
     const target = locations.get(claim.target);
     if (!source || !target) continue;
     const x1 = source.x + 256;
-    const y1 = source.y + 25;
+    const y1 = source.y + (activeMapMode === "unified" ? 32 : 25);
     const x2 = target.x;
-    const y2 = target.y + 25;
+    const y2 = target.y + (activeMapMode === "unified" ? 32 : 25);
     const mid = (x1 + x2) / 2;
     const path = makeSVG("path", {
       d: "M " + x1 + " " + y1 + " C " + mid + " " + y1 + ", " +
         mid + " " + y2 + ", " + x2 + " " + y2,
-      class: "map-edge" + (
-        selectedId && (claim.source === selectedId || claim.target === selectedId)
+      class: "map-edge" +
+        (activeMapMode === "unified" ? " evidence-" + claim.kind : "") + (
+        (selectedId && (claim.source === selectedId || claim.target === selectedId)) ||
+        (activeMapMode === "unified" && selectedEdgeId === claim.id)
           ? " selected" : ""
       ),
     });
-    viewport.append(path);
+    if (activeMapMode === "unified") {
+      const group = makeSVG("g", {
+        class: "map-edge-group" + (selectedEdgeId === claim.id ? " selected" : ""),
+        "data-edge-id": claim.id,
+        role: "button",
+        tabindex: "0",
+        "aria-label": claim.kind.replaceAll("_", " ") + " evidence relationship",
+      });
+      const hit = makeSVG("path", {
+        d: path.getAttribute("d"), class: "map-edge-hit",
+      });
+      group.append(path, hit);
+      group.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          setSelectedEdge(claim.id);
+        }
+      });
+      viewport.append(group);
+    } else {
+      viewport.append(path);
+    }
   }
 
-  for (const node of graph.nodes) {
+  for (const node of active.nodes) {
     const position = locations.get(node.id);
     if (!position) continue;
     const selected = node.id === selectedId;
@@ -720,9 +1023,25 @@ function renderGraph() {
         " on " + node.interface,
       "data-node-id": node.id,
     });
-    group.append(makeSVG("rect", { x: 0, y: 0, width: 256, height: NODE_HEIGHT, rx: 8 }));
-    addSVGText(group, 13, 22, node.display_address);
-    addSVGText(group, 13, 39, "interface: " + node.interface, "node-meta");
+    group.append(makeSVG("rect", {
+      x: 0, y: 0, width: 256,
+      height: activeMapMode === "unified" ? 64 : NODE_HEIGHT, rx: 8,
+    }));
+    if (activeMapMode === "unified" &&
+        node.kind === "ipv6" && node.display_address.length > 28) {
+      // Do not silently truncate a protocol address in the evidence graph.
+      // Long expanded IPv6 addresses wrap at a colon; inspector retains full.
+      const midpoint = node.display_address.lastIndexOf(":", 24);
+      const splitAt = midpoint > 8 ? midpoint + 1 : 24;
+      addSVGText(group, 13, 20, node.display_address.slice(0, splitAt),
+        "ipv6-address-text");
+      addSVGText(group, 13, 37, node.display_address.slice(splitAt),
+        "ipv6-address-text");
+    } else {
+      addSVGText(group, 13, 22, node.display_address);
+    }
+    addSVGText(group, 13, activeMapMode === "unified" ? 54 : 39,
+      "interface: " + node.interface, "node-meta");
     group.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
@@ -730,8 +1049,9 @@ function renderGraph() {
       } else if (moveNodesMode && event.shiftKey &&
                  (event.key === "ArrowUp" || event.key === "ArrowDown")) {
         event.preventDefault();
-        const index = orderedByKind[node.kind].findIndex((item) => item.id === node.id);
-        if (reorderNode(node.kind, node.id,
+        const kind = columnKind(node.kind);
+        const index = orderedByKind[kind].findIndex((item) => item.id === node.id);
+        if (reorderNode(kind, node.id,
                         index + (event.key === "ArrowUp" ? -1 : 1))) {
           renderGraph();
           const replacement = Array.from(
@@ -791,8 +1111,13 @@ moveButton.addEventListener("click", () => {
     : "Scroll to zoom · Drag to pan · Select an address";
 });
 document.getElementById("auto-arrange").addEventListener("click", () => {
-  manualOrders.protocol = null;
-  manualOrders.hardware = null;
+  if (activeMapMode === "unified") {
+    unifiedManualOrders.protocol = null;
+    unifiedManualOrders.hardware = null;
+  } else {
+    manualOrders.protocol = null;
+    manualOrders.hardware = null;
+  }
   renderGraph();
 });
 
@@ -813,12 +1138,17 @@ svg.addEventListener("pointerdown", (event) => {
   const point = svgPoint(event);
   const targetNode = event.target.closest("[data-node-id]");
   const nodeId = targetNode ? targetNode.getAttribute("data-node-id") : null;
-  const node = nodeId && graph ? graph.nodes.find((item) => item.id === nodeId) : null;
+  const targetEdge = event.target.closest("[data-edge-id]");
+  const edgeId = !nodeId && targetEdge
+    ? targetEdge.getAttribute("data-edge-id") : null;
+  const active = visibleAddressGraph();
+  const node = nodeId && active ? active.nodes.find((item) => item.id === nodeId) : null;
   dragging = {
     pointerId: event.pointerId, start: point,
     x: camera.x, y: camera.y, moved: false,
-    nodeId, kind: node ? node.kind : null,
-    fromIndex: node ? orderedByKind[node.kind].findIndex((item) => item.id === nodeId) : -1,
+    nodeId, edgeId, kind: node ? columnKind(node.kind) : null,
+    fromIndex: node ? orderedByKind[columnKind(node.kind)].findIndex(
+      (item) => item.id === nodeId) : -1,
     mode: moveNodesMode && node ? "reorder" : "pan",
   };
   svg.setPointerCapture(event.pointerId);
@@ -852,13 +1182,16 @@ function endPan(event) {
   if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
   if (event.type === "pointerup" && !gesture.moved && gesture.nodeId) {
     setSelected(gesture.nodeId);
+  } else if (event.type === "pointerup" && !gesture.moved && gesture.edgeId) {
+    setSelectedEdge(gesture.edgeId);
   }
 }
 svg.addEventListener("pointerup", endPan);
 svg.addEventListener("pointercancel", endPan);
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && selectedId) {
+  if (event.key === "Escape" && (selectedId || selectedEdgeId)) {
     selectedId = null;
+    selectedEdgeId = null;
     renderGraph();
     showInspector();
   }
@@ -868,6 +1201,7 @@ document.addEventListener("keydown", (event) => {
 // changes only when its semantic revision changes; camera and selection stay.
 let lastRevision = null;
 let lastGraphRevision = null;
+let lastRenderedMapMode = null;
 let pollHandle = null;
 
 async function loadGraph() {
@@ -880,6 +1214,7 @@ async function loadGraph() {
   }
   const source = payload.source || {};
   const live = payload.mode === "live-arp";
+  updateMapModes(payload);
   updateSidebarTabs(payload);
   showHostContext(live ? payload.host_context : null);
   const status = payload.capture_status || "waiting";
@@ -910,18 +1245,31 @@ async function loadGraph() {
       (source.frames_replayed || 0) + " frames";
   }
   const errors = (source.decode_errors || 0) + (source.stream_errors || 0);
-  if (errors) {
-    summary.textContent += " · " + errors + " errors";
+  const errorNote = errors ? " · " + errors + " errors" : "";
+  lastArpSummary = summary.textContent + errorNote;
+  lastUnifiedSummary = "";
+  if (live && payload.unified_address_graph) {
+    const unified = payload.unified_address_graph;
+    lastUnifiedSummary = "UNIFIED ARP + NDP · " + unified.interface +
+      " · " + status + " · " + unified.nodes.length +
+      " address nodes · " + unified.edges.length + " evidence edges" +
+      (unified.truncated ? " · CAP REACHED" : "") + errorNote;
   }
+  summary.textContent = activeMapMode === "unified"
+    ? lastUnifiedSummary : lastArpSummary;
   if (!graph || !live || lastRevision !== payload.revision) {
     const graphRevision = live
-      ? (payload.graph_revision ?? payload.revision) : null;
+      ? (activeMapMode === "unified"
+        ? payload.unified_address_graph.revision
+        : (payload.graph_revision ?? payload.revision)) : null;
     const redrawGraph = !graph || !live ||
-      lastGraphRevision !== graphRevision;
+      lastGraphRevision !== graphRevision ||
+      lastRenderedMapMode !== activeMapMode;
     graph = payload;
     lastRevision = payload.revision;
     lastGraphRevision = graphRevision;
     if (redrawGraph) renderGraph();
+    if (redrawGraph) lastRenderedMapMode = activeMapMode;
     showSubnetEvidence(live ? payload.subnet_evidence : null);
     showMDNSEvidence(live ? payload.mdns_evidence : null);
     showNDPEvidence(live ? payload.ndp_evidence : null);
