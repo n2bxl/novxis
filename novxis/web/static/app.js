@@ -120,6 +120,9 @@ function updateMapModeControls() {
   mapModeUnified.setAttribute("aria-pressed", String(activeMapMode === "unified"));
   mapTitle.textContent = activeMapMode === "unified"
     ? "Unified address evidence map" : "Observed address map";
+  document.getElementById("auto-arrange").title = activeMapMode === "unified"
+    ? "Group IPv4 and IPv6 claims around MAC evidence anchors"
+    : "Minimize crossed ARP sender claims";
   arpLegend.hidden = activeMapMode !== "arp";
   unifiedLegend.hidden = activeMapMode !== "unified";
   svg.setAttribute("aria-label", activeMapMode === "unified"
@@ -817,6 +820,87 @@ function computeAutoOrders(snapshot) {
   return { protocol, hardware };
 }
 
+// Unified mode uses hardware-address evidence as a *presentation* anchor.
+// It is never promoted into a device identity, physical topology, or an
+// inferred relationship. Retain every edge, including conflicting options.
+function computeUnifiedAutoOrders(snapshot) {
+  const byAddress = (a, b) =>
+    a.capture_scope.localeCompare(b.capture_scope) ||
+    a.interface.localeCompare(b.interface) ||
+    a.address_hex.localeCompare(b.address_hex) ||
+    a.id.localeCompare(b.id);
+  const hardware = snapshot.nodes
+    .filter((node) => node.kind === "hardware").sort(byAddress);
+  const protocol = snapshot.nodes
+    .filter((node) => node.kind === "ipv4" || node.kind === "ipv6")
+    .sort((a, b) =>
+      (a.kind === "ipv4" ? 0 : 1) - (b.kind === "ipv4" ? 0 : 1) ||
+      byAddress(a, b));
+  const protocolById = new Map(protocol.map((node) => [node.id, node]));
+  const hardwareById = new Map(hardware.map((node) => [node.id, node]));
+  const candidates = new Map(protocol.map((node) => [node.id, new Set()]));
+
+  for (const edge of snapshot.edges) {
+    const ip = protocolById.get(edge.source);
+    const mac = hardwareById.get(edge.target);
+    if (!ip || !mac || ip.interface !== mac.interface ||
+        ip.capture_scope !== mac.capture_scope ||
+        edge.interface !== ip.interface ||
+        edge.capture_scope !== ip.capture_scope) continue;
+    const supported = (ip.kind === "ipv4" && edge.kind === "arp_sender") ||
+      (ip.kind === "ipv6" && (
+        edge.kind === "ndp_ns_source_slla" ||
+        edge.kind === "ndp_na_target_tlla"));
+    if (supported) candidates.get(ip.id).add(mac.id);
+  }
+
+  const groups = new Map(hardware.map((node) => [node.id, []]));
+  const ungrouped = [];
+  // Deterministic address-order tie-break for claims involving multiple
+  // MACs. This only chooses a position: all edges remain in the SVG.
+  for (const ip of protocol) {
+    const anchor = hardware.find((mac) => candidates.get(ip.id).has(mac.id));
+    if (anchor) groups.get(anchor.id).push(ip);
+    else ungrouped.push(ip);
+  }
+  return { hardware, groups, ungrouped };
+}
+
+// A MAC occupies the vertical center of its observed address cluster.
+// The left column receives a row per IP, including both address families.
+function layoutUnifiedGraph(snapshot) {
+  const automatic = computeUnifiedAutoOrders(snapshot);
+  const hardware = preserveManualOrder("hardware", automatic.hardware);
+  const defaultProtocol = hardware.flatMap((mac) =>
+    automatic.groups.get(mac.id) || []).concat(automatic.ungrouped);
+  const protocol = preserveManualOrder("protocol", defaultProtocol);
+  orderedByKind = { protocol, hardware };
+
+  const locations = new Map();
+  const addressSlots = [];
+  let row = 0;
+  for (const mac of hardware) {
+    const count = (automatic.groups.get(mac.id) || []).length;
+    const span = Math.max(count, 1);
+    locations.set(mac.id, {
+      x: COLUMN_X.hardware,
+      y: ROW_START + (row + (span - 1) / 2) * ROW_STEP,
+    });
+    for (let index = 0; index < count; index++) {
+      addressSlots.push(row + index);
+    }
+    row += span;
+  }
+  for (const ip of automatic.ungrouped) addressSlots.push(row++);
+  protocol.forEach((ip, index) => locations.set(ip.id, {
+    x: COLUMN_X.protocol,
+    y: ROW_START + addressSlots[index] * ROW_STEP,
+  }));
+  stageHeight = Math.max(620, Math.max(row, protocol.length) * ROW_STEP + 175);
+  svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);
+  return locations;
+}
+
 function preserveManualOrder(kind, automatic) {
   const ids = manualOrderForView()[kind];
   if (!ids) return automatic;
@@ -850,8 +934,8 @@ function reorderNode(kind, id, targetIndex) {
 
 function layoutGraph() {
   const active = visibleAddressGraph();
-  const automatic = computeAutoOrders(activeMapMode === "unified"
-    ? { ...active, claims: active.edges } : active);
+  if (activeMapMode === "unified") return layoutUnifiedGraph(active);
+  const automatic = computeAutoOrders(active);
   orderedByKind = {
     protocol: preserveManualOrder("protocol", automatic.protocol),
     hardware: preserveManualOrder("hardware", automatic.hardware),
