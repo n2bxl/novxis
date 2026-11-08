@@ -57,3 +57,27 @@ python -m pytest
 Static CSS/HTML contract tests do **not** prove Safari layout.
 The branch needs local M5 regression and live Safari acceptance before
 being marked ready or merged.
+
+## Live Safari finding: dense graph zoom ceiling
+
+The owner supplied two 2026-11-08 Safari recordings demonstrating that
+both wheel zoom and the `+` control hit the fixed 3.5 camera scale limit
+while tall Services graphs still had very small node labels. The SVG's
+`viewBox` height scales with the retained row count, so its entire content
+is visually miniaturized as it is fitted into a shorter browser canvas.
+
+The follow-up keeps the existing dynamic `viewBox` implementation and
+makes the maximum camera scale proportional to the graph height
+(`3.5 * max(1, stageHeight / 620)`). Both zoom controls share `zoomAt()`.
+This is a presentation-only correction: it does not change graph content,
+evidence identity, row ordering or retained packet observations.
+
+### Extra Safari acceptance
+
+1. With a tall Services capture, zoom in until a service label is comfortably
+   readable. Confirm the wheel and `+` button continue working beyond the
+   former visual limit.
+2. Confirm pan, Reset view and zoom after Reset view still work.
+3. Switch to ARP and Unified views and check there is no unintended jump in
+   saved per-mode camera state.
+4. In a shorter capture, confirm ordinary zoom behaves as before.
