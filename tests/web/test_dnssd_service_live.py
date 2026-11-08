@@ -113,7 +113,7 @@ def test_legacy_sessions_remain_without_unified_service_graph(protocols):
     assert "unified_address_graph" not in result
     assert result["graph_revision"] == 1
     assert len(result["claims"]) == 1
-    assert "mdns_evidence" in result is ("mdns" in protocols)
+    assert ("mdns_evidence" in result) == ("mdns" in protocols)
 
 
 def test_combined_advertisement_reuses_exact_ip_ids_and_mac_edges():
@@ -217,9 +217,12 @@ def test_new_ptr_epoch_and_count_increment_service_revision():
     state.ingest(mdns(at="108"))
     second = service_graph(state)
     assert second["revision"] == first["revision"] + 1
-    assert second["nodes"][0]["ptr"]["observation_count"] == 2
-    assert second["nodes"][0]["ptr"]["observed_at"] == "108"
-    assert second["edges"][0]["ptr"]["observed_at"] == "108"
+    service = next(n for n in second["nodes"] if n["kind"] == "dnssd_service")
+    assert service["ptr"]["observation_count"] == 2
+    assert service["ptr"]["observed_at"] == "108"
+    endpoint = next(e for e in second["edges"]
+                    if e["kind"] == "dnssd_advertised_endpoint")
+    assert endpoint["ptr"]["observed_at"] == "108"
 
 
 def test_ttl_expiration_changes_only_service_revision_when_no_packets_arrive():
@@ -281,7 +284,10 @@ def test_address_only_changes_advance_service_revision_but_not_ptr_data():
     assert second["unified_service_graph"]["nodes"] != (
         first["unified_service_graph"]["nodes"]
     )
-    assert second["mdns_evidence"] == first["mdns_evidence"]
+    assert (second["mdns_evidence"]["services"][0]["instance"] ==
+            first["mdns_evidence"]["services"][0]["instance"])
+    # The legacy Services sidebar separately gains an ARP jump link,
+    # so its complete display payload correctly does change.
     assert len(second["unified_service_graph"]["edges"]) == 3
 
 
@@ -399,7 +405,7 @@ def test_pure_adapter_has_independent_signature_and_rejects_mismatched_inputs():
     signature = service_graph_semantic_signature(snap)
     assert signature == service_graph_semantic_signature(snap)
     assert snap.as_of == Decimal("105")
-    with pytest.raises(ValueError, match="outside authorized capture"):
+    with pytest.raises(ValueError, match="outside live capture interface"):
         build_live_dnssd_service_graph(
             address_state, ndp_state, receiver, interface="en5",
             capture_scope=snap.capture_scope,
