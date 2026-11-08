@@ -4,6 +4,7 @@ Static CSS/HTML checks. Browser geometry and Safari scrolling still require
 owner acceptance on a narrow window, short desktop window and normal desktop.
 """
 from importlib import resources
+import re
 
 
 def assets():
@@ -15,8 +16,10 @@ def assets():
 
 
 def rule(css: str, selector: str) -> str:
-    start = css.index(selector + " {")
-    return css[start:css.index("}", start) + 1]
+    # Match a standalone selector, not a comma-separated combined rule.
+    match = re.search(r"(?m)^\s*" + re.escape(selector) + r"\s*\{", css)
+    assert match is not None, f"Missing CSS rule: {selector}"
+    return css[match.start():css.index("}", match.end()) + 1]
 
 
 def test_desktop_workspace_tracks_viewport_instead_of_growing_with_evidence():
