@@ -30,7 +30,7 @@ exploration, and troubleshooting.
   reachability, or the configured settings of other endpoints.
   Encrypted DNS/application traffic is not decrypted.
 
-**Last reported M5 acceptance (2026-11-07): 876 passing Python tests** following the Stage 2 validation. Stage 3 M5 regression and Safari interaction checks are pending.
+**Latest M5 acceptance (2026-11-07): 895 passing Python tests in 4.57s** following the Stage 3 layout refinement. Live Safari graph, MAC-first arrangement, and typed edge inspection were observed; PR #49 awaits owner squash-merge.
 This is an observed test baseline, not a claim of an automated CI run
 for every subsequent documentation change.
 
@@ -100,7 +100,7 @@ capture / replay                   separately sourced local OS context
 
 ## Current milestone: Phase 1N-L
 
-**Stages 1 and 2 merged; Stage 3 optional Unified addresses 2D mode implemented on an unmerged feature branch, pending M5 regression and Safari validation.** Reuse
+**Stages 1 and 2 merged; Stage 3 Unified addresses 2D mode validated on its feature branch, PR #49 ready for owner review.** Reuse
 existing ARP sender and ICMPv6 NS-source/NA-target observations to show
 **separate IPv4 and IPv6 address nodes** connected to shared,
 **capture-scope/interface-qualified hardware-address nodes**, with
