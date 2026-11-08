@@ -140,10 +140,10 @@ remain an explicit production-readiness decision.
 - `OBSERVE / VISUALIZE / EXPLORE`: uniformly cyan `#76D8DE`.
 - Both text runs use `font-weight="500"` and `font-size="32"`
   (increased from the previous 24px iteration for stronger visual balance).
-- The baseline is y=200, with the upper wordmark and stripes unchanged.
+- The baseline is y=200; the uppercase wordmark geometry is unchanged by this tagline refinement.
 - Left edge aligns with the `N` at horizontal lockup x=293.
 - The tagline right edge aligns to the end of the **six-letter NOVXIS name**,
-  excluding the three gold stripes: `293 + 443 × 1.32 = 877.76`.
+  excluding the appended forward slashes: `293 + 443 × 1.32 = 877.76`.
 - The cyan text begins at x=323 and uses `textLength="555"`, ending
   at x=878. With 29 monospace characters, 32px text naturally approaches
   that target width; `lengthAdjust="spacing"` makes only a small adjustment
@@ -192,7 +192,7 @@ are **review derivatives**, not source files, and are not tracked in Git.
 python -m pytest tests/branding/test_brand_svg_assets.py -q
 ```
 
-The focused tests validate SVG/XML parsing, expected letter and stripe
+The focused tests validate SVG/XML parsing, expected letter and slash
 paths, exact reuse of canonical icon and standalone wordmark paths inside
 the lockup, the approved tagline, flat palette, and absence of embedded
 scripts/images. **8 focused tests passed locally** during the initial Phase B preparation; rerun the suite to validate the revised double-slash artwork.
