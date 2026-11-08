@@ -263,3 +263,7 @@ h2 { font-size: 18px; line-height: 1.35; margin-top: 10px; overflow-wrap: anywhe
   display: block; width: 100%; text-align: left; line-height: 1.5;
   white-space: normal; overflow-wrap: anywhere;
 }
+
+/* Parallel evidence paths must remain independently pointer-selectable. */
+.map-edge-hit.services-parallel-hit { stroke-width: 12; }
+.services-empty-label { fill: #a8bacb; font-size: 12px; }
