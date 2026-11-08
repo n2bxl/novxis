@@ -60,9 +60,31 @@ def test_tagline_has_exact_approved_copy():
     lockup = parse("novxis-lockup-horizontal.svg")
     tagline = group(lockup, "brand-tagline")
     assert tagline.attrib["aria-label"] == "> OBSERVE / VISUALIZE / EXPLORE"
-    texts = [t.text for t in tagline.findall(f"{NS}text")]
-    assert texts == [">", "OBSERVE / VISUALIZE / EXPLORE"]
-    assert "IBM Plex Mono" in tagline.findall(f"{NS}text")[0].attrib["font-family"]
+    texts = tagline.findall(f"{NS}text")
+    assert [t.text for t in texts] == [">", "OBSERVE / VISUALIZE / EXPLORE"]
+    assert [t.attrib["fill"] for t in texts] == ["#88E6A1", "#76D8DE"]
+    assert all(t.attrib["font-weight"] == "500" for t in texts)
+    assert all(t.attrib["font-size"] == "24" for t in texts)
+    assert all("IBM Plex Mono" in t.attrib["font-family"] for t in texts)
+
+
+def test_tagline_aligns_with_novxis_letters_not_stripes():
+    lockup = parse("novxis-lockup-horizontal.svg")
+    tagline = group(lockup, "brand-tagline")
+    prompt, words = tagline.findall(f"{NS}text")
+
+    # The wordmark's N begins at local x=0; the S ends at local x=443.
+    # Its parent transform is translate(293,43) scale(1.32).
+    letters_left = 293
+    letters_right = letters_left + 443 * 1.32
+    stripes_begin = letters_left + 463 * 1.32
+
+    assert float(prompt.attrib["x"]) == letters_left
+    assert float(words.attrib["x"]) > float(prompt.attrib["x"])
+    assert words.attrib["lengthAdjust"] == "spacing"  # no glyph stretching
+    words_right = float(words.attrib["x"]) + float(words.attrib["textLength"])
+    assert abs(words_right - letters_right) <= 1.0
+    assert words_right < stripes_begin
 
 
 def test_svg_palette_and_no_embedded_background():
