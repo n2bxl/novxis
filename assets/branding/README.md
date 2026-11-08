@@ -102,14 +102,73 @@ for px in (128, 64, 32, 16):
 PY
 ```
 
+## Phase B: W3 wordmark and horizontal lockup
+
+**Status:** First vector implementation of the **selected W3 Tech Stripe
+creative direction**, ready for visual review. The original X-junction
+geometry from the merged Phase A assets is unchanged.
+
+| File | Role |
+| --- | --- |
+| `source/w3-tech-stripe.svg` | Transparent, bespoke gold NOVXIS lettering, followed by three gold forward-slanted stripes |
+| `source/novxis-lockup-horizontal.svg` | Self-contained full Concept A icon, separator, W3 wordmark and exact tagline |
+
+The W3 source uses **six separate original geometric letter paths**
+(`N`, `O`, `V`, `X`, `I`, `S`) and **three independent stripe paths**.
+The wordmark itself uses **no font, image, glow, script or external dependency**.
+Its viewBox is `0 0 620 72` and its appearance follows the angular W3
+concept without claiming pixel-identical tracing of the concept board.
+
+The horizontal lockup has a `0 0 1200 250` viewBox, and embeds
+**exact copies of the merged canonical X-junction SVG paths and the new W3
+wordmark paths**, rather than referencing another file at runtime.
+It uses the exact tagline:
+
+```text
+> OBSERVE / VISUALIZE / EXPLORE
+```
+
+The tagline is *editable live SVG text* using **IBM Plex Mono when installed**
+with DejaVu Sans Mono / monospace fallbacks. Unlike the icon and wordmark
+paths, its typography can vary across machines without the preferred font.
+No font file is shipped. Final font selection and/or tagline outlining
+remain an explicit production-readiness decision.
+
+### Display-size guidance
+
+The wordmark was rasterized at **614, 307, and 154 px**. The combined
+lockup was rasterized at **1200, 600, and 300 px**; below approximately
+600 px the tagline becomes a secondary detail. Use the standalone wordmark
+or icon at smaller widths, rather than shrinking the full lockup until its
+tagline becomes unreadable. These are visual guidance values, not formal
+minimum-size approvals.
+
+An initial local rendering was inspected on a dark canvas. Exported PNGs
+are **review derivatives**, not source files, and are not tracked in Git.
+
+### Static validation
+
+```bash
+python -m pytest tests/branding/test_brand_svg_assets.py -q
+```
+
+The focused tests validate SVG/XML parsing, expected letter and stripe
+paths, exact reuse of canonical icon and standalone wordmark paths inside
+the lockup, the approved tagline, flat palette, and absence of embedded
+scripts/images. **8 focused tests passed locally** during preparation.
+No full NOVXIS networking regression suite was run for these static assets.
+This branch does not modify application behavior or introduce rendering
+dependencies into the NOVXIS runtime.
+
 ## Next assets
 
-1. Create the approved **W3 Tech Stripe** wordmark with original,
-   reproducible vector lettering.
-2. Assemble an icon + wordmark lockup with the exact tagline
-   `> OBSERVE / VISUALIZE / EXPLORE`.
-3. Develop monochrome and platform exports, ASCII/TUI companion
-   `[>+<] NOVXIS`, and export validation tooling.
+1. Review the W3 vector lettering and combined layout against the
+   approved concept before calling the specific SVG geometry final.
+2. Develop monochrome/high-contrast variants and platform-specific exports.
+3. Decide whether to outline the tagline in a verified IBM Plex Mono
+   style for fully portable rendering.
+4. Add terminal-compatible `[>+<] NOVXIS` representations and an optional
+   reproducible SVG-to-PNG export script.
 
-The original Phase A branch does not modify the NOVXIS 2D evidence
-explorer, network evidence graph, parser/state logic, or UI styling.
+The branding branches do not modify the NOVXIS 2D evidence explorer,
+network evidence graph, parser/state logic, or UI styling.
