@@ -1142,7 +1142,7 @@ const SERVICE_NAME_LINE_HEIGHT = 16;
 // does not provide). Prefer separators, but split overlong tokens as needed.
 function serviceNameLines(instance) {
   const name = String(instance);
-  const tokens = name.match(/[^._\\s-]+[._\\s-]*|[._\\s-]+/gu) || [name];
+  const tokens = name.match(/[^._\s-]+[._\s-]*|[._\s-]+/gu) || [name];
   const lines = [];
   let line = "";
   for (const token of tokens) {
