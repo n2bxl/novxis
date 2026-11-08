@@ -1,7 +1,7 @@
 # Phase 1N-M Stage 2: Live DNS-SD Service Evidence Graph Adapter
 
 - **Date:** 2026-11-07
-- **Status:** Implemented on a draft branch; M5 regressions and live acceptance pending
+- **Status:** M5 focused and full regressions accepted on feature branch; optional live API observation pending owner verification
 - **Prerequisites:** Phase 1N-M plan (PR #50) and pure Stage 1 projector (PR #51) merged
 - **Observed merged baseline:** 938 passing M5 Python tests in 4.68 s
 - **Scope:** Add a bounded, versioned, read-only service graph to the existing
@@ -92,9 +92,13 @@ python -m pytest tests/web/test_dnssd_service_live.py \
 python -m pytest
 ```
 
-**No Python tests have yet been reported on the new branch.**
-The preceding 938-test result is the already merged Stage 1 baseline,
-not a claim of Stage 2 test success.
+**M5 feature-branch regression accepted (2026-11-07):** after correcting the
+NDP capacity test's eviction assumption, **124 focused tests passed in
+1.22 s** and **966 complete-suite tests passed in 5.20 s** on macOS,
+Python 3.14.6, pytest 9.1.1. That is 28 additional passing cases above
+the 938-test merged Stage 1 baseline. No production changes were required
+for this NDP test correction. This is branch-level test acceptance;
+independent live traffic observation remains a separate optional check.
 
 ## Optional authorized live acceptance (same local toolchain)
 
