@@ -51,7 +51,7 @@ def test_service_cards_form_single_compact_ordered_column():
     assert "let lastServiceBottom = ROW_START - SERVICE_CARD_GAP;" in layout
     assert "const y = lastServiceBottom + SERVICE_CARD_GAP;" in layout
     assert "lastServiceBottom = y + serviceCardHeight(service);" in layout
-    assert "lastServiceBottom + 175" in layout
+    assert "renderedBottom + 175" in layout
     assert "serviceSlots" not in layout
     assert "preferredServiceSlot" not in layout
 
