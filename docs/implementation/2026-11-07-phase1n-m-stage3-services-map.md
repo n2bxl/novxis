@@ -1,7 +1,7 @@
 # Phase 1N-M Stage 3: Three-column Services evidence map
 
 - **Date:** 2026-11-07
-- **Status:** Safari rearrangement bug identified and corrected on branch; fresh M5 tests and Safari retest pending
+- **Status:** Post-fix M5 full regression accepted (984 passed in 5.19 s); crowded live Safari rearrange and visibility retest pending
 - **Prerequisites:** Phase 1N-M Stage 1 pure projector and Stage 2 local
   `unified_service_graph` JSON merged into `main`
 - **Accepted Stage 2 merged baseline (M5):** 966 passing tests in 5.23 s
@@ -147,7 +147,7 @@ DOM interaction smoke check passed during implementation. The smoke
 check built a MAC, an IPv4 node and a PTR-backed service, rendered both
 ARP and DNS-SD edges, selected the DNS-SD edge, checked the displayed
 SRV port, and confirmed selection survived a Unified→Services switch.
-This is **not** a report of an M5 pytest run or a live Safari acceptance.
+The owner subsequently confirmed the **post-fix Stage 3 full M5 regression suite passed: 984 tests in 5.19 s**. This includes the 18 Stage 3 browser-contract test functions. The focused suite was not separately reported, and the recording predates the rearrange fix. **The new Safari retest is still pending.**
 
 ## Safari manual acceptance
 
@@ -271,9 +271,7 @@ This does not replace M5 Safari acceptance.
 Rearrange and move a middle service card; verify that other cards
 do not bunch, Reset view fits the retained graph, multiple converging
 paths can be selected separately, and the incomplete-evidence
-warning does not masquerade as TTL expiry. Rerun focused and full
-pytest after pulling these branch changes. No post-fix M5 pass
-has been reported yet.
+warning does not masquerade as TTL expiry. The owner has now reported **984 full-suite tests passed in 5.19 s** after pulling these branch changes. A new live Safari rearrangement and full-column visibility retest is still required.
 
 ## Exit criteria
 
