@@ -251,9 +251,11 @@ def test_exact_ptr_ttl_boundary_never_reports_active_service(as_of, expected):
     srv = target(as_of=as_of, addresses=[
         address(as_of=as_of),
     ])
-    # This fixture deliberately varies the PTR TTL (normally 120 s).
+    # The fixture varies the PTR TTL (normally 120 s), so update both
+    # composite freshness flags. SRV/A component freshness stays independent.
+    srv["path_fresh"] = expected and srv["fresh"]
     srv["addresses"][0]["path_fresh"] = (
-        expected and srv["fresh"] and srv["addresses"][0]["fresh"]
+        srv["path_fresh"] and srv["addresses"][0]["fresh"]
     )
     snap = project(evidence(
         as_of=as_of,
