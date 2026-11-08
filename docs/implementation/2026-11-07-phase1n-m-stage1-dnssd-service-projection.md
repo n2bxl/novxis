@@ -1,7 +1,7 @@
 # Phase 1N-M Stage 1: Pure DNS-SD Service Evidence Projection
 
 - **Date:** 2026-11-07
-- **Status:** Implemented on a draft feature branch; M5 Python validation pending
+- **Status:** Implementation and post-fix M5 regressions accepted; ready for owner review and squash-merge
 - **Previous merged baseline:** 895 passing tests in 4.60 s after Phase 1N-L
 - **Planning proposal:** PR #50, Phase 1N-M design and acceptance
 
@@ -104,8 +104,7 @@ python -m pytest tests/views/test_dnssd_service_graph.py \
 python -m pytest
 ```
 
-Please report the pytest total and any assertion failures.
-No passing M5 result for this new branch is claimed until run locally.
+**M5 acceptance (2026-11-07, after PTR TTL fixture correction):** focused suite **124 passed in 0.11 s**; complete suite **938 passed in 4.64 s** (43 additional passing cases over the Phase 1N-L baseline of 895). Platform: macOS, Python 3.14.6, pytest 9.1.1. The two initial failing exact-PTR-expiry parameter cases were corrected by making the *synthetic* PTR/SRV composite freshness flag consistent with the shortened PTR TTL. The projector's strict freshness validation was unchanged.
 
 ## Synthetic acceptance examples
 
@@ -135,5 +134,4 @@ No passing M5 result for this new branch is claimed until run locally.
 - Stage 4: local Safari validation, full three-mode UX acceptance and
   final milestone documentation.
 
-This is a developer handoff; Stage 1 must pass user-side M5 tests before
-being marked ready or squash-merged.
+The post-fix Stage 1 focused and full suites have both passed on the M5. This branch is ready for owner review and squash-merge; no merger, Stage 2 integration, or Safari graph behavior is claimed here.
