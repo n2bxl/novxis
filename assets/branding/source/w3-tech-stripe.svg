@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="552" height="72" viewBox="0 0 552 72" role="img" aria-labelledby="title desc">
+  <title id="title">NOVXIS W3 Tech Stripe wordmark</title>
+  <desc id="desc">Six bespoke angular gold letters spelling NOVXIS, followed by two narrow gold forward slashes.</desc>
+  <!-- Custom geometric vector letterforms, not live type or a raster trace. -->
+  <g id="w3-tech-stripe" fill="#AF9600">
+    <path id="letter-N" transform="translate(0,0)" d="M0 72 V0 H16 L46 42 V0 H62 V72 H46 L16 30 V72 Z"/>
+    <path id="letter-O" transform="translate(77,0)" d="M12 0 H52 L64 12 V60 L52 72 H12 L0 60 V12 Z M20 15 L15 20 V52 L20 57 H44 L49 52 V20 L44 15 Z" fill-rule="evenodd"/>
+    <path id="letter-V" transform="translate(154,0)" d="M0 0 H17 L36 53 L55 0 H72 L46 72 H26 Z"/>
+    <path id="letter-X" transform="translate(239,0)" d="M0 0 H19 L35 23 L51 0 H70 L47 36 L70 72 H51 L35 49 L19 72 H0 L23 36 Z"/>
+    <path id="letter-I" transform="translate(320,0)" d="M0 0 H47 V14 H31 V58 H47 V72 H0 V58 H16 V14 H0 Z"/>
+    <path id="letter-S" transform="translate(379,0)" d="M12 0 H64 V15 H17 L15 17 V25 L18 28 H51 L64 41 V60 L52 72 H0 V57 H47 L49 55 V46 L46 43 H13 L0 30 V12 Z"/>
+    <!-- Two forward slashes, optically matched to the ~16-unit W3 letter strokes. -->
+    <path id="stripe-1" d="M466 72 L491 0 H506 L481 72 Z"/>
+    <path id="stripe-2" d="M502 72 L527 0 H542 L517 72 Z"/>
+  </g>
+</svg>
