@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="32" height="32" role="img" aria-labelledby="title desc">
+  <title id="title">NOVXIS Corner Frame X compact icon, white monochrome</title>
+  <desc id="desc">An all-white connected X and four disconnected corner brackets, with transparent background for use on dark surfaces.</desc>
+  <!-- Phase C1: connected X for small sizes; four open corner brackets avoid a generic boxed-close glyph. -->
+  <!-- Source paths are exactly identical across color and monochrome variants. -->
+  <g id="corner-brackets" fill="#FFFFFF">
+    <path id="bracket-upper-left" d="M14 39 V14 H39 V23 H23 V39 Z"/>
+    <path id="bracket-upper-right" d="M89 14 H114 V39 H105 V23 H89 Z"/>
+    <path id="bracket-lower-left" d="M14 89 H23 V105 H39 V114 H14 Z"/>
+    <path id="bracket-lower-right" d="M105 89 H114 V114 H89 V105 H105 Z"/>
+  </g>
+  <g id="connected-x" fill="#FFFFFF">
+    <path id="x-silhouette" d="M33 31 H47 L64 49 L81 31 H95 V45 L77 64 L95 83 V97 H81 L64 79 L47 97 H33 V83 L51 64 L33 45 Z"/>
+  </g>
+</svg>

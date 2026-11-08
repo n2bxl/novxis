@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="300 300 1400 1400" width="32" height="32" role="img" aria-labelledby="title desc">
-  <title id="title">NOVXIS X-Junction compact icon</title>
-  <desc id="desc">The same four angular gold arms and green central plus, optically enlarged for small sizes without framing brackets.</desc>
-  <!-- Derived directly from the approved full-icon geometry. -->
-  <!-- Cropped viewBox is the optical adjustment: the core geometry is unchanged. -->
-  <g fill="#AF9600">
-    <path d="M420 420 H645 L835 610 V835 H610 L420 645 Z"/>
-    <path d="M1580 420 H1355 L1165 610 V835 H1390 L1580 645 Z"/>
-    <path d="M420 1580 H645 L835 1390 V1165 H610 L420 1355 Z"/>
-    <path d="M1580 1580 H1355 L1165 1390 V1165 H1390 L1580 1355 Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="32" height="32" role="img" aria-labelledby="title desc">
+  <title id="title">NOVXIS Corner Frame X compact icon</title>
+  <desc id="desc">A single continuous gold X framed by four separate cyan right-angle corner brackets, without the green junction plus.</desc>
+  <!-- Phase C1: connected X for small sizes; four open corner brackets avoid a generic boxed-close glyph. -->
+  <!-- Source paths are exactly identical across color and monochrome variants. -->
+  <g id="corner-brackets" fill="#76D8DE">
+    <path id="bracket-upper-left" d="M14 39 V14 H39 V23 H23 V39 Z"/>
+    <path id="bracket-upper-right" d="M89 14 H114 V39 H105 V23 H89 Z"/>
+    <path id="bracket-lower-left" d="M14 89 H23 V105 H39 V114 H14 Z"/>
+    <path id="bracket-lower-right" d="M105 89 H114 V114 H89 V105 H105 Z"/>
   </g>
-  <path fill="#88E6A1" d="M925 700 H1075 V925 H1300 V1075 H1075 V1300 H925 V1075 H700 V925 H925 Z"/>
+  <g id="connected-x" fill="#AF9600">
+    <path id="x-silhouette" d="M33 31 H47 L64 49 L81 31 H95 V45 L77 64 L95 83 V97 H81 L64 79 L47 97 H33 V83 L51 64 L33 45 Z"/>
+  </g>
 </svg>
