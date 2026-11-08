@@ -81,3 +81,24 @@ evidence identity, row ordering or retained packet observations.
 3. Switch to ARP and Unified views and check there is no unintended jump in
    saved per-mode camera state.
 4. In a shorter capture, confirm ordinary zoom behaves as before.
+
+
+## Wide-window zoom follow-up
+
+The owner reported and recorded a further Services zoom ceiling in a wide
+Safari window after the original height-based adjustment. Review showed
+that logical SVG height alone is not sufficient to set a useful camera
+maximum: the browser's default `xMidYMid meet` aspect-ratio behavior
+fits the viewBox using the smaller of its horizontal and vertical CSS
+scale factors.
+
+The revised `maximumZoomScale()` reads the SVG's actual client rectangle
+and viewBox, computes the effective CSS pixels per graph unit, and derives
+a ceiling from that displayed scale. The original 3.5 maximum remains
+the floor for smaller maps, and missing/zero geometry falls back to 3.5.
+Wheel and `+` controls still call the same `zoomAt()` function.
+
+This work preserves all evidence semantics and existing map modes.
+It requires fresh Safari acceptance at both wide/short and normal sizes,
+including Reset view, scrolling zoom, button zoom, and cross-mode camera
+retention. Static contract checks alone cannot validate actual CSS layout.
