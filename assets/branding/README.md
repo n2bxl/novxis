@@ -1,103 +1,115 @@
 # NOVXIS branding assets
 
 **Phase A: X-Junction vector foundations**  
-**Status:** Initial review candidates, not final approved production vectors.
+**Direction:** User-approved Canva X-Junction draft, 2026-11-08  
+**Scope:** Editable logo geometry only. No application runtime or UI changes.
 
-This directory contains editable, deterministic SVG geometry for the
-approved NOVXIS **Concept A / X-Junction** creative direction. The selected
-reference board remains in OAIOS at
-`07 - ATTACHMENTS/NOVXIS - Selected Identity Concept - 2026-11-08.png`.
+## Selected icon
 
-The approved *concept* and this new vector drawing are distinct: these SVGs
-are intentional geometric reconstructions, **not automatically vectorized
-copies** or pixel-identical exports of the generated design board.
+The approved mark is the **Canva draft** selected after the original
+Concept A exploration. Its recognizable parts are:
 
-## Sources
+- Four broad, gold, angular arms, separated from the center.
+- An enlarged phosphor-green `+` in the center, **without** horizontal dashes.
+- Four substantial cyan right-angle corner brackets.
+- Flat fills, hard geometry, and no bloom required for legibility.
 
-| File | Role |
+These SVG paths reconstruct the approved Canva design in a transparent
+**2000 × 2000 coordinate system**. They preserve its established proportions;
+the near-symmetric vector paths smooth out only negligible raster-edge
+irregularities. The earlier thinner, smaller-plus SVG was superseded.
+
+| File | Intended use |
 | --- | --- |
-| `source/x-junction.svg` | Full icon: four bold angular gold arms, a green center plus, cyan corner brackets |
-| `source/x-junction-compact.svg` | Optical-size candidate: larger gold silhouette, green center, brackets removed for small applications |
+| `source/x-junction.svg` | Full-fidelity icon with cyan corner brackets |
+| `source/x-junction-compact.svg` | Same *gold/green core geometry*, without brackets, enlarged optically for 16–32 px |
 
-Both SVGs:
-- Have transparent backgrounds and an explicit `128 × 128` viewBox.
-- Use filled, square-edged geometry rather than hairline strokes.
-- Use **no** animation, blur, filters, raster image references, or external fonts.
-- Preserve **no horizontal bars** beside the central green plus.
-- Include simple titles/descriptions and no network-semantic claims.
+Both files are transparent vector originals, with no external font,
+filter, pixel image, script, or background. The compact version uses the
+same central and gold paths with a tighter viewBox; it is a derived
+size variant, **not** a redesign of the approved primary mark.
 
-## Colors (candidate visual-system tokens)
+The Canva PNG supplied for this approval is the visual reference for this
+vector update. The earlier selected concept exploration board remains
+preserved in OAIOS at
+`07 - ATTACHMENTS/NOVXIS - Selected Identity Concept - 2026-11-08.png`.
+The OAIOS board and the newer user-created Canva draft are **distinct** images.
+The Canva source PNG is not yet tracked in this NOVXIS branch.
+
+## Palette
 
 | Treatment | Hex |
 | --- | --- |
-| NOVXIS old gold | `#AF9600` |
+| NOVXIS gold | `#AF9600` |
 | Phosphor green | `#88E6A1` |
-| Cyan structural brackets | `#76D8DE` |
+| Cyan brackets | `#76D8DE` |
 
-These are the visual-system palette proposals, **not colors picked from the
-generated bitmap**. The concept image may look brighter due to its artistic
-lighting. Brand graphics may use phosphor decoration, but application signal
-effects must still convey specific, supportable events or focus.
+These exact source colors match the user's supplied flat-color Canva draft.
+They also match the NOVXIS visual-system candidate color tokens. All
+three are decorative **brand colors**, not a live network health/status key.
 
-## Size-testing and review gates
+## Validation and usage
 
-The full and compact SVGs were independently parsed as XML and rasterized
-with CairoSVG at **128, 64, 32, and 16 px** as a design smoke test.
-The PNG rasterizations were inspected during this design pass but are **not**
-checked into source control because they are reproducible derivatives.
+The revised SVGs were parsed successfully and rasterized at
+**128, 64, 32, and 16 pixels** using CairoSVG. A direct 2000 px comparison
+against the supplied Canva PNG matched the cyan bracket and green plus
+solid-fill masks exactly. The gold arms achieved approximately **98.4%
+intersection-over-union** with the reference's exact solid-fill mask; the
+remaining difference arises from intentional symmetric path normalization
+and raster edges. At ordinary sizes the overall composition closely matches
+the approved draft.
 
-- `128/64 px`: review the full-bracket icon.
-- `32/16 px`: review the compact geometric variant for optical legibility.
-- Confirm recognizability at **native actual sizes**, with glow disabled.
-- Test on dark, light, grayscale, and monochrome backgrounds before promoting
-  any variant to final production status.
-- Check device-specific exports and color contrast before declaring favicon,
-  dock-icon, mobile, or OS package readiness.
+Review conventions:
 
-SVG validation example (optional local development tools):
+- Use the **full** SVG for 64–128 px and larger applications.
+- Use the **compact** SVG for 16–32 px where corner details compete.
+- Inspect rasterizations at their **native pixel sizes**.
+- Preserve the full SVG as the canonical artistic source. Do not edit
+  its geometry solely to optimize the compact version.
+- Before platform packaging, still test monochrome, light background,
+  reduced visual effects, and platform icon silhouettes.
+
+Simple XML sanity check:
 
 ```bash
 python - <<'PY'
 from xml.etree import ElementTree as ET
-for path in (
-    "assets/branding/source/x-junction.svg",
-    "assets/branding/source/x-junction-compact.svg",
+for name, expected in (
+    ("x-junction", "0 0 2000 2000"),
+    ("x-junction-compact", "300 300 1400 1400"),
 ):
+    path = f"assets/branding/source/{name}.svg"
     root = ET.parse(path).getroot()
-    assert root.attrib["viewBox"] == "0 0 128 128"
+    assert root.attrib["viewBox"] == expected
     print(path, "OK")
 PY
 ```
 
-Example rasterization (requires optional `cairosvg`, not a NOVXIS runtime
-dependency):
+Optional local PNG export (requires `cairosvg`, not a NOVXIS
+runtime dependency):
 
 ```bash
 python - <<'PY'
 import cairosvg
-for size in (128, 64, 32, 16):
-    variant = "x-junction-compact" if size <= 32 else "x-junction"
+for px in (128, 64, 32, 16):
+    name = "x-junction-compact" if px <= 32 else "x-junction"
     cairosvg.svg2png(
-        url=f"assets/branding/source/{variant}.svg",
-        write_to=f"/tmp/novxis-{variant}-{size}.png",
-        output_width=size,
-        output_height=size,
+        url=f"assets/branding/source/{name}.svg",
+        write_to=f"/tmp/novxis-{name}-{px}.png",
+        output_width=px,
+        output_height=px,
     )
 PY
 ```
 
-## Next in this branding sprint
+## Next assets
 
-1. Gather approval or edits on the **actual vector shapes** at full and
-   compact sizes.
-2. Build the approved **W3 Tech Stripe** wordmark as reproducible custom
-   vector geometry, not a raster crop or an unmodified monospace font.
-3. Combine the icon and wordmark into a transparent lockup featuring the exact
-   tagline: `> OBSERVE / VISUALIZE / EXPLORE`.
-4. Develop monochrome and high-contrast variants, a terminal-compatible
-   `[>+<] NOVXIS` companion, and a scripted export/asset-validation pipeline.
-5. Integrate into the actual NOVXIS UI only after asset review. The existing
-   2D evidence explorer and its networking semantics are unchanged.
+1. Create the approved **W3 Tech Stripe** wordmark with original,
+   reproducible vector lettering.
+2. Assemble an icon + wordmark lockup with the exact tagline
+   `> OBSERVE / VISUALIZE / EXPLORE`.
+3. Develop monochrome and platform exports, ASCII/TUI companion
+   `[>+<] NOVXIS`, and export validation tooling.
 
-This phase intentionally does **not** pick a desktop packaging framework,
-introduce an animated logo, or rewrite any application UI.
+The original Phase A branch does not modify the NOVXIS 2D evidence
+explorer, network evidence graph, parser/state logic, or UI styling.
