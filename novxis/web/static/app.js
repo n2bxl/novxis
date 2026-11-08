@@ -1584,7 +1584,8 @@ function svgPoint(event) {
 }
 
 function zoomAt(factor, point) {
-  const next = Math.min(3.5, Math.max(0.4, camera.scale * factor));
+  // Permit continued smooth zooming after fit scales a dense graph below 40%.
+  const next = Math.min(3.5, Math.max(0.05, camera.scale * factor));
   const ratio = next / camera.scale;
   camera.x = point.x - (point.x - camera.x) * ratio;
   camera.y = point.y - (point.y - camera.y) * ratio;
