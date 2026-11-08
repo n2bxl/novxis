@@ -139,11 +139,11 @@ function updateMapModeControls() {
   unifiedLegend.hidden = activeMapMode !== "unified";
   servicesLegend.hidden = activeMapMode !== "services";
   if (!moveNodesMode) canvasHint.textContent = activeMapMode === "services"
-    ? "Scroll to zoom · Drag to pan · Select an evidence connector · Reset view fits all retained rows"
+    ? "Scroll to zoom · Drag to pan · Select an evidence connector · Reset view frames the visible evidence"
     : "Scroll to zoom · Drag to pan · Select an address";
   document.getElementById("fit").title = activeMapMode === "services"
-    ? "Fit all retained service, IP and hardware rows into the map viewport"
-    : "Reset zoom and pan";
+    ? "Fit the currently rendered evidence into the map viewport"
+    : "Fit the currently rendered evidence into the map viewport";
   svg.setAttribute("aria-label", activeMapMode === "services"
     ? "Interactive three-column map of hardware, IP addresses, and advertised DNS-SD services"
     : activeMapMode === "unified"
@@ -1584,7 +1584,8 @@ function svgPoint(event) {
 }
 
 function zoomAt(factor, point) {
-  const next = Math.min(3.5, Math.max(0.4, camera.scale * factor));
+  // Permit continued smooth zooming after fit scales a dense graph below 40%.
+  const next = Math.min(3.5, Math.max(0.05, camera.scale * factor));
   const ratio = next / camera.scale;
   camera.x = point.x - (point.x - camera.x) * ratio;
   camera.y = point.y - (point.y - camera.y) * ratio;
@@ -1593,7 +1594,30 @@ function zoomAt(factor, point) {
 }
 
 function resetView() {
-  camera = { x: 0, y: 0, scale: 1 };
+  // Measure rendered evidence in graph coordinates, not the scrollable
+  // stage extent. Sparse service rows should not produce an empty lead-in.
+  // getBBox excludes the viewport's camera transform.
+  const bounds = viewport.getBBox();
+  if (!Number.isFinite(bounds.x) || !Number.isFinite(bounds.y) ||
+      !Number.isFinite(bounds.width) || !Number.isFinite(bounds.height) ||
+      bounds.width <= 0 || bounds.height <= 0) {
+    camera = { x: 0, y: 0, scale: 1 };
+    updateCamera();
+    return;
+  }
+  const view = svg.viewBox.baseVal;
+  const padding = 36;
+  const availableWidth = Math.max(1, view.width - 2 * padding);
+  const availableHeight = Math.max(1, view.height - 2 * padding);
+  // Never magnify sparse evidence solely because Reset view was pressed.
+  // Unlike interactive wheel zoom, fit may go below the usual zoom floor.
+  const scale = Math.min(1, availableWidth / bounds.width,
+    availableHeight / bounds.height);
+  camera = {
+    x: view.x + (view.width - bounds.width * scale) / 2 - bounds.x * scale,
+    y: view.y + (view.height - bounds.height * scale) / 2 - bounds.y * scale,
+    scale,
+  };
   updateCamera();
 }
 
@@ -1612,7 +1636,7 @@ moveButton.addEventListener("click", () => {
   canvasHint.textContent = moveNodesMode
     ? "Drag nodes to reorder · Shift + ↑/↓ to move selected row · Drag empty space to pan"
     : (activeMapMode === "services"
-      ? "Scroll to zoom · Drag to pan · Select an evidence connector · Reset view fits all retained rows"
+      ? "Scroll to zoom · Drag to pan · Select an evidence connector · Reset view frames the visible evidence"
       : "Scroll to zoom · Drag to pan · Select an address");
 });
 document.getElementById("auto-arrange").addEventListener("click", () => {

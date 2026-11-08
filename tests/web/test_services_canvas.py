@@ -326,8 +326,9 @@ def test_all_retained_services_and_valid_evidence_edges_render_without_display_c
 
 def test_service_map_explains_offscreen_rows_and_identifies_missing_evidence():
     _, js, _ = assets()
-    assert 'Reset view fits all retained rows' in js
-    assert 'Fit all retained service, IP and hardware rows' in js
+    assert 'Reset view frames the visible evidence' in js
+    assert 'Fit the currently rendered evidence into the map viewport' in js
+    assert 'const bounds = viewport.getBBox();' in js
     live = js[js.index("async function loadGraph()"):]
     for name in (
         'services.omitted_mdns_advertisements',
