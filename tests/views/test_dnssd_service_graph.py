@@ -120,8 +120,8 @@ def test_ipv4_ipv6_and_service_only_address_share_the_expected_identity():
     assert len(snap.edges) == 5  # original ARP/NDP plus 3 DNS-SD paths
     assert len(snap.service_nodes) == 1
     assert len(snap.endpoint_edges) == 3
-    assert {n.kind for n in snap.nodes if hasattr(n, "kind")} == {
-        "hardware", "ipv4", "ipv6",
+    assert {n.kind for n in snap.nodes} == {
+        "hardware", "ipv4", "ipv6", "dnssd_service",
     }
     shared = {n.key for n in address_graph().nodes}
     assert shared.issubset({n.key for n in snap.nodes})
