@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="300 300 1400 1400" width="32" height="32" role="img" aria-labelledby="title desc">
   <title id="title">NOVXIS X-Junction compact icon</title>
-  <desc id="desc">A simplified angular gold X formed by four separated arms surrounding a green plus; no corner brackets.</desc>
-  <!-- First compact proposal for 16–32 px; no gradients, glow, or filters. -->
+  <desc id="desc">The same four angular gold arms and green central plus, optically enlarged for small sizes without framing brackets.</desc>
+  <!-- Derived directly from the approved full-icon geometry. -->
+  <!-- Cropped viewBox is the optical adjustment: the core geometry is unchanged. -->
   <g fill="#AF9600">
-    <path d="M 12 12 H 43 L 57 31 V 51 H 44 L 24 35 H 12 Z"/>
-    <path d="M 116 12 H 85 L 71 31 V 51 H 84 L 104 35 H 116 Z"/>
-    <path d="M 12 116 H 43 L 57 97 V 77 H 44 L 24 93 H 12 Z"/>
-    <path d="M 116 116 H 85 L 71 97 V 77 H 84 L 104 93 H 116 Z"/>
+    <path d="M420 420 H645 L835 610 V835 H610 L420 645 Z"/>
+    <path d="M1580 420 H1355 L1165 610 V835 H1390 L1580 645 Z"/>
+    <path d="M420 1580 H645 L835 1390 V1165 H610 L420 1355 Z"/>
+    <path d="M1580 1580 H1355 L1165 1390 V1165 H1390 L1580 1355 Z"/>
   </g>
-  <path fill="#88E6A1" d="M 59 53 H 69 V 59 H 75 V 69 H 69 V 75 H 59 V 69 H 53 V 59 H 59 Z"/>
+  <path fill="#88E6A1" d="M925 700 H1075 V925 H1300 V1075 H1075 V1300 H925 V1075 H700 V925 H925 Z"/>
 </svg>
