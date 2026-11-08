@@ -1,7 +1,7 @@
 # Phase 1N-M Stage 3: Three-column Services evidence map
 
 - **Date:** 2026-11-07
-- **Status:** Live browser screen-recording review confirms three-column service rendering and TTL freshness transitions; focused/full M5 regressions and remaining Safari acceptance pending
+- **Status:** Safari rearrangement bug identified and corrected on branch; fresh M5 tests and Safari retest pending
 - **Prerequisites:** Phase 1N-M Stage 1 pure projector and Stage 2 local
   `unified_service_graph` JSON merged into `main`
 - **Accepted Stage 2 merged baseline (M5):** 966 passing tests in 5.23 s
@@ -224,6 +224,56 @@ Keep the PR in draft until those remaining checkpoints are confirmed.
 The project's underlying semantics remain unchanged: TTL expiration
 marks previously retained advertisement evidence **not fresh**, not
 an offline device or a verified closed service port.
+
+## Recording review: collapsed service rows and off-screen paths
+
+A second examination of the owner's private Safari recording, especially
+**2:36–2:40**, confirms a reproducible Services **Rearrange** jump.
+Before dragging, service cards occupy sparse rows near supporting IPs.
+When manual order first activates, the old layout discarded those
+sparse slots and packed the entire service column into consecutive
+rows near the top. **The records did not disappear; the positions did.**
+
+The correction computes the automatic row slots from the actual
+advertised IP evidence, then applies any manual ordering **to those
+same slots**. Reordering a single service changes card-to-slot
+occupancy without bunching unrelated service cards upward.
+The graph continues to include its last service slot in its height,
+including disconnected retained PTR-backed instances.
+
+The owner also observed **10 retained service cards and 18 advertised
+endpoint paths** in the API summary even though only a subset of
+cards was visible in the cropped, panned or zoomed canvas. Off-screen
+rendered content is not the same as omitted capture data. The
+Services hint now explains that **Reset view** fits retained rows.
+Every valid retained node/edge is iterated for rendering, without a
+frontend limit on number of displayed services.
+
+When several distinct endpoint paths converge onto one service or
+one address, they can visually overlap. The corrected drawing path
+now fans out connectors at **both** shared source and target nodes
+to better distinguish individual selectable evidence paths.
+
+The recording separately showed **CAP REACHED (incomplete evidence)**,
+which signals retention limits, not merely off-screen content.
+The Services summary now identifies omitted mDNS advertisements,
+NDP claims, unlinked NDP observations or ARP-cap flags, when present.
+A retention-limited graph cannot be called a complete inventory.
+
+**Synthetic interaction check:** 10 services, 20 IP addresses, 18
+DNS-SD endpoint paths, independent ARP edges. All 10 cards and 18
+endpoint paths rendered. A manual reorder preserved the exact
+multiset of service Y coordinates and total graph extent; fanout
+provided different service-side connector attachment positions.
+This does not replace M5 Safari acceptance.
+
+**New manual retest:** pan/zoom across a tall Services graph; activate
+Rearrange and move a middle service card; verify that other cards
+do not bunch, Reset view fits the retained graph, multiple converging
+paths can be selected separately, and the incomplete-evidence
+warning does not masquerade as TTL expiry. Rerun focused and full
+pytest after pulling these branch changes. No post-fix M5 pass
+has been reported yet.
 
 ## Exit criteria
 
