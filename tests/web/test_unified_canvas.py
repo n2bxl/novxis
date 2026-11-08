@@ -198,3 +198,69 @@ def test_no_new_network_privileges_api_routes_or_dependency_requirements():
     assert '"127.0.0.1"' in server
     assert '"/api/graph"' in server
     assert '"/api/unified"' not in server
+
+
+def test_unified_auto_arrangement_uses_mac_anchors_not_ip_lexical_ranks():
+    _, js, _ = assets()
+    unified = section(js, "function computeUnifiedAutoOrders(",
+                      "function preserveManualOrder(")
+    # A separate algorithm preserves the legacy ARP-only behavior.
+    assert 'function computeAutoOrders(snapshot)' in js
+    assert 'function computeUnifiedAutoOrders(snapshot)' in unified
+    assert 'node.kind === "hardware"' in unified
+    assert 'node.kind === "ipv4" || node.kind === "ipv6"' in unified
+    assert 'a.capture_scope.localeCompare(b.capture_scope)' in unified
+    assert 'a.interface.localeCompare(b.interface)' in unified
+    assert 'a.address_hex.localeCompare(b.address_hex)' in unified
+    assert 'const groups = new Map(' in unified
+    assert 'groups.get(anchor.id).push(ip);' in unified
+    assert 'else ungrouped.push(ip);' in unified
+
+
+def test_unified_multiple_mac_claims_keep_all_edges_but_one_ip_node():
+    _, js, _ = assets()
+    view = section(js, "function computeUnifiedAutoOrders(",
+                   "function preserveManualOrder(")
+    assert 'const candidates = new Map(' in view
+    assert 'new Set()' in view
+    assert 'const anchor = hardware.find(' in view
+    assert 'ip.capture_scope !== mac.capture_scope' in view
+    assert 'ip.interface !== mac.interface' in view
+    assert 'edge.interface !== ip.interface' in view
+    assert 'edge.capture_scope !== ip.capture_scope' in view
+    assert 'edge.kind === "arp_sender"' in view
+    assert 'edge.kind === "ndp_ns_source_slla"' in view
+    assert 'edge.kind === "ndp_na_target_tlla"' in view
+    assert 'snapshot.edges' in view
+    # Rendering still walks the original edges, not a projected
+    # one-MAC-per-IP grouping structure.
+    assert 'const edges = activeMapMode === "unified" ? active.edges : graph.claims;' in js
+    assert 'for (const claim of edges)' in js
+
+
+def test_unified_mac_card_center_is_mean_of_its_cluster_rows():
+    _, js, _ = assets()
+    view = section(js, "function layoutUnifiedGraph(", "function preserveManualOrder(")
+    assert 'const automatic = computeUnifiedAutoOrders(snapshot);' in view
+    assert 'const hardware = preserveManualOrder("hardware", automatic.hardware);' in view
+    assert 'hardware.flatMap((mac) =>' in view
+    assert 'const protocol = preserveManualOrder("protocol", defaultProtocol);' in view
+    assert 'const span = Math.max(count, 1);' in view
+    assert '(row + (span - 1) / 2) * ROW_STEP' in view
+    assert 'addressSlots.push(row + index);' in view
+    assert 'for (const ip of automatic.ungrouped) addressSlots.push(row++);' in view
+    assert 'stageHeight = Math.max(620,' in view
+    assert 'return locations;' in view
+
+
+def test_unified_layout_does_not_change_arp_only_auto_arrangement():
+    _, js, _ = assets()
+    layout = section(js, "function layoutGraph()", "function renderGraph()")
+    assert 'if (activeMapMode === "unified") return layoutUnifiedGraph(active);' in layout
+    assert 'const automatic = computeAutoOrders(active);' in layout
+    assert 'protocol: preserveManualOrder("protocol", automatic.protocol)' in layout
+    assert 'hardware: preserveManualOrder("hardware", automatic.hardware)' in layout
+    assert 'manualOrderForView()[kind] = updated;' in js
+    assert 'manualOrders.protocol = null;' in js
+    assert 'unifiedManualOrders.protocol = null;' in js
+    assert 'Group IPv4 and IPv6 claims around MAC evidence anchors' in js
