@@ -18,7 +18,7 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 }
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  min-height: 72px; padding: 13px 26px; border-bottom: 1px solid var(--border);
+  flex: 0 0 auto; min-height: 72px; padding: 13px 26px; border-bottom: 1px solid var(--border);
 }
 .brand { display: flex; align-items: center; gap: 12px; letter-spacing: .08em; }
 .brand strong { display: block; font-size: 18px; letter-spacing: .19em; }
@@ -122,7 +122,7 @@ h2 { font-size: 18px; line-height: 1.35; margin-top: 10px; overflow-wrap: anywhe
 .claim-card strong { color: var(--text); overflow-wrap: anywhere; }
 .claim-card p { font-size: 11px; margin-top: 4px; }
 .inspector-note { margin-top: 16px; }
-.footnote { padding: 12px 22px; border-top: 1px solid var(--border);
+.footnote { flex: 0 0 auto; padding: 12px 22px; border-top: 1px solid var(--border);
   color: var(--muted); font-size: 11px; line-height: 1.5; }
 .map-node { cursor: pointer; }
 #map.move-mode .map-node { cursor: ns-resize; }
