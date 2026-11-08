@@ -1175,14 +1175,22 @@ function layoutServiceGraph(snapshot) {
   // independent path remains drawn. Manually reordered services instead
   // occupy consecutive slots so a Shift+Arrow/drag reorder is predictable.
   const autoServiceRows = serviceManualOrders.services === null;
-  let previousServiceSlot = -1;
-  for (const service of services) {
+  const preferredServiceSlot = (service) => {
     const ranks = Array.from(serviceRanks.get(service.id));
     const ipSlots = ranks.map((rank) =>
       (locations.get(protocol[rank].id).y - ROW_START) / ROW_STEP);
-    const desired = ipSlots.length
+    return ipSlots.length
       ? Math.round(ipSlots.reduce((sum, slot) => sum + slot, 0) /
           ipSlots.length) : row;
+  };
+  // When the user first manually reorders a densely grouped service
+  // column, keep its established vertical area rather than jumping to
+  // row zero. Only the order changes, never the evidence graph.
+  const initialServiceSlot = services.length
+    ? Math.min(...services.map(preferredServiceSlot)) : 0;
+  let previousServiceSlot = autoServiceRows ? -1 : initialServiceSlot - 1;
+  for (const service of services) {
+    const desired = preferredServiceSlot(service);
     const slot = autoServiceRows
       ? Math.max(previousServiceSlot + 1, desired)
       : previousServiceSlot + 1;
