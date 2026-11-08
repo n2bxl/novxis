@@ -42,17 +42,18 @@ def test_service_rect_label_and_metadata_share_one_height_model():
     assert 'title.textContent = fullName + " (" + node.service_type + ")";' in renderer
 
 
-def test_service_slots_expand_without_repacking_sparse_or_manual_order():
+def test_service_cards_form_single_compact_ordered_column():
     script = _script()
     layout = _section(script, "function layoutServiceGraph(", "function preserveManualOrder(")
-    assert "const services = preserveManualOrder(\"services\", automaticServices);" in layout
-    assert "lastServiceSlot = Math.max(lastServiceSlot + 1, desired);" in layout
-    assert "serviceSlots.push(lastServiceSlot);" in layout
-    assert "const slotY = ROW_START + serviceSlots[index] * ROW_STEP;" in layout
-    assert "const y = Math.max(slotY, lastServiceBottom + (index ? 12 : 0));" in layout
+    assert 'const services = preserveManualOrder("services", automaticServices);' in layout
+    assert "firstRank(a) - firstRank(b)" in layout
+    assert "const SERVICE_CARD_GAP = 12;" in layout
+    assert "let lastServiceBottom = ROW_START - SERVICE_CARD_GAP;" in layout
+    assert "const y = lastServiceBottom + SERVICE_CARD_GAP;" in layout
     assert "lastServiceBottom = y + serviceCardHeight(service);" in layout
     assert "lastServiceBottom + 175" in layout
-
+    assert "serviceSlots" not in layout
+    assert "preferredServiceSlot" not in layout
 
 def test_dns_sd_paths_follow_resized_card_center_without_changing_scope():
     script = _script()
@@ -70,7 +71,7 @@ def test_dns_sd_paths_follow_resized_card_center_without_changing_scope():
         assert check in renderer
 
 
-def test_manual_service_drag_targets_real_sparse_slot_centers():
+def test_manual_service_drag_targets_actual_packed_card_centers():
     script = _script()
     layout = _section(script, "function layoutServiceGraph(", "function preserveManualOrder(")
     pointer = _section(script, 'svg.addEventListener("pointerdown"', "function endPan(")
