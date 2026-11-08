@@ -68,3 +68,19 @@ def test_dns_sd_paths_follow_resized_card_center_without_changing_scope():
         "setSelectedEdge(edge.id);",
     ):
         assert check in renderer
+
+
+def test_manual_service_drag_targets_real_sparse_slot_centers():
+    script = _script()
+    layout = _section(script, "function layoutServiceGraph(", "function preserveManualOrder(")
+    pointer = _section(script, 'svg.addEventListener("pointerdown"', "function endPan(")
+    assert "serviceSlotCenters = services.map((service) =>" in layout
+    assert "locations.get(service.id).y + serviceCardHeight(service) / 2" in layout
+    assert "serviceCenters: moveNodesMode && activeMapMode === \"services\"" in pointer
+    assert "serviceSlotCenters.slice() : null" in pointer
+    assert "const desired = centers[dragging.fromIndex] + dy / camera.scale;" in pointer
+    assert "Math.abs(centers[index] - desired)" in pointer
+    assert "if (reorderNode(dragging.kind, dragging.nodeId, target)) renderGraph();" in pointer
+    assert "const displacement = Math.round(dy / (ROW_STEP * camera.scale));" in pointer
+    # Uniform spacing is retained only for ARP and Unified manual dragging.
+    assert "if (dragging.serviceCenters?.length &&" in pointer
