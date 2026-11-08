@@ -8,6 +8,7 @@ manual acceptance requirement.
 
 from importlib import resources
 from pathlib import Path
+import re
 
 import pytest
 
@@ -67,7 +68,11 @@ def test_ipv4_and_ipv6_get_separate_address_nodes_and_hardware_is_reused():
     _, js, css = assets()
     assert 'node.kind === "ipv4" || node.kind === "ipv6"' in js
     assert 'node.kind === "hardware"' in js
-    assert 'activeMapMode === "unified" ? "IPV4 / IPV6 ADDRESSES"' in js
+    assert re.search(
+        r'activeMapMode\s*===\s*"unified"\s*\?\s*'
+        r'"IPV4 / IPV6 ADDRESSES"\s*:\s*"PROTOCOL ADDRESSES"',
+        js,
+    )
     assert "node.kind === \"ipv6\" && node.display_address.length > 28" in js
     assert 'node.display_address.slice(0, splitAt)' in js
     assert 'node.display_address.slice(splitAt)' in js
