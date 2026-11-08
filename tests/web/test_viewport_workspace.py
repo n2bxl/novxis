@@ -56,3 +56,16 @@ def test_narrow_viewports_return_to_stack_and_page_scrolling():
     assert ".canvas-wrap, #map { min-height: 360px; }" in responsive
     assert "height: min(70dvh, 700px);" in responsive
     assert "max-height: none;" in responsive
+
+
+def test_tall_graph_zoom_maximum_scales_with_viewbox_height():
+    js = resources.files("novxis.web.static").joinpath("app.js").read_text(
+        encoding="utf-8"
+    )
+    maximum = js.split("function maximumZoomScale() {", 1)[1].split(
+        "function zoomAt(", 1
+    )[0]
+    assert "3.5 * Math.max(1, stageHeight / 620)" in maximum
+    assert "Math.min(maximumZoomScale(), Math.max(0.05, camera.scale * factor))" in js
+    assert 'document.getElementById("zoom-in").addEventListener("click"' in js
+    assert 'canvas.addEventListener("wheel"' in js
