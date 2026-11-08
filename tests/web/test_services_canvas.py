@@ -123,6 +123,17 @@ def test_hardware_ip_service_columns_have_separate_graph_node_types():
     assert '.map-node.dnssd_service rect' in css
 
 
+def test_automatic_services_follow_supported_ip_rows_but_manual_order_wins():
+    _, js, _ = assets()
+    view = section(js, "function layoutServiceGraph(", "function preserveManualOrder(")
+    assert 'const autoServiceRows = serviceManualOrders.services === null;' in view
+    assert 'const ipSlots = ranks.map((rank) =>' in view
+    assert 'locations.get(protocol[rank].id).y' in view
+    assert 'Math.max(previousServiceSlot + 1, desired)' in view
+    assert 'previousServiceSlot + 1;' in view
+    assert 'Math.max(row, protocol.length, previousServiceSlot + 1)' in view
+
+
 def test_service_only_ip_cannot_gain_a_mac_edge_through_frontend_layout():
     _, js, _ = assets()
     arrange = section(js, "function computeUnifiedAutoOrders(", "function layoutUnifiedGraph(")
@@ -177,6 +188,8 @@ def test_every_service_and_original_arp_ndp_edge_remains_interactive():
         assert required in js
     assert '"data-edge-id": edge.id' in view
     assert 'group.addEventListener("keydown"' in view
+    assert 'edge.srv.port' in view
+    assert 'edge.address.observed_at' in view
     assert '.map-edge-hit' in css
     assert 'pointer-events: stroke;' in css
 
