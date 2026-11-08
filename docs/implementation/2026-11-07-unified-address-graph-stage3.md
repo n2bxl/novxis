@@ -1,8 +1,7 @@
 # Phase 1N-L Stage 3: Unified Address 2D Visualization
 
 **Date:** 2026-11-07
-**Status:** Implemented on an unmerged feature branch; M5 Python and
-Safari UI acceptance are pending.
+**Status:** Full M5 regression suite passed and live Safari graph interactions validated; Stage 3 ready for owner review and squash-merge.
 **Baseline:** 876 tests passed on the M5 after merged Stage 2 (PR #48).
 
 ## Purpose
@@ -147,9 +146,7 @@ python -m pytest tests/web/test_unified_canvas.py \
 python -m pytest
 ```
 
-Prior full baseline was **876**, not a claim of Stage 3 test
-results. This branch adds new Python assertions, so the expected
-new total is higher but must come from the actual run.
+**Post-refinement M5 result (2026-11-07):** `pytest` collected **895** tests and reported **895 passed in 4.57s**, on macOS Python 3.14.6 with pytest 9.1.1. This is 19 additional passing cases over the prior Stage 2 baseline (876). The full suite includes the Stage 3 `tests/web/test_unified_canvas.py` group (19 passing cases).
 
 ### Safari acceptance (authorized local capture)
 
@@ -219,9 +216,27 @@ that every acceptance checklist case has been executed. The private
 recording, MAC/IP identifiers and individual service details are not
 committed.
 
-**Still pending:** post-refinement M5 focused and full Python regression
-output, and any remaining explicit Safari checks. Do not mark the PR
-ready for review until the full acceptance run is confirmed.
+**Follow-up accepted:** After the layout refinement, the developer reported the complete M5 regression suite green (**895/895, 4.57s**) and provided private Safari screenshots showing the same-interface Unified addresses graph plus individually selected ARP and NS source-SLLA edges and their Evidence Inspector provenance. Address/MAC values and screenshots stay private. These observations support owner review, without claiming that every manual checklist item was independently re-executed.
+
+
+## Live polling status observed in final Safari screenshots
+
+Two private screenshots displayed the status **`Live update unavailable:
+Load failed`** while the previously loaded graph and its inspector
+remained interactive. Browser-side `loadGraph()` retries
+`/api/graph` once per second and retains the last valid snapshot on a
+fetch failure. This is consistent with stopping the local server while
+the Safari page stays open, but the images alone cannot establish why
+the request failed. The operator should confirm the `web_live` process
+still listens on the chosen localhost port if this warning occurs during
+an intentionally active session. The warning is not evidence of
+missing ARP/NDP relationships or a failure of the graph projection.
+
+A minor visual issue remains: the bottom-left navigation hint can
+obscure the lowest row of nodes when the vertically stacked graph is
+larger than the viewport. Treat hint positioning/canvas scrolling as
+follow-up UI polish, not an address-identity or evidence-correlation
+change.
 
 ## Deferred
 
