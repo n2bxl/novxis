@@ -6,11 +6,16 @@ No raw capture, network request, or active discovery is required.
 
 from copy import deepcopy
 from decimal import Decimal
-from ipaddress import IPv4Address, IPv6Address
+from ipaddress import IPv4Address
+import io
+import json
+from threading import Thread
+from urllib.request import urlopen
 
 import pytest
 
-from novxis.web.live_state import LiveARPGraphState
+from novxis.web.live_state import LiveARPGraphState, consume_stream
+from novxis.web.server import create_server
 from novxis.web.dnssd_service_live import (
     build_live_dnssd_service_graph, serialize_dnssd_service_graph,
     service_graph_semantic_signature,
@@ -437,3 +442,62 @@ def test_serializer_rejects_invalid_revision_and_omission_metadata(
             omitted_ndp_claims=omitted_claims,
             omitted_ndp_unlinked=0,
         )
+
+
+def test_existing_local_http_api_exposes_additive_service_graph():
+    state, _ = session()
+    state.ingest(binding())
+    state.ingest(ndp())
+    state.ingest(mdns())
+    server = create_server(state.snapshot, port=0)
+    worker = Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    try:
+        with urlopen(f"http://127.0.0.1:{server.server_port}/api/graph") as response:
+            body = json.load(response)
+            assert response.headers["Cache-Control"] == "no-store"
+            assert response.headers["Access-Control-Allow-Origin"] is None
+        assert body["schema_version"] == 1
+        assert body["mode"] == "live-arp"
+        assert len(body["claims"]) == 1
+        assert len(body["unified_address_graph"]["edges"]) == 2
+        assert len(body["unified_service_graph"]["edges"]) == 4
+        assert body["unified_service_graph"]["origin"] == "passive-arp-ndp-mdns"
+        assert body["unified_service_graph"]["interface"] == "en0"
+        assert body["mdns_evidence"]["retained_instances"] == 1
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join(timeout=2)
+
+
+def test_existing_ndjson_pipe_integration_needs_no_new_event_types():
+    state = LiveARPGraphState(clock=lambda: 105)
+    records = [
+        {"type": "session", "interface": "en0",
+         "protocols": ["arp", "mdns", "ndp"]},
+        binding(), ndp(), mdns(), {"type": "completed"},
+    ]
+    consume_stream(
+        io.StringIO("".join(json.dumps(item) + "\n" for item in records)),
+        state,
+    )
+    payload = state.snapshot()
+    assert payload["capture_status"] == "ended"
+    assert len(payload["claims"]) == 1
+    assert len(payload["unified_address_graph"]["edges"]) == 2
+    assert len(payload["unified_service_graph"]["edges"]) == 4
+    assert len(payload["unified_service_graph"]["nodes"]) == 4
+    assert json.loads(json.dumps(payload)) == payload
+
+
+def test_live_adapter_does_not_import_packet_parsers_or_make_new_requests():
+    from pathlib import Path
+
+    app = (Path(__file__).parents[2] / "novxis" / "web" /
+           "dnssd_service_live.py").read_text(encoding="utf-8")
+    assert "scapy" not in app
+    assert "socket." not in app
+    assert "subprocess" not in app
+    assert "urlopen" not in app
+    assert "raw_packet" not in app
