@@ -31,16 +31,22 @@ def test_sources_parse_and_have_no_external_images_or_scripts(name):
         assert not any(k.endswith("href") for k in element.attrib)
 
 
-def test_w3_wordmark_is_six_custom_letter_paths_and_three_stripes():
+def test_w3_wordmark_is_six_custom_letter_paths_and_two_slashes():
     root = parse("w3-tech-stripe.svg")
-    assert root.attrib["viewBox"] == "0 0 620 72"
+    assert root.attrib["viewBox"] == "0 0 552 72"
     paths = group(root, "w3-tech-stripe").findall(f"{NS}path")
     assert [p.attrib["id"] for p in paths] == [
         "letter-N", "letter-O", "letter-V", "letter-X", "letter-I", "letter-S",
-        "stripe-1", "stripe-2", "stripe-3",
+        "stripe-1", "stripe-2",
     ]
     assert not list(root.iter(f"{NS}text"))
     assert all(path.attrib["d"] for path in paths)
+    slashes = paths[-2:]
+    # 15-unit strokes match the approximate 16-unit structural W3 letter weight.
+    assert [p.attrib["d"] for p in slashes] == [
+        "M466 72 L491 0 H506 L481 72 Z",
+        "M502 72 L527 0 H542 L517 72 Z",
+    ]
 
 
 def test_lockup_uses_identical_wordmark_and_icon_paths():
