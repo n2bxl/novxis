@@ -138,13 +138,16 @@ remain an explicit production-readiness decision.
 
 - Prompt `>`: phosphor green `#88E6A1`.
 - `OBSERVE / VISUALIZE / EXPLORE`: uniformly cyan `#76D8DE`.
-- Both text runs use `font-weight="500"` and `font-size="24"`.
+- Both text runs use `font-weight="500"` and `font-size="32"`
+  (increased from the previous 24px iteration for stronger visual balance).
+- The baseline is y=200, with the upper wordmark and stripes unchanged.
 - Left edge aligns with the `N` at horizontal lockup x=293.
 - The tagline right edge aligns to the end of the **six-letter NOVXIS name**,
   excluding the three gold stripes: `293 + 443 × 1.32 = 877.76`.
 - The cyan text begins at x=323 and uses `textLength="555"`, ending
-  at x=878. `lengthAdjust="spacing"` distributes the extra width between
-  characters **without stretching the individual glyph shapes**.
+  at x=878. With 29 monospace characters, 32px text naturally approaches
+  that target width; `lengthAdjust="spacing"` makes only a small adjustment
+  **without stretching the individual glyph shapes**.
 - Renderers that ignore SVG `textLength` may display a shorter tagline.
   Test in target browsers (including Safari) before final export, and
   consider outlining the confirmed font as a later production fallback.
