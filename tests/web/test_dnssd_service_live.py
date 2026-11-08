@@ -532,18 +532,41 @@ def test_arp_capacity_omission_advances_service_revision_without_fake_node():
     assert after["edges"] == before["edges"]
 
 
-def test_ndp_capacity_omission_advances_service_revision_without_new_edge():
+def test_ndp_capacity_eviction_updates_service_revision_without_dns_sd_link():
     state, _ = session()
+    # PTR-only service: every NDP edge is independent hardware evidence,
+    # never an inferred service endpoint.
     state.ingest(mdns(targets=False))
     start = int(IPv6Address("2001:db8::1"))
     for offset in range(128):
         state.ingest(ndp(ip=str(IPv6Address(start + offset))))
     before = service_graph(state)
     assert before["omitted_ndp_claims"] == 0
-    state.ingest(ndp(ip=str(IPv6Address(start + 128))))
+
+    # LiveNDPState evicts its oldest retained claim when the 129th
+    # distinct claim arrives. The graph must replace that address/edge,
+    # not silently freeze the former 128 or fabricate a service link.
+    incoming = str(IPv6Address(start + 128))
+    state.ingest(ndp(ip=incoming))
     after = service_graph(state)
     assert after["omitted_ndp_claims"] == 1
     assert after["truncated"]
     assert after["revision"] > before["revision"]
-    assert after["nodes"] == before["nodes"]
-    assert after["edges"] == before["edges"]
+
+    previous_nodes = {node["id"] for node in before["nodes"]}
+    current_nodes = {node["id"] for node in after["nodes"]}
+    previous_edges = {edge["id"] for edge in before["edges"]}
+    current_edges = {edge["id"] for edge in after["edges"]}
+    assert len(previous_nodes) == len(current_nodes)
+    assert len(previous_edges) == len(current_edges) == 128
+    assert len(previous_nodes - current_nodes) == 1
+    assert len(current_nodes - previous_nodes) == 1
+    assert len(previous_edges - current_edges) == 1
+    assert len(current_edges - previous_edges) == 1
+    assert any(node.get("display_address") == incoming
+               for node in after["nodes"])
+    assert [node for node in after["nodes"] if node["kind"] == "dnssd_service"] == [
+        node for node in before["nodes"] if node["kind"] == "dnssd_service"
+    ]
+    assert not any(edge["kind"] == "dnssd_advertised_endpoint"
+                   for edge in after["edges"])
