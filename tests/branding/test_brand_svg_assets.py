@@ -64,7 +64,12 @@ def test_tagline_has_exact_approved_copy():
     assert [t.text for t in texts] == [">", "OBSERVE / VISUALIZE / EXPLORE"]
     assert [t.attrib["fill"] for t in texts] == ["#88E6A1", "#76D8DE"]
     assert all(t.attrib["font-weight"] == "500" for t in texts)
-    assert all(t.attrib["font-size"] == "24" for t in texts)
+    assert all(t.attrib["font-size"] == "32" for t in texts)
+    assert all(t.attrib["y"] == "200" for t in texts)
+    # Larger 32px mono glyphs nearly fill the N-to-S width naturally,
+    # reducing the need for exaggerated inter-character tracking.
+    assert len(texts[1].text) == 29
+    assert abs(len(texts[1].text) * 32 * 0.6 - float(texts[1].attrib["textLength"])) <= 3
     assert all("IBM Plex Mono" in t.attrib["font-family"] for t in texts)
 
 
