@@ -1,7 +1,7 @@
 # Phase 1N-M Stage 2: Live DNS-SD Service Evidence Graph Adapter
 
 - **Date:** 2026-11-07
-- **Status:** M5 focused and full regressions accepted on feature branch; optional live API observation pending owner verification
+- **Status:** Accepted on feature branch: 966/966 full regression tests plus authorized live service graph API observation; ready for owner squash-merge
 - **Prerequisites:** Phase 1N-M plan (PR #50) and pure Stage 1 projector (PR #51) merged
 - **Observed merged baseline:** 938 passing M5 Python tests in 4.68 s
 - **Scope:** Add a bounded, versioned, read-only service graph to the existing
@@ -190,6 +190,49 @@ capture is not evidence of absence of services on the network.
   remains unlinked to all of these IPv6 hardware observations.
 - Existing localhost API returns JSON-serializable additive metadata,
   and the same NDJSON producer still drives the entire service view.
+
+## Additional authorized live evidence (2026-11-07)
+
+The owner subsequently reported a **second live** read from the existing
+localhost `/api/graph` endpoint that includes actual retained DNS-SD
+service endpoint relationships, rather than only address records.
+
+Aggregate metadata only (no private addresses or device/service names):
+
+| Metric | Observed |
+|---|---:|
+| Schema | 1 |
+| Origin | `passive-arp-ndp-mdns` |
+| Service graph semantic revision | 34 |
+| Hardware address nodes | 11 |
+| IPv4 nodes | 8 |
+| IPv6 nodes | 7 |
+| DNS-SD service nodes | 5 |
+| ARP sender edges | 8 |
+| NDP NS source-SLLA edges | 5 |
+| DNS-SD advertised endpoint edges | 5 |
+| Truncation marker | `false` |
+
+**Totals:** 31 nodes and 18 edges. This confirms that the actual
+live mDNS → service projector → JSON API path can produce retained
+`dnssd_service` nodes and `dnssd_advertised_endpoint` edges.
+A previous live observation without PTR-backed endpoints remains a
+valid empty-services case and should not be replaced or interpreted
+as a malfunction.
+
+A service node or line is still an *advertised observation*, not
+proof of host identity, open port, reachability or physical topology.
+Equal service-node/endpoint-edge counts here do **not** establish a
+one-to-one relationship between them. Revision 34 counts semantic
+changes observed by the versioned view, not packets, devices or links.
+The capture's `truncated=false` means no configured receiver
+retention-limit omission was signalled in this snapshot; it does not
+mean complete network visibility.
+
+This confirms **Stage 2 live-path validation** in addition to the
+owner's **124 focused tests in 1.22 s** and **966 full suite tests
+in 5.20 s**. The interactive third Services graph and Evidence
+Inspector are still Stage 3 work, not yet implemented.
 
 ## Next stages
 
