@@ -137,7 +137,7 @@ python -m pytest tests/web/test_services_canvas.py \
 python -m pytest
 ```
 
-`tests/web/test_services_canvas.py` adds 16 static browser-contract
+`tests/web/test_services_canvas.py` adds 18 static browser-contract
 test functions, verifying mode availability, scope matching,
 per-view state, layout, distinct edge selection, complete provenance,
 TTL appearance, empty state, and no added capture or API surface.
