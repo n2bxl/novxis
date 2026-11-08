@@ -264,8 +264,11 @@ class LiveARPGraphState:
                     interface=self._interface,
                     capture_scope=self._capture_scope,
                 )
-                service_signature = service_graph_semantic_signature(
-                    service_snapshot,
+                service_signature = (
+                    service_graph_semantic_signature(service_snapshot),
+                    self._truncated,
+                    ndp_evidence.get("omitted_claims", 0),
+                    ndp_evidence.get("omitted_unlinked", 0),
                 )
                 if service_signature != self._last_service_graph_signature:
                     if (
