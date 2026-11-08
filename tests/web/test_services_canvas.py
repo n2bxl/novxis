@@ -154,7 +154,7 @@ def test_service_only_ip_cannot_gain_a_mac_edge_through_frontend_layout():
     assert 'serviceRanks.get(service.id).add(protocolRank.get(ip.id));' in service
 
 
-def test_service_node_renders_full_accessible_name_and_explicit_shortened_label():
+def test_service_node_renders_full_accessible_name_with_wrapped_label():
     _, js, css = assets()
     view = section(js, "function renderServicesCanvas(", "function renderGraph(")
     for required in (
@@ -320,7 +320,8 @@ def test_all_retained_services_and_valid_evidence_edges_render_without_display_c
     assert 'snapshot.nodes.slice(' not in renderer
     assert 'snapshot.edges.slice(' not in renderer
     layout = section(js, "function layoutServiceGraph(", "function preserveManualOrder(")
-    assert 'services.forEach((service, index) => locations.set(service.id, {' in layout
+    assert 'services.forEach((service, index) => {' in layout
+    assert 'locations.set(service.id, { x: SERVICE_COLUMN_X.services, y });' in layout
     assert 'stageHeight = Math.max(' in layout
     assert 'lastServiceSlot + 1' in layout
     assert 'svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);' in layout
