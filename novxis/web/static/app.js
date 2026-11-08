@@ -1191,16 +1191,15 @@ function layoutServiceGraph(snapshot) {
         edge.capture_scope !== service.capture_scope) continue;
     serviceRanks.get(service.id).add(protocolRank.get(ip.id));
   }
-  // Median/average rank approximates grouping without assigning one
-  // "owner" when a service advertises multiple addresses.
-  const meanRank = (node) => {
-    const ranks = Array.from(serviceRanks.get(node.id));
-    return ranks.length
-      ? ranks.reduce((sum, rank) => sum + rank, 0) / ranks.length
-      : Number.POSITIVE_INFINITY;
+  // Auto-arrange is a single ordered list, not separate spatial groups.
+  // Sort by the FIRST supporting IP's current visual rank, with unlinked
+  // services last. This is a presentation order, not an ownership inference.
+  const firstRank = (node) => {
+    const ranks = serviceRanks.get(node.id);
+    return ranks.size ? Math.min(...ranks) : Number.POSITIVE_INFINITY;
   };
   const automaticServices = serviceNodes.slice().sort((a, b) =>
-    meanRank(a) - meanRank(b) ||
+    firstRank(a) - firstRank(b) ||
     a.service_type.localeCompare(b.service_type) ||
     a.instance.localeCompare(b.instance) || a.id.localeCompare(b.id));
   const services = preserveManualOrder("services", automaticServices);
@@ -1226,43 +1225,22 @@ function layoutServiceGraph(snapshot) {
     x: SERVICE_COLUMN_X.protocol,
     y: ROW_START + addressSlots[index] * ROW_STEP,
   }));
-  // The automatic layout has a sparse set of service row positions,
-  // aligned to supporting IP addresses. Preserve that EXACT set of row
-  // slots during manual reorder: reorder swaps which service occupies a
-  // slot, rather than repacking every service into consecutive rows.
-  // This prevents the entire column jumping/bunching on first drag.
-  const preferredServiceSlot = (service) => {
-    const ranks = Array.from(serviceRanks.get(service.id));
-    const ipSlots = ranks.map((rank) =>
-      (locations.get(protocol[rank].id).y - ROW_START) / ROW_STEP);
-    return ipSlots.length
-      ? Math.round(ipSlots.reduce((sum, slot) => sum + slot, 0) /
-          ipSlots.length) : row;
-  };
-  const serviceSlots = [];
-  let lastServiceSlot = -1;
-  for (const service of automaticServices) {
-    const desired = preferredServiceSlot(service);
-    lastServiceSlot = Math.max(lastServiceSlot + 1, desired);
-    serviceSlots.push(lastServiceSlot);
-  }
-  // Keep the original sparse service-slot ordering, but expand only the
-  // rows that need space for multi-line labels. Manual rearrangement swaps
-  // services into the existing ordered slots without bunching the column.
-  let lastServiceBottom = ROW_START;
-  services.forEach((service, index) => {
-    const slotY = ROW_START + serviceSlots[index] * ROW_STEP;
-    const y = Math.max(slotY, lastServiceBottom + (index ? 12 : 0));
+  // Single compact Services column: every card follows its predecessor,
+  // including cards with no retained address relationship. This keeps
+  // evidence-derived order without imposing artificial vertical clusters.
+  const SERVICE_CARD_GAP = 12;
+  let lastServiceBottom = ROW_START - SERVICE_CARD_GAP;
+  services.forEach((service) => {
+    const y = lastServiceBottom + SERVICE_CARD_GAP;
     locations.set(service.id, { x: SERVICE_COLUMN_X.services, y });
     lastServiceBottom = y + serviceCardHeight(service);
   });
-  // Preserve the displayed slot centers for manual dragging. Rows may be
-  // sparse and service cards may have different heights.
+  // Preserve displayed centers at pointer-down for smooth ordered drags.
   serviceSlotCenters = services.map((service) =>
     locations.get(service.id).y + serviceCardHeight(service) / 2);
   stageHeight = Math.max(
-    620, Math.max(row, protocol.length, lastServiceSlot + 1) *
-      ROW_STEP + 175, lastServiceBottom + 175,
+    620, Math.max(row, protocol.length) * ROW_STEP + 175,
+    lastServiceBottom + 175,
   );
   svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);
   return locations;
