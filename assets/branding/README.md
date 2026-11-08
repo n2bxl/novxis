@@ -134,6 +134,23 @@ paths, its typography can vary across machines without the preferred font.
 No font file is shipped. Final font selection and/or tagline outlining
 remain an explicit production-readiness decision.
 
+### Refined tagline treatment (approved styling, PR #56)
+
+- Prompt `>`: phosphor green `#88E6A1`.
+- `OBSERVE / VISUALIZE / EXPLORE`: uniformly cyan `#76D8DE`.
+- Both text runs use `font-weight="500"` and `font-size="24"`.
+- Left edge aligns with the `N` at horizontal lockup x=293.
+- The tagline right edge aligns to the end of the **six-letter NOVXIS name**,
+  excluding the three gold stripes: `293 + 443 × 1.32 = 877.76`.
+- The cyan text begins at x=323 and uses `textLength="555"`, ending
+  at x=878. `lengthAdjust="spacing"` distributes the extra width between
+  characters **without stretching the individual glyph shapes**.
+- Renderers that ignore SVG `textLength` may display a shorter tagline.
+  Test in target browsers (including Safari) before final export, and
+  consider outlining the confirmed font as a later production fallback.
+
+The headline lettering and stripes are unaffected by this refinement.
+
 ### Display-size guidance
 
 The wordmark was rasterized at **614, 307, and 154 px**. The combined
