@@ -33,8 +33,11 @@
     <path id="stripe-3" d="M578 0 H615 L590 72 H553 Z"/>
   </g>
   </g>
+  <!-- Align the tagline under the six-letter NOVXIS name (not the trailing ///).
+       Letterforms occupy source x=0..443; at scale 1.32 and x=293 they end at x=877.76.
+       letter spacing preserves monospace glyph proportions while matching the wordmark. -->
   <g id="brand-tagline" aria-label="&gt; OBSERVE / VISUALIZE / EXPLORE">
-    <text x="329" y="193" font-size="22" font-weight="400" font-family="IBM Plex Mono, DejaVu Sans Mono, monospace" fill="#88E6A1">&gt;</text>
-    <text x="347" y="193" font-size="22" font-weight="400" font-family="IBM Plex Mono, DejaVu Sans Mono, monospace" fill="#E0E8E5">OBSERVE / VISUALIZE / EXPLORE</text>
+    <text x="293" y="193" font-size="24" font-weight="500" font-family="IBM Plex Mono, DejaVu Sans Mono, monospace" fill="#88E6A1">&gt;</text>
+    <text x="323" y="193" textLength="555" lengthAdjust="spacing" font-size="24" font-weight="500" font-family="IBM Plex Mono, DejaVu Sans Mono, monospace" fill="#76D8DE">OBSERVE / VISUALIZE / EXPLORE</text>
   </g>
 </svg>
