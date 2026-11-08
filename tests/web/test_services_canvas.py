@@ -123,15 +123,19 @@ def test_hardware_ip_service_columns_have_separate_graph_node_types():
     assert '.map-node.dnssd_service rect' in css
 
 
-def test_automatic_services_follow_supported_ip_rows_but_manual_order_wins():
+def test_automatic_services_follow_supported_ip_rows_and_manual_order_preserves_sparse_slots():
     _, js, _ = assets()
     view = section(js, "function layoutServiceGraph(", "function preserveManualOrder(")
-    assert 'const autoServiceRows = serviceManualOrders.services === null;' in view
     assert 'const ipSlots = ranks.map((rank) =>' in view
     assert 'locations.get(protocol[rank].id).y' in view
-    assert 'Math.max(previousServiceSlot + 1, desired)' in view
-    assert 'previousServiceSlot + 1;' in view
-    assert 'Math.max(row, protocol.length, previousServiceSlot + 1)' in view
+    assert 'for (const service of automaticServices) {' in view
+    assert 'lastServiceSlot = Math.max(lastServiceSlot + 1, desired);' in view
+    assert 'serviceSlots.push(lastServiceSlot);' in view
+    assert 'const services = preserveManualOrder("services", automaticServices);' in view
+    assert 'y: ROW_START + serviceSlots[index] * ROW_STEP' in view
+    assert 'Math.max(row, protocol.length, lastServiceSlot + 1)' in view
+    assert 'previousServiceSlot + 1' not in view
+    assert 'initialServiceSlot' not in view
 
 
 def test_service_only_ip_cannot_gain_a_mac_edge_through_frontend_layout():
@@ -194,13 +198,20 @@ def test_every_service_and_original_arp_ndp_edge_remains_interactive():
     assert 'pointer-events: stroke;' in css
 
 
-def test_parallel_paths_are_separate_pointer_hit_targets():
+def test_parallel_and_convergent_paths_have_distinct_port_offsets_and_hit_targets():
     _, js, css = assets()
     view = section(js, "function renderServicesCanvas(", "function renderGraph(")
     assert 'const parallels = new Map();' in view
     assert 'parallels.get(pair).push(edge.id);' in view
     assert 'for (const ids of parallels.values()) ids.sort();' in view
-    assert 'const offset = (index - (ids.length - 1) / 2) * 24;' in view
+    assert 'const ports = new Map();' in view
+    assert 'const fromId = dnssd ? edge.source : edge.target;' in view
+    assert 'const toId = dnssd ? edge.target : edge.source;' in view
+    assert 'ports.get(key).push(edge.id);' in view
+    assert 'const portOffset = (key, edgeId) => {' in view
+    assert 'Math.min(16, 52 / (ids.length - 1))' in view
+    assert 'from.y + 32 + portOffset("out:" + fromId, edge.id)' in view
+    assert 'to.y + 32 + portOffset("in:" + toId, edge.id)' in view
     assert '" services-parallel-hit"' in view
     assert '.map-edge-hit.services-parallel-hit' in css
 
