@@ -19,6 +19,10 @@ from novxis.web.graph_data import serialize_arp_snapshot
 from novxis.web.mdns_live import LiveMDNSState
 from novxis.web.ndp_live import LiveNDPState
 from novxis.web.unified_live import project_live_unified_address_graph
+from novxis.web.dnssd_service_live import (
+    build_live_dnssd_service_graph, serialize_dnssd_service_graph,
+    service_graph_semantic_signature,
+)
 from novxis.views.mdns_ndp_crossref import cross_reference_mdns_ndp
 
 MAX_LINE = 4096
@@ -49,6 +53,10 @@ class LiveARPGraphState:
         self._last_fresh_signature = ()
         self._graph_revision = 0
         self._unified_graph_revision = 0
+        # A separate semantic revision for the full address + service view.
+        # Deliberately excludes continuously advancing as_of timestamps.
+        self._service_graph_revision = 0
+        self._last_service_graph_signature = None
         # Opaque unprivileged session identity; not supplied by NDJSON.
         self._capture_scope = uuid4().hex
 
@@ -245,6 +253,35 @@ class LiveARPGraphState:
                 if signature != self._last_fresh_signature:
                     self._last_fresh_signature = signature
                     self._revision += 1
+
+            service_graph = None
+            if mdns_evidence is not None and ndp_evidence is not None:
+                # Build inside this same state lock so the projection, its
+                # semantic revision, and all source snapshots are consistent.
+                # No network/OS operation occurs in this pure projection.
+                service_snapshot = build_live_dnssd_service_graph(
+                    bindings, ndp_evidence, mdns_evidence,
+                    interface=self._interface,
+                    capture_scope=self._capture_scope,
+                )
+                service_signature = service_graph_semantic_signature(
+                    service_snapshot,
+                )
+                if service_signature != self._last_service_graph_signature:
+                    if (
+                        self._last_service_graph_signature is not None
+                        or service_snapshot.nodes or service_snapshot.edges
+                        or service_snapshot.source_truncated
+                        or service_snapshot.omitted_advertisements
+                    ):
+                        self._service_graph_revision += 1
+                    self._last_service_graph_signature = service_signature
+                service_graph = serialize_dnssd_service_graph(
+                    service_snapshot, revision=self._service_graph_revision,
+                    arp_truncated=self._truncated,
+                    omitted_ndp_claims=ndp_evidence.get("omitted_claims", 0),
+                    omitted_ndp_unlinked=ndp_evidence.get("omitted_unlinked", 0),
+                )
             metadata = {
                 "capture_name": (
                     "Live ARP + mDNS + NDP" if self._ndp_enabled else
@@ -283,6 +320,10 @@ class LiveARPGraphState:
             if ndp_evidence is not None:
                 services = cross_reference_mdns_ndp(services, ndp_evidence)
             result["mdns_evidence"] = services
+        if service_graph is not None:
+            # Additive sibling projection. Existing graph payloads and their
+            # independently tracked revisions retain their exact semantics.
+            result["unified_service_graph"] = service_graph
         if context is not None:
             result["host_context"] = context
             subnet = project_subnet_evidence(
