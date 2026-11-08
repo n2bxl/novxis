@@ -1583,9 +1583,18 @@ function svgPoint(event) {
   return point.matrixTransform(matrix.inverse());
 }
 
+function maximumZoomScale() {
+  // The graph's viewBox height grows with retained rows. Safari scales
+  // that tall viewBox down to fit the canvas, so a fixed camera limit
+  // makes even the maximum zoom unreadably small in dense captures.
+  // Compensate for the viewBox height while retaining the original 3.5
+  // limit for shorter graphs. This affects presentation only.
+  return 3.5 * Math.max(1, stageHeight / 620);
+}
+
 function zoomAt(factor, point) {
   // Permit continued smooth zooming after fit scales a dense graph below 40%.
-  const next = Math.min(3.5, Math.max(0.05, camera.scale * factor));
+  const next = Math.min(maximumZoomScale(), Math.max(0.05, camera.scale * factor));
   const ratio = next / camera.scale;
   camera.x = point.x - (point.x - camera.x) * ratio;
   camera.y = point.y - (point.y - camera.y) * ratio;
