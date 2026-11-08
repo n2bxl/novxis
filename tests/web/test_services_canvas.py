@@ -212,6 +212,8 @@ def test_parallel_and_convergent_paths_have_distinct_port_offsets_and_hit_target
     assert 'Math.min(16, 52 / (ids.length - 1))' in view
     assert 'from.y + 32 + portOffset("out:" + fromId, edge.id)' in view
     assert 'to.y + 32 + portOffset("in:" + toId, edge.id)' in view
+    assert 'const hasSharedEndpoint =' in view
+    assert 'ids.length > 1 || hasSharedEndpoint' in view
     assert '" services-parallel-hit"' in view
     assert '.map-edge-hit.services-parallel-hit' in css
 
