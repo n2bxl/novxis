@@ -1169,6 +1169,7 @@ function serviceCardHeight(node) {
     SERVICE_NAME_LINE_HEIGHT;
 }
 
+let serviceSlotCenters = [];
 function layoutServiceGraph(snapshot) {
   const automatic = computeUnifiedAutoOrders(snapshot);
   const hardware = preserveManualOrder("hardware", automatic.hardware);
@@ -1255,6 +1256,10 @@ function layoutServiceGraph(snapshot) {
     locations.set(service.id, { x: SERVICE_COLUMN_X.services, y });
     lastServiceBottom = y + serviceCardHeight(service);
   });
+  // Preserve the displayed slot centers for manual dragging. Rows may be
+  // sparse and service cards may have different heights.
+  serviceSlotCenters = services.map((service) =>
+    locations.get(service.id).y + serviceCardHeight(service) / 2);
   stageHeight = Math.max(
     620, Math.max(row, protocol.length, lastServiceSlot + 1) *
       ROW_STEP + 175, lastServiceBottom + 175,
@@ -1760,6 +1765,10 @@ svg.addEventListener("pointerdown", (event) => {
     nodeId, edgeId, kind: node ? columnKind(node.kind) : null,
     fromIndex: node ? orderedByKind[columnKind(node.kind)].findIndex(
       (item) => item.id === nodeId) : -1,
+    // Snapshot actual Services slot centers at gesture start. Do not use
+    // uniform ROW_STEP increments across sparse or variable-height rows.
+    serviceCenters: moveNodesMode && activeMapMode === "services" &&
+      node?.kind === "dnssd_service" ? serviceSlotCenters.slice() : null,
     mode: moveNodesMode && node ? "reorder" : "pan",
   };
   svg.setPointerCapture(event.pointerId);
@@ -1773,10 +1782,24 @@ svg.addEventListener("pointermove", (event) => {
   dragging.moved = true;
   if (dragging.mode === "reorder") {
     svg.classList.add("reordering");
-    // A row is one visual address slot. Camera scale converts pointer
-    // movement to graph coordinates; no claim or node identity is mutated.
-    const displacement = Math.round(dy / (ROW_STEP * camera.scale));
-    const target = dragging.fromIndex + displacement;
+    // Services have sparse, variable-height slots. Find the closest
+    // original slot center to the dragged card's center, rather than
+    // treating every 76 SVG units as one service. The positions are
+    // snapshotted for the gesture so rerenders cannot move the target.
+    let target;
+    if (dragging.serviceCenters?.length &&
+        dragging.fromIndex >= 0) {
+      const centers = dragging.serviceCenters;
+      const desired = centers[dragging.fromIndex] + dy / camera.scale;
+      target = dragging.fromIndex;
+      for (let index = 0; index < centers.length; index++) {
+        if (Math.abs(centers[index] - desired) <
+            Math.abs(centers[target] - desired)) target = index;
+      }
+    } else {
+      const displacement = Math.round(dy / (ROW_STEP * camera.scale));
+      target = dragging.fromIndex + displacement;
+    }
     if (reorderNode(dragging.kind, dragging.nodeId, target)) renderGraph();
     return;
   }
