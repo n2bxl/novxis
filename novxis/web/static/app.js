@@ -1133,6 +1133,43 @@ function layoutUnifiedGraph(snapshot) {
 // third independently arranged service column. Placement is not identity.
 const SERVICE_COLUMN_X = { hardware: 24, protocol: 395, services: 765 };
 const SERVICE_CARD_WIDTH = 282;
+
+const SERVICE_NAME_CHARS_PER_LINE = 32;
+const SERVICE_NAME_LINE_HEIGHT = 16;
+
+// Preserve every Unicode code point in the advertised instance, including
+// literal DNS escaping, without relying on SVG text auto-wrapping (which SVG
+// does not provide). Prefer separators, but split overlong tokens as needed.
+function serviceNameLines(instance) {
+  const name = String(instance);
+  const tokens = name.match(/[^._\s-]+[._\s-]*|[._\s-]+/gu) || [name];
+  const lines = [];
+  let line = "";
+  for (const token of tokens) {
+    const points = Array.from(token);
+    if (line && Array.from(line).length + points.length >
+        SERVICE_NAME_CHARS_PER_LINE) {
+      lines.push(line);
+      line = "";
+    }
+    for (const point of points) {
+      if (Array.from(line).length >= SERVICE_NAME_CHARS_PER_LINE) {
+        lines.push(line);
+        line = "";
+      }
+      line += point;
+    }
+  }
+  if (line || !lines.length) lines.push(line);
+  return lines;
+}
+
+function serviceCardHeight(node) {
+  return 72 + (serviceNameLines(node.instance).length - 1) *
+    SERVICE_NAME_LINE_HEIGHT;
+}
+
+let serviceSlotCenters = [];
 function layoutServiceGraph(snapshot) {
   const automatic = computeUnifiedAutoOrders(snapshot);
   const hardware = preserveManualOrder("hardware", automatic.hardware);
@@ -1154,16 +1191,15 @@ function layoutServiceGraph(snapshot) {
         edge.capture_scope !== service.capture_scope) continue;
     serviceRanks.get(service.id).add(protocolRank.get(ip.id));
   }
-  // Median/average rank approximates grouping without assigning one
-  // "owner" when a service advertises multiple addresses.
-  const meanRank = (node) => {
-    const ranks = Array.from(serviceRanks.get(node.id));
-    return ranks.length
-      ? ranks.reduce((sum, rank) => sum + rank, 0) / ranks.length
-      : Number.POSITIVE_INFINITY;
+  // Auto-arrange is a single ordered list, not separate spatial groups.
+  // Sort by the FIRST supporting IP's current visual rank, with unlinked
+  // services last. This is a presentation order, not an ownership inference.
+  const firstRank = (node) => {
+    const ranks = serviceRanks.get(node.id);
+    return ranks.size ? Math.min(...ranks) : Number.POSITIVE_INFINITY;
   };
   const automaticServices = serviceNodes.slice().sort((a, b) =>
-    meanRank(a) - meanRank(b) ||
+    firstRank(a) - firstRank(b) ||
     a.service_type.localeCompare(b.service_type) ||
     a.instance.localeCompare(b.instance) || a.id.localeCompare(b.id));
   const services = preserveManualOrder("services", automaticServices);
@@ -1189,33 +1225,22 @@ function layoutServiceGraph(snapshot) {
     x: SERVICE_COLUMN_X.protocol,
     y: ROW_START + addressSlots[index] * ROW_STEP,
   }));
-  // The automatic layout has a sparse set of service row positions,
-  // aligned to supporting IP addresses. Preserve that EXACT set of row
-  // slots during manual reorder: reorder swaps which service occupies a
-  // slot, rather than repacking every service into consecutive rows.
-  // This prevents the entire column jumping/bunching on first drag.
-  const preferredServiceSlot = (service) => {
-    const ranks = Array.from(serviceRanks.get(service.id));
-    const ipSlots = ranks.map((rank) =>
-      (locations.get(protocol[rank].id).y - ROW_START) / ROW_STEP);
-    return ipSlots.length
-      ? Math.round(ipSlots.reduce((sum, slot) => sum + slot, 0) /
-          ipSlots.length) : row;
-  };
-  const serviceSlots = [];
-  let lastServiceSlot = -1;
-  for (const service of automaticServices) {
-    const desired = preferredServiceSlot(service);
-    lastServiceSlot = Math.max(lastServiceSlot + 1, desired);
-    serviceSlots.push(lastServiceSlot);
-  }
-  services.forEach((service, index) => locations.set(service.id, {
-    x: SERVICE_COLUMN_X.services,
-    y: ROW_START + serviceSlots[index] * ROW_STEP,
-  }));
+  // Single compact Services column: every card follows its predecessor,
+  // including cards with no retained address relationship. This keeps
+  // evidence-derived order without imposing artificial vertical clusters.
+  const SERVICE_CARD_GAP = 12;
+  let lastServiceBottom = ROW_START - SERVICE_CARD_GAP;
+  services.forEach((service) => {
+    const y = lastServiceBottom + SERVICE_CARD_GAP;
+    locations.set(service.id, { x: SERVICE_COLUMN_X.services, y });
+    lastServiceBottom = y + serviceCardHeight(service);
+  });
+  // Preserve displayed centers at pointer-down for smooth ordered drags.
+  serviceSlotCenters = services.map((service) =>
+    locations.get(service.id).y + serviceCardHeight(service) / 2);
   stageHeight = Math.max(
-    620, Math.max(row, protocol.length, lastServiceSlot + 1) *
-      ROW_STEP + 175,
+    620, Math.max(row, protocol.length) * ROW_STEP + 175,
+    lastServiceBottom + 175,
   );
   svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);
   return locations;
@@ -1351,7 +1376,8 @@ function renderServicesCanvas(snapshot, locations) {
     const fromId = dnssd ? edge.source : edge.target;
     const toId = dnssd ? edge.target : edge.source;
     const y1 = from.y + 32 + portOffset("out:" + fromId, edge.id);
-    const y2 = to.y + 32 + portOffset("in:" + toId, edge.id);
+    const y2 = to.y + (dnssd ? serviceCardHeight(targetNode) / 2 : 32) +
+      portOffset("in:" + toId, edge.id);
     const ids = parallels.get(edge.source + "|" + edge.target) || [edge.id];
     const middle = (x1 + x2) / 2;
     const path = makeSVG("path", {
@@ -1414,21 +1440,23 @@ function renderServicesCanvas(snapshot, locations) {
     });
     group.append(makeSVG("rect", {
       x: 0, y: 0, width: service ? SERVICE_CARD_WIDTH : 256,
-      height: service ? 72 : 64, rx: service ? 3 : 8,
+      height: service ? serviceCardHeight(node) : 64, rx: service ? 3 : 8,
     }));
     if (service) {
-      // Full name is always present in the inspector/accessible label
-      // and SVG title. Ellipsis explicitly marks a condensed card label.
+      // Render the entire advertised service instance in legible SVG lines;
+      // title and accessible label retain the unchanged original string.
       const fullName = String(node.instance);
-      const limit = 35;
-      const cardName = fullName.length > limit
-        ? fullName.slice(0, limit - 1) + "…" : fullName;
+      const nameLines = serviceNameLines(fullName);
+      const extraHeight = (nameLines.length - 1) * SERVICE_NAME_LINE_HEIGHT;
       const title = makeSVG("title");
       title.textContent = fullName + " (" + node.service_type + ")";
       group.append(title);
-      addSVGText(group, 12, 21, cardName, "service-name-text");
-      addSVGText(group, 12, 41, node.service_type, "service-type-text");
-      addSVGText(group, 12, 59,
+      nameLines.forEach((line, index) =>
+        addSVGText(group, 12, 21 + index * SERVICE_NAME_LINE_HEIGHT,
+          line, "service-name-text"));
+      addSVGText(group, 12, 41 + extraHeight, node.service_type,
+        "service-type-text");
+      addSVGText(group, 12, 59 + extraHeight,
         "PTR " + (node.ptr?.fresh ? "fresh" : "TTL expired") +
         " · " + node.interface, "service-status-text");
     } else {
@@ -1715,6 +1743,10 @@ svg.addEventListener("pointerdown", (event) => {
     nodeId, edgeId, kind: node ? columnKind(node.kind) : null,
     fromIndex: node ? orderedByKind[columnKind(node.kind)].findIndex(
       (item) => item.id === nodeId) : -1,
+    // Snapshot actual Services slot centers at gesture start. Do not use
+    // uniform ROW_STEP increments across sparse or variable-height rows.
+    serviceCenters: moveNodesMode && activeMapMode === "services" &&
+      node?.kind === "dnssd_service" ? serviceSlotCenters.slice() : null,
     mode: moveNodesMode && node ? "reorder" : "pan",
   };
   svg.setPointerCapture(event.pointerId);
@@ -1728,10 +1760,24 @@ svg.addEventListener("pointermove", (event) => {
   dragging.moved = true;
   if (dragging.mode === "reorder") {
     svg.classList.add("reordering");
-    // A row is one visual address slot. Camera scale converts pointer
-    // movement to graph coordinates; no claim or node identity is mutated.
-    const displacement = Math.round(dy / (ROW_STEP * camera.scale));
-    const target = dragging.fromIndex + displacement;
+    // Services have sparse, variable-height slots. Find the closest
+    // original slot center to the dragged card's center, rather than
+    // treating every 76 SVG units as one service. The positions are
+    // snapshotted for the gesture so rerenders cannot move the target.
+    let target;
+    if (dragging.serviceCenters?.length &&
+        dragging.fromIndex >= 0) {
+      const centers = dragging.serviceCenters;
+      const desired = centers[dragging.fromIndex] + dy / camera.scale;
+      target = dragging.fromIndex;
+      for (let index = 0; index < centers.length; index++) {
+        if (Math.abs(centers[index] - desired) <
+            Math.abs(centers[target] - desired)) target = index;
+      }
+    } else {
+      const displacement = Math.round(dy / (ROW_STEP * camera.scale));
+      target = dragging.fromIndex + displacement;
+    }
     if (reorderNode(dragging.kind, dragging.nodeId, target)) renderGraph();
     return;
   }

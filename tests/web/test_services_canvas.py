@@ -123,20 +123,24 @@ def test_hardware_ip_service_columns_have_separate_graph_node_types():
     assert '.map-node.dnssd_service rect' in css
 
 
-def test_automatic_services_follow_supported_ip_rows_and_manual_order_preserves_sparse_slots():
+def test_services_are_compact_and_sorted_by_first_supporting_ip():
     _, js, _ = assets()
     view = section(js, "function layoutServiceGraph(", "function preserveManualOrder(")
-    assert 'const ipSlots = ranks.map((rank) =>' in view
-    assert 'locations.get(protocol[rank].id).y' in view
-    assert 'for (const service of automaticServices) {' in view
-    assert 'lastServiceSlot = Math.max(lastServiceSlot + 1, desired);' in view
-    assert 'serviceSlots.push(lastServiceSlot);' in view
-    assert 'const services = preserveManualOrder("services", automaticServices);' in view
-    assert 'y: ROW_START + serviceSlots[index] * ROW_STEP' in view
-    assert 'Math.max(row, protocol.length, lastServiceSlot + 1)' in view
-    assert 'previousServiceSlot + 1' not in view
-    assert 'initialServiceSlot' not in view
-
+    for expected in (
+        'serviceRanks.get(service.id).add(protocolRank.get(ip.id));',
+        'return ranks.size ? Math.min(...ranks) : Number.POSITIVE_INFINITY;',
+        'firstRank(a) - firstRank(b)',
+        'const services = preserveManualOrder("services", automaticServices);',
+        'const SERVICE_CARD_GAP = 12;',
+        'let lastServiceBottom = ROW_START - SERVICE_CARD_GAP;',
+        'const y = lastServiceBottom + SERVICE_CARD_GAP;',
+        'lastServiceBottom = y + serviceCardHeight(service);',
+        'lastServiceBottom + 175',
+    ):
+        assert expected in view
+    assert 'serviceSlots' not in view
+    assert 'preferredServiceSlot' not in view
+    assert 'lastServiceSlot' not in view
 
 def test_service_only_ip_cannot_gain_a_mac_edge_through_frontend_layout():
     _, js, _ = assets()
@@ -153,14 +157,15 @@ def test_service_only_ip_cannot_gain_a_mac_edge_through_frontend_layout():
     assert 'serviceRanks.get(service.id).add(protocolRank.get(ip.id));' in service
 
 
-def test_service_node_renders_full_accessible_name_and_explicit_shortened_label():
+def test_service_node_renders_full_accessible_name_with_wrapped_label():
     _, js, css = assets()
     view = section(js, "function renderServicesCanvas(", "function renderGraph(")
     for required in (
         'node.kind === "dnssd_service"',
         '"aria-label": service',
         'const fullName = String(node.instance);',
-        'fullName.slice(0, limit - 1) + "…"',
+        'const nameLines = serviceNameLines(fullName);',
+        'nameLines.forEach((line, index) =>',
         'const title = makeSVG("title");',
         'title.textContent = fullName + " (" + node.service_type + ")";',
         '"service-name-text"',
@@ -211,7 +216,7 @@ def test_parallel_and_convergent_paths_have_distinct_port_offsets_and_hit_target
     assert 'const portOffset = (key, edgeId) => {' in view
     assert 'Math.min(16, 52 / (ids.length - 1))' in view
     assert 'from.y + 32 + portOffset("out:" + fromId, edge.id)' in view
-    assert 'to.y + 32 + portOffset("in:" + toId, edge.id)' in view
+    assert 'to.y + (dnssd ? serviceCardHeight(targetNode) / 2 : 32)' in view
     assert 'const hasSharedEndpoint =' in view
     assert 'ids.length > 1 || hasSharedEndpoint' in view
     assert '" services-parallel-hit"' in view
@@ -318,9 +323,10 @@ def test_all_retained_services_and_valid_evidence_edges_render_without_display_c
     assert 'snapshot.nodes.slice(' not in renderer
     assert 'snapshot.edges.slice(' not in renderer
     layout = section(js, "function layoutServiceGraph(", "function preserveManualOrder(")
-    assert 'services.forEach((service, index) => locations.set(service.id, {' in layout
+    assert 'services.forEach((service) => {' in layout
+    assert 'locations.set(service.id, { x: SERVICE_COLUMN_X.services, y });' in layout
     assert 'stageHeight = Math.max(' in layout
-    assert 'lastServiceSlot + 1' in layout
+    assert 'lastServiceBottom + 175' in layout
     assert 'svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);' in layout
 
 
