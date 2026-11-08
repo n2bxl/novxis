@@ -1235,12 +1235,42 @@ function layoutServiceGraph(snapshot) {
     locations.set(service.id, { x: SERVICE_COLUMN_X.services, y });
     lastServiceBottom = y + serviceCardHeight(service);
   });
-  // Preserve displayed centers at pointer-down for smooth ordered drags.
+  // Center each shorter rendered column against the tallest column's
+  // actual card bounds, not a count of network addresses. This remains
+  // presentation-only: neither order nor evidence relationships change.
+  const columns = { hardware, protocol, services };
+  const bounds = new Map();
+  for (const [kind, members] of Object.entries(columns)) {
+    if (!members.length) continue;
+    const tops = members.map((node) => locations.get(node.id).y);
+    const bottoms = members.map((node) => locations.get(node.id).y +
+      (kind === "services" ? serviceCardHeight(node) : 64));
+    const top = Math.min(...tops);
+    const bottom = Math.max(...bottoms);
+    bounds.set(kind, { top, bottom, height: bottom - top });
+  }
+  const reference = Array.from(bounds.values()).reduce((longest, item) =>
+    !longest || item.height > longest.height ? item : longest, null);
+  if (reference) {
+    const center = (reference.top + reference.bottom) / 2;
+    for (const [kind, members] of Object.entries(columns)) {
+      const columnBounds = bounds.get(kind);
+      if (!columnBounds) continue;
+      const delta = center -
+        (columnBounds.top + columnBounds.bottom) / 2;
+      for (const node of members) locations.get(node.id).y += delta;
+    }
+  }
+  // Pointer drag targets must use the final (centered) card positions.
   serviceSlotCenters = services.map((service) =>
     locations.get(service.id).y + serviceCardHeight(service) / 2);
+  const renderedBottom = Math.max(0, ...Object.entries(columns).flatMap(
+    ([kind, members]) => members.map((node) =>
+      locations.get(node.id).y +
+        (kind === "services" ? serviceCardHeight(node) : 64))));
   stageHeight = Math.max(
     620, Math.max(row, protocol.length) * ROW_STEP + 175,
-    lastServiceBottom + 175,
+    renderedBottom + 175,
   );
   svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);
   return locations;
