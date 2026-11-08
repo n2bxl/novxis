@@ -15,9 +15,13 @@ or cutting names off with an ellipsis.
   escaped segments when necessary. The original name is not modified.
 - Each card gains 16 SVG units per additional name line, with service type
   and PTR freshness/retained interface metadata shifted downward.
-- The Services row layout retains sparse automatic positions and manual
-  ordering, but pushes subsequent service cards down as needed to leave a
-  12-unit gap between variable-height cards.
+- The Services column is one compact vertical list with a consistent
+  12-unit gap between variable-height cards. Automatic order follows the
+  earliest linked IPv4/IPv6 address in the visible IP column, then service
+  type/name for ties. Services without eligible links come last.
+- Manual reordering preserves the chosen order, with drag targeting based
+  on actual card centers rather than an assumed fixed-size row. Rearrange
+  resets the manual order to the evidence-based ordering.
 - The SVG stage height includes the last service card's actual bottom;
   viewport-aware Reset view remains responsible for framing the graph.
 - DNS-SD connectors attach to the vertical midpoint of the target service
@@ -35,7 +39,7 @@ python -m pytest tests/web/test_service_name_wrapping.py \
 python -m pytest
 ```
 
-Expected full suite: 1006 tests (1002 on main plus four new contracts).
+Expected full suite: 1007 tests (1002 on main plus five new contracts).
 
 ## Safari acceptance
 
@@ -46,8 +50,10 @@ Expected full suite: 1006 tests (1002 on main plus four new contracts).
    the card's right/bottom boundaries.
 3. Verify service type and PTR freshness are below the wrapped name and do
    not overlap each other.
-4. Verify a dense Services column has no card overlap and that no service
-   disappears after clicking Rearrange or manually moving a service.
+4. Verify all services appear as one compact ordered column without
+   group-sized gaps. Rearrange sorts by the first supporting IP in visible
+   address order, with unlinked services at the bottom. Manual dragging
+   changes list order without snapping to spatial evidence clusters.
 5. Follow A/AAAA -> Service connectors. Endpoint paths should terminate at
    the middle of the taller card, remain independently selectable, and still
    become dashed on TTL expiry.
