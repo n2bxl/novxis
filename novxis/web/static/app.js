@@ -1359,9 +1359,13 @@ function renderServicesCanvas(snapshot, locations) {
           sourceNode.display_address + " to " + targetNode.display_address) +
         " evidence relationship",
     });
+    const hasSharedEndpoint =
+      (ports.get("out:" + fromId)?.length || 0) > 1 ||
+      (ports.get("in:" + toId)?.length || 0) > 1;
     const hit = makeSVG("path", {
       d: path.getAttribute("d"),
-      class: "map-edge-hit" + (ids.length > 1 ? " services-parallel-hit" : ""),
+      class: "map-edge-hit" + (
+        ids.length > 1 || hasSharedEndpoint ? " services-parallel-hit" : ""),
     });
     group.append(path, hit);
     group.addEventListener("keydown", (event) => {
