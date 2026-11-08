@@ -1170,11 +1170,30 @@ function layoutServiceGraph(snapshot) {
     x: SERVICE_COLUMN_X.protocol,
     y: ROW_START + addressSlots[index] * ROW_STEP,
   }));
-  services.forEach((service, index) => locations.set(service.id, {
-    x: SERVICE_COLUMN_X.services, y: ROW_START + index * ROW_STEP,
-  }));
+  // In automatic layout, position each service near the mean row of its
+  // evidenced IP endpoints. The card still appears only once and every
+  // independent path remains drawn. Manually reordered services instead
+  // occupy consecutive slots so a Shift+Arrow/drag reorder is predictable.
+  const autoServiceRows = serviceManualOrders.services === null;
+  let previousServiceSlot = -1;
+  for (const service of services) {
+    const ranks = Array.from(serviceRanks.get(service.id));
+    const ipSlots = ranks.map((rank) =>
+      (locations.get(protocol[rank].id).y - ROW_START) / ROW_STEP);
+    const desired = ipSlots.length
+      ? Math.round(ipSlots.reduce((sum, slot) => sum + slot, 0) /
+          ipSlots.length) : row;
+    const slot = autoServiceRows
+      ? Math.max(previousServiceSlot + 1, desired)
+      : previousServiceSlot + 1;
+    locations.set(service.id, {
+      x: SERVICE_COLUMN_X.services, y: ROW_START + slot * ROW_STEP,
+    });
+    previousServiceSlot = slot;
+  }
   stageHeight = Math.max(
-    620, Math.max(row, protocol.length, services.length) * ROW_STEP + 175,
+    620, Math.max(row, protocol.length, previousServiceSlot + 1) *
+      ROW_STEP + 175,
   );
   svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);
   return locations;
@@ -1268,8 +1287,10 @@ function renderServicesCanvas(snapshot, locations) {
         edge.capture_scope !== sourceNode.capture_scope ||
         edge.capture_scope !== targetNode.capture_scope) continue;
     const dnssd = edge.kind === "dnssd_advertised_endpoint";
-    if (dnssd && !(sourceNode.kind === "ipv4" || sourceNode.kind === "ipv6"
-        ) || dnssd && targetNode.kind !== "dnssd_service") continue;
+    if (dnssd && (
+      !(sourceNode.kind === "ipv4" || sourceNode.kind === "ipv6") ||
+      targetNode.kind !== "dnssd_service"
+    )) continue;
     if (!dnssd && !(
       (sourceNode.kind === "ipv4" && edge.kind === "arp_sender") ||
       (sourceNode.kind === "ipv6" && (
