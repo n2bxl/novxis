@@ -88,14 +88,14 @@ def test_tagline_aligns_with_novxis_letters_not_stripes():
     # Its parent transform is translate(293,43) scale(1.32).
     letters_left = 293
     letters_right = letters_left + 443 * 1.32
-    stripes_begin = letters_left + 463 * 1.32
+    slashes_begin = letters_left + 466 * 1.32
 
     assert float(prompt.attrib["x"]) == letters_left
     assert float(words.attrib["x"]) > float(prompt.attrib["x"])
     assert words.attrib["lengthAdjust"] == "spacing"  # no glyph stretching
     words_right = float(words.attrib["x"]) + float(words.attrib["textLength"])
     assert abs(words_right - letters_right) <= 1.0
-    assert words_right < stripes_begin
+    assert words_right < slashes_begin
 
 
 def test_svg_palette_and_no_embedded_background():
