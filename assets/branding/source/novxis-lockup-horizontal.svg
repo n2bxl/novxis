@@ -28,14 +28,14 @@
     <path id="letter-X" transform="translate(239,0)" d="M0 0 H19 L35 23 L51 0 H70 L47 36 L70 72 H51 L35 49 L19 72 H0 L23 36 Z"/>
     <path id="letter-I" transform="translate(320,0)" d="M0 0 H47 V14 H31 V58 H47 V72 H0 V58 H16 V14 H0 Z"/>
     <path id="letter-S" transform="translate(379,0)" d="M12 0 H64 V15 H17 L15 17 V25 L18 28 H51 L64 41 V60 L52 72 H0 V57 H47 L49 55 V46 L46 43 H13 L0 30 V12 Z"/>
-    <path id="stripe-1" d="M488 0 H525 L500 72 H463 Z"/>
-    <path id="stripe-2" d="M533 0 H570 L545 72 H508 Z"/>
-    <path id="stripe-3" d="M578 0 H615 L590 72 H553 Z"/>
+    <!-- Two forward slashes, optically matched to the ~16-unit W3 letter strokes. -->
+    <path id="stripe-1" d="M466 72 L491 0 H506 L481 72 Z"/>
+    <path id="stripe-2" d="M502 72 L527 0 H542 L517 72 Z"/>
   </g>
   </g>
   <!-- The 29-character cyan phrase at 32px naturally nearly fills 555 SVG units
        in standard monospace (~0.6em/character). Use only minor spacing adjustment
-       to align with the N–S letter width, leaving the three stripes beyond it.
+       to align with the N–S letter width, leaving the two forward slashes beyond it.
        W3 name: x=293..877.76 after scale 1.32, tagline: x=293..878. -->
   <g id="brand-tagline" aria-label="&gt; OBSERVE / VISUALIZE / EXPLORE">
     <text x="293" y="200" font-size="32" font-weight="500" font-family="IBM Plex Mono, DejaVu Sans Mono, monospace" fill="#88E6A1">&gt;</text>
