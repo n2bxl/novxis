@@ -226,3 +226,44 @@ h2 { font-size: 18px; line-height: 1.35; margin-top: 10px; overflow-wrap: anywhe
   stroke: #f1faff; stroke-width: 3; opacity: 1;
 }
 .map-node.ipv6 .ipv6-address-text { font-size: 13px; }
+
+/* Phase 1N-M Services mode: evidence paths, not device or cable links. */
+.legend-dot.service { background: #af9600; }
+.legend-line.dnssd-claim,
+.map-edge.evidence-dnssd_advertised_endpoint {
+  stroke: #cbb34d; background: #cbb34d;
+}
+.legend-line.stale-claim {
+  background: transparent; border-top: 2px dashed #b99f53; height: 0;
+}
+.map-node.dnssd_service rect {
+  fill: #302b1a; stroke: #af9600; stroke-width: 1.6;
+}
+.map-node.dnssd_service .service-type-text {
+  fill: #ecd98b; font-size: 11px;
+}
+.map-node.dnssd_service .service-status-text {
+  fill: #c9c3a8; font-size: 10px;
+}
+.map-node.dnssd_service .service-name-text {
+  font-size: 13px;
+}
+.map-edge.evidence-dnssd_advertised_endpoint.stale-path {
+  stroke-dasharray: 7 6; opacity: .65;
+}
+.map-node.dnssd_service.stale-ptr rect {
+  stroke-dasharray: 6 4; opacity: .82;
+}
+.map-node.dnssd_service:focus rect, .map-node.dnssd_service:hover rect,
+.map-node.dnssd_service.selected rect {
+  stroke: #fff; stroke-width: 2.5;
+}
+.map-services-canvas .column-title { font-size: 12px; }
+.services-endpoint-card {
+  display: block; width: 100%; text-align: left; line-height: 1.5;
+  white-space: normal; overflow-wrap: anywhere;
+}
+
+/* Parallel evidence paths must remain independently pointer-selectable. */
+.map-edge-hit.services-parallel-hit { stroke-width: 12; }
+.services-empty-label { fill: #a8bacb; font-size: 12px; }

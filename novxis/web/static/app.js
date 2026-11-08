@@ -8,8 +8,10 @@ const summary = document.getElementById("summary");
 const mapTitle = document.getElementById("map-title");
 const mapModeArp = document.getElementById("map-mode-arp");
 const mapModeUnified = document.getElementById("map-mode-unified");
+const mapModeServices = document.getElementById("map-mode-services");
 const arpLegend = document.getElementById("arp-legend");
 const unifiedLegend = document.getElementById("unified-legend");
+const servicesLegend = document.getElementById("services-legend");
 const inspectorTitle = document.getElementById("inspector-title");
 const inspector = document.getElementById("inspector-content");
 const hostPanel = document.getElementById("host-context");
@@ -91,48 +93,68 @@ for (const name of sidebarTabNames) {
 let graph = null;
 let lastArpSummary = "";
 let lastUnifiedSummary = "";
+let lastServiceSummary = "";
 let activeMapMode = "arp";
 let selectedId = null;
 let selectedEdgeId = null;
 const mapSelections = {
   arp: { node: null, edge: null },
   unified: { node: null, edge: null },
+  services: { node: null, edge: null },
 };
 const mapCameras = {
   arp: { x: 0, y: 0, scale: 1 },
   unified: { x: 0, y: 0, scale: 1 },
+  services: { x: 0, y: 0, scale: 1 },
 };
 
 function visibleAddressGraph() {
+  if (activeMapMode === "services") return graph?.unified_service_graph;
   return activeMapMode === "unified" ? graph?.unified_address_graph : graph;
 }
 
 function columnKind(kind) {
+  if (activeMapMode === "services" && kind === "dnssd_service") return "services";
   return kind === "hardware" ? "hardware" : "protocol";
 }
 
 function manualOrderForView() {
+  if (activeMapMode === "services") return serviceManualOrders;
   return activeMapMode === "unified" ? unifiedManualOrders : manualOrders;
 }
 
 function updateMapModeControls() {
   mapModeArp.setAttribute("aria-pressed", String(activeMapMode === "arp"));
   mapModeUnified.setAttribute("aria-pressed", String(activeMapMode === "unified"));
-  mapTitle.textContent = activeMapMode === "unified"
+  mapModeServices.setAttribute("aria-pressed", String(activeMapMode === "services"));
+  mapTitle.textContent = activeMapMode === "services"
+    ? "Unified address and service evidence map" : activeMapMode === "unified"
     ? "Unified address evidence map" : "Observed address map";
-  document.getElementById("auto-arrange").title = activeMapMode === "unified"
+  document.getElementById("auto-arrange").title = activeMapMode === "services"
+    ? "Group advertised service instances by scoped address evidence"
+    : activeMapMode === "unified"
     ? "Group IPv4 and IPv6 claims around MAC evidence anchors"
     : "Minimize crossed ARP sender claims";
   arpLegend.hidden = activeMapMode !== "arp";
   unifiedLegend.hidden = activeMapMode !== "unified";
-  svg.setAttribute("aria-label", activeMapMode === "unified"
+  servicesLegend.hidden = activeMapMode !== "services";
+  if (!moveNodesMode) canvasHint.textContent = activeMapMode === "services"
+    ? "Scroll to zoom · Drag to pan · Select an evidence connector · Reset view fits all retained rows"
+    : "Scroll to zoom · Drag to pan · Select an address";
+  document.getElementById("fit").title = activeMapMode === "services"
+    ? "Fit all retained service, IP and hardware rows into the map viewport"
+    : "Reset zoom and pan";
+  svg.setAttribute("aria-label", activeMapMode === "services"
+    ? "Interactive three-column map of hardware, IP addresses, and advertised DNS-SD services"
+    : activeMapMode === "unified"
     ? "Interactive evidence graph of IPv4, IPv6, and hardware address claims"
     : "Interactive graph of observed ARP protocol and hardware addresses");
 }
 
 function switchMapMode(mode) {
-  if (mode !== "arp" && mode !== "unified") return;
+  if (!["arp", "unified", "services"].includes(mode)) return;
   if (mode === "unified" && mapModeUnified.disabled) return;
+  if (mode === "services" && mapModeServices.disabled) return;
   if (mode === activeMapMode) return;
   mapSelections[activeMapMode] = { node: selectedId, edge: selectedEdgeId };
   mapCameras[activeMapMode] = { ...camera };
@@ -142,7 +164,8 @@ function switchMapMode(mode) {
   camera = { ...mapCameras[mode] };
   updateMapModeControls();
   if (graph) {
-    summary.textContent = mode === "unified" ? lastUnifiedSummary : lastArpSummary;
+    summary.textContent = mode === "services" ? lastServiceSummary :
+      mode === "unified" ? lastUnifiedSummary : lastArpSummary;
     renderGraph();
     showInspector();
     selectSidebarTab("evidence");
@@ -160,6 +183,25 @@ function updateMapModes(payload) {
   mapModeUnified.title = available
     ? "Show independently observed IPv4, IPv6 and MAC address claims"
     : "Requires a live ARP + mDNS + NDP capture";
+  const services = payload.unified_service_graph;
+  const serviceAvailable = available &&
+    services?.schema_version === 1 &&
+    services?.origin === "passive-arp-ndp-mdns" &&
+    services.interface === payload.source?.interface &&
+    services.capture_scope === unified.capture_scope &&
+    Array.isArray(services.nodes) && Array.isArray(services.edges);
+  mapModeServices.disabled = !serviceAvailable;
+  mapModeServices.title = serviceAvailable
+    ? "Inspect PTR-backed DNS-SD service instances and endpoint evidence"
+    : "Requires a live ARP + mDNS + NDP service graph";
+  if (!serviceAvailable && activeMapMode === "services") {
+    mapSelections.services = { node: selectedId, edge: selectedEdgeId };
+    mapCameras.services = { ...camera };
+    activeMapMode = "arp";
+    selectedId = mapSelections.arp.node;
+    selectedEdgeId = mapSelections.arp.edge;
+    camera = { ...mapCameras.arp };
+  }
   if (!available && activeMapMode === "unified") {
     mapSelections.unified = { node: selectedId, edge: selectedEdgeId };
     mapCameras.unified = { ...camera };
@@ -173,6 +215,7 @@ function updateMapModes(payload) {
 
 mapModeArp.addEventListener("click", () => switchMapMode("arp"));
 mapModeUnified.addEventListener("click", () => switchMapMode("unified"));
+mapModeServices.addEventListener("click", () => switchMapMode("services"));
 let stageHeight = 620;
 let camera = { x: 0, y: 0, scale: 1 };
 let dragging = null;
@@ -183,6 +226,7 @@ const ROW_START = 105;
 const COLUMN_X = { protocol: 114, hardware: 708 };
 const manualOrders = { protocol: null, hardware: null };
 const unifiedManualOrders = { protocol: null, hardware: null };
+const serviceManualOrders = { protocol: null, hardware: null, services: null };
 let orderedByKind = { protocol: [], hardware: [] };
 let moveNodesMode = false;
 const openSubnetGroups = new Set();
@@ -556,6 +600,7 @@ function showMDNSEvidence(evidence) {
           button.className = "mdns-arp-link";
           button.textContent = "Inspect independent ARP address";
           button.addEventListener("click", () => {
+            if (activeMapMode === "services") switchMapMode("arp");
             if (activeMapMode === "unified") switchMapMode("arp");
             selectedId = address.arp_node_id;
             selectedEdgeId = null;
@@ -709,7 +754,173 @@ function showUnifiedInspector() {
   inspector.append(caveat);
 }
 
+
+// Each DNS-SD connector is a shortcut to its three independent retained
+// record claims. It does not represent a directly observed running service.
+function showDNSRecordDetails(title, record, kind) {
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+  inspector.append(heading);
+  appendDetail("Aggregated source record key", record.source_record_key, inspector);
+  if (kind === "ptr") {
+    appendDetail("PTR service type", record.service_type, inspector);
+    appendDetail("PTR advertised instance", record.instance, inspector);
+    appendDetail("PTR observation count", record.observation_count, inspector);
+  } else if (kind === "srv") {
+    appendDetail("SRV owner name", record.owner_name, inspector);
+    appendDetail("SRV advertised target name", record.target_name, inspector);
+    appendDetail("SRV advertised port", record.port, inspector);
+  } else {
+    appendDetail("A/AAAA owner name", record.owner_name, inspector);
+    appendDetail("Record type", record.kind.toUpperCase(), inspector);
+    appendDetail("Advertised IP address", record.address, inspector);
+  }
+  appendDetail("Observed (Unix seconds)", record.observed_at, inspector);
+  appendDetail("TTL (seconds)", record.ttl_seconds, inspector);
+  appendDetail("Record freshness", record.fresh ? "Fresh" : "Not fresh / TTL expired",
+    inspector);
+  appendDetail("Record provenance", record.source, inspector);
+}
+
+function showServiceInspector() {
+  const snapshot = graph?.unified_service_graph;
+  if (!snapshot) {
+    clearInspector("Service graph is unavailable for this capture.");
+    return;
+  }
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const edge = selectedEdgeId &&
+    snapshot.edges.find((item) => item.id === selectedEdgeId);
+  const node = selectedId && nodes.get(selectedId);
+  if (selectedEdgeId && !edge) selectedEdgeId = null;
+  if (selectedId && !node) selectedId = null;
+  if (!edge && !node) {
+    clearInspector("Select a hardware or IP address, an advertised service, " +
+      "or any evidence connector to inspect its source claims.");
+    return;
+  }
+  if (edge && edge.kind !== "dnssd_advertised_endpoint") {
+    // These identifiers are identical to the Unified addresses evidence
+    // graph, so its existing ARP/NDP inspector remains authoritative.
+    showUnifiedInspector();
+    return;
+  }
+
+  inspector.replaceChildren();
+  if (edge) {
+    const source = nodes.get(edge.source);
+    const target = nodes.get(edge.target);
+    inspectorTitle.textContent = "DNS-SD advertised endpoint path";
+    appendDetail("Evidence type", "DNS-SD PTR → SRV → A/AAAA", inspector);
+    appendDetail("Advertised IP address",
+      source?.display_address || edge.address?.address || "Unavailable", inspector);
+    appendDetail("Advertised service instance",
+      target?.instance || edge.ptr.instance, inspector);
+    appendDetail("Path freshness", edge.path_fresh
+      ? "Fresh at captured snapshot time" : "Not fresh / TTL expired", inspector);
+    if (!edge.path_fresh) {
+      const expired = [];
+      if (!edge.ptr?.fresh) expired.push("PTR");
+      if (!edge.srv?.fresh) expired.push("SRV");
+      if (!edge.address?.fresh) expired.push("A/AAAA");
+      appendDetail("Not-fresh supporting records",
+        expired.length ? expired.join(", ") : "Unavailable", inspector);
+    }
+    appendDetail("Capture interface", edge.interface, inspector);
+    appendDetail("Capture scope", edge.capture_scope, inspector);
+    appendDetail("Freshness evaluated as of (Unix seconds)",
+      snapshot.as_of, inspector);
+    appendDetail("Distinct endpoint evidence path ID", edge.id, inspector);
+    showDNSRecordDetails("PTR: advertised service instance", edge.ptr, "ptr");
+    showDNSRecordDetails("SRV: advertised target and port", edge.srv, "srv");
+    showDNSRecordDetails(
+      "A/AAAA: advertised address for the SRV target", edge.address, "address");
+    const note = document.createElement("p");
+    note.className = "inspector-note";
+    note.textContent = "This visual connector summarizes separately captured " +
+      "PTR, SRV and A/AAAA packet claims. A fresh advertised path does not " +
+      "prove a listening process, an open port, reachability, verified device " +
+      "identity, physical cabling or service ownership. Record keys identify " +
+      "retained aggregates, not raw packet identities.";
+    inspector.append(note);
+    if (snapshot.truncated) appendDetail("Evidence coverage",
+      "Receiver retention limits were reached; this is not a complete inventory.",
+      inspector);
+    return;
+  }
+
+  if (node.kind === "dnssd_service") {
+    inspectorTitle.textContent = node.instance;
+    appendDetail("Evidence node", "PTR-backed advertised DNS-SD service", inspector);
+    appendDetail("Service type", node.service_type, inspector);
+    appendDetail("Service instance", node.instance, inspector);
+    appendDetail("Capture interface", node.interface, inspector);
+    appendDetail("Capture scope", node.capture_scope, inspector);
+    appendDetail("Freshness evaluated as of (Unix seconds)", snapshot.as_of, inspector);
+    showDNSRecordDetails("PTR: retained service advertisement", node.ptr, "ptr");
+  } else {
+    inspectorTitle.textContent = node.display_address;
+    appendDetail("Evidence node", node.kind === "hardware"
+      ? "Hardware address evidence" : node.kind === "ipv6"
+      ? "IPv6 protocol address" : "IPv4 protocol address", inspector);
+    appendDetail("Address", node.display_address, inspector);
+    appendDetail("Capture interface", node.interface, inspector);
+    appendDetail("Capture scope", node.capture_scope, inspector);
+    if (node.kind === "ipv4" || node.kind === "ipv6") {
+      const hardwareClaims = snapshot.edges.filter((item) =>
+        item.source === node.id && item.kind !== "dnssd_advertised_endpoint");
+      if (!hardwareClaims.length) appendDetail(
+        "Independent hardware evidence",
+        "No retained same-scope option-backed ARP/NDP association; " +
+        "DNS-SD alone does not establish a hardware owner.",
+        inspector,
+      );
+    }
+  }
+  const related = snapshot.edges.filter((item) =>
+    item.source === node.id || item.target === node.id);
+  const heading = document.createElement("h3");
+  heading.textContent = "Supporting evidence relationships (" + related.length + ")";
+  inspector.append(heading);
+  if (!related.length && node.kind === "dnssd_service") {
+    const absent = document.createElement("p");
+    absent.textContent = "No complete retained PTR → SRV → A/AAAA endpoint " +
+      "path supports an IP address for this service advertisement.";
+    inspector.append(absent);
+  }
+  for (const item of related) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "claim-card unified-edge-card services-endpoint-card";
+    const from = nodes.get(item.source);
+    const to = nodes.get(item.target);
+    button.textContent = item.kind === "dnssd_advertised_endpoint"
+      ? "DNS-SD advertised endpoint · " +
+        (from?.display_address || item.address?.address || "?") + " → " +
+        (to?.instance || "?") + " · port " + item.srv.port +
+        " · " + (item.path_fresh ? "chain fresh" : "chain TTL expired")
+      : unifiedEvidenceLabel(item.kind) + " · " +
+        (from?.display_address || "?") + " → " +
+        (to?.display_address || "?") + " · " +
+        item.observation_count + " observation(s)";
+    button.addEventListener("click", () => setSelectedEdge(item.id));
+    inspector.append(button);
+  }
+  const note = document.createElement("p");
+  note.className = "inspector-note";
+  note.textContent = "Connections here are independent ARP/NDP claims or " +
+    "advertised DNS-SD endpoint record chains, not verified physical links " +
+    "or proof that any service is running.";
+  inspector.append(note);
+  if (snapshot.truncated) appendDetail("Evidence coverage",
+    "Some observations were omitted at retention limits.", inspector);
+}
+
 function showInspector() {
+  if (activeMapMode === "services") {
+    showServiceInspector();
+    return;
+  }
   if (activeMapMode === "unified") {
     showUnifiedInspector();
     return;
@@ -901,6 +1112,99 @@ function layoutUnifiedGraph(snapshot) {
   return locations;
 }
 
+
+// Services mode builds on the same MAC-first address clustering, but keeps a
+// third independently arranged service column. Placement is not identity.
+const SERVICE_COLUMN_X = { hardware: 24, protocol: 395, services: 765 };
+const SERVICE_CARD_WIDTH = 282;
+function layoutServiceGraph(snapshot) {
+  const automatic = computeUnifiedAutoOrders(snapshot);
+  const hardware = preserveManualOrder("hardware", automatic.hardware);
+  const defaultProtocol = hardware.flatMap((mac) =>
+    automatic.groups.get(mac.id) || []).concat(automatic.ungrouped);
+  const protocol = preserveManualOrder("protocol", defaultProtocol);
+  const protocolRank = new Map(protocol.map((node, index) => [node.id, index]));
+  const serviceNodes = snapshot.nodes.filter((node) =>
+    node.kind === "dnssd_service");
+  const serviceById = new Map(serviceNodes.map((node) => [node.id, node]));
+  const serviceRanks = new Map(serviceNodes.map((node) => [node.id, new Set()]));
+  for (const edge of snapshot.edges) {
+    if (edge.kind !== "dnssd_advertised_endpoint" ||
+        !protocolRank.has(edge.source) || !serviceById.has(edge.target)) continue;
+    const ip = protocol[protocolRank.get(edge.source)];
+    const service = serviceById.get(edge.target);
+    if (edge.interface !== ip.interface || edge.interface !== service.interface ||
+        edge.capture_scope !== ip.capture_scope ||
+        edge.capture_scope !== service.capture_scope) continue;
+    serviceRanks.get(service.id).add(protocolRank.get(ip.id));
+  }
+  // Median/average rank approximates grouping without assigning one
+  // "owner" when a service advertises multiple addresses.
+  const meanRank = (node) => {
+    const ranks = Array.from(serviceRanks.get(node.id));
+    return ranks.length
+      ? ranks.reduce((sum, rank) => sum + rank, 0) / ranks.length
+      : Number.POSITIVE_INFINITY;
+  };
+  const automaticServices = serviceNodes.slice().sort((a, b) =>
+    meanRank(a) - meanRank(b) ||
+    a.service_type.localeCompare(b.service_type) ||
+    a.instance.localeCompare(b.instance) || a.id.localeCompare(b.id));
+  const services = preserveManualOrder("services", automaticServices);
+  orderedByKind = { protocol, hardware, services };
+
+  const locations = new Map();
+  const addressSlots = [];
+  let row = 0;
+  for (const mac of hardware) {
+    const count = (automatic.groups.get(mac.id) || []).length;
+    const span = Math.max(count, 1);
+    locations.set(mac.id, {
+      x: SERVICE_COLUMN_X.hardware,
+      y: ROW_START + (row + (span - 1) / 2) * ROW_STEP,
+    });
+    for (let index = 0; index < count; index++) {
+      addressSlots.push(row + index);
+    }
+    row += span;
+  }
+  for (const ip of automatic.ungrouped) addressSlots.push(row++);
+  protocol.forEach((ip, index) => locations.set(ip.id, {
+    x: SERVICE_COLUMN_X.protocol,
+    y: ROW_START + addressSlots[index] * ROW_STEP,
+  }));
+  // The automatic layout has a sparse set of service row positions,
+  // aligned to supporting IP addresses. Preserve that EXACT set of row
+  // slots during manual reorder: reorder swaps which service occupies a
+  // slot, rather than repacking every service into consecutive rows.
+  // This prevents the entire column jumping/bunching on first drag.
+  const preferredServiceSlot = (service) => {
+    const ranks = Array.from(serviceRanks.get(service.id));
+    const ipSlots = ranks.map((rank) =>
+      (locations.get(protocol[rank].id).y - ROW_START) / ROW_STEP);
+    return ipSlots.length
+      ? Math.round(ipSlots.reduce((sum, slot) => sum + slot, 0) /
+          ipSlots.length) : row;
+  };
+  const serviceSlots = [];
+  let lastServiceSlot = -1;
+  for (const service of automaticServices) {
+    const desired = preferredServiceSlot(service);
+    lastServiceSlot = Math.max(lastServiceSlot + 1, desired);
+    serviceSlots.push(lastServiceSlot);
+  }
+  services.forEach((service, index) => locations.set(service.id, {
+    x: SERVICE_COLUMN_X.services,
+    y: ROW_START + serviceSlots[index] * ROW_STEP,
+  }));
+  stageHeight = Math.max(
+    620, Math.max(row, protocol.length, lastServiceSlot + 1) *
+      ROW_STEP + 175,
+  );
+  svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);
+  return locations;
+}
+
 function preserveManualOrder(kind, automatic) {
   const ids = manualOrderForView()[kind];
   if (!ids) return automatic;
@@ -934,6 +1238,7 @@ function reorderNode(kind, id, targetIndex) {
 
 function layoutGraph() {
   const active = visibleAddressGraph();
+  if (activeMapMode === "services") return layoutServiceGraph(active);
   if (activeMapMode === "unified") return layoutUnifiedGraph(active);
   const automatic = computeAutoOrders(active);
   orderedByKind = {
@@ -955,13 +1260,211 @@ function layoutGraph() {
   return locations;
 }
 
+
+// Services SVG is deliberately a separate presentation path. ARP-only and
+// Unified addresses retain their existing geometry and edge inspectors.
+function renderServicesCanvas(snapshot, locations) {
+  addSVGText(viewport, SERVICE_COLUMN_X.hardware, 59,
+    "HARDWARE ADDRESSES", "column-title");
+  addSVGText(viewport, SERVICE_COLUMN_X.protocol, 59,
+    "IPV4 / IPV6 ADDRESSES", "column-title");
+  addSVGText(viewport, SERVICE_COLUMN_X.services, 59,
+    "ADVERTISED SERVICES", "column-title");
+
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const parallels = new Map();
+  for (const edge of snapshot.edges) {
+    // Keep separate source-record paths hit-testable even when they
+    // share the same two visual endpoints (including NS vs NA claims).
+    const pair = edge.source + "|" + edge.target;
+    if (!parallels.has(pair)) parallels.set(pair, []);
+    parallels.get(pair).push(edge.id);
+  }
+  for (const ids of parallels.values()) ids.sort();
+
+  // Fan each visible connector into its own port on shared endpoints,
+  // even when the other endpoint differs. Otherwise 10 service paths
+  // may converge exactly on top of each other and appear to be one.
+  const ports = new Map();
+  for (const edge of snapshot.edges) {
+    const dnssd = edge.kind === "dnssd_advertised_endpoint";
+    const fromId = dnssd ? edge.source : edge.target;
+    const toId = dnssd ? edge.target : edge.source;
+    for (const key of ["out:" + fromId, "in:" + toId]) {
+      if (!ports.has(key)) ports.set(key, []);
+      ports.get(key).push(edge.id);
+    }
+  }
+  for (const ids of ports.values()) ids.sort();
+  const portOffset = (key, edgeId) => {
+    const ids = ports.get(key) || [edgeId];
+    if (ids.length <= 1) return 0;
+    const spacing = Math.min(16, 52 / (ids.length - 1));
+    return (ids.indexOf(edgeId) - (ids.length - 1) / 2) * spacing;
+  };
+
+  for (const edge of snapshot.edges) {
+    const sourceNode = nodes.get(edge.source);
+    const targetNode = nodes.get(edge.target);
+    const source = locations.get(edge.source);
+    const target = locations.get(edge.target);
+    if (!source || !target || !sourceNode || !targetNode ||
+        edge.interface !== sourceNode.interface ||
+        edge.interface !== targetNode.interface ||
+        edge.capture_scope !== sourceNode.capture_scope ||
+        edge.capture_scope !== targetNode.capture_scope) continue;
+    const dnssd = edge.kind === "dnssd_advertised_endpoint";
+    if (dnssd && (
+      !(sourceNode.kind === "ipv4" || sourceNode.kind === "ipv6") ||
+      targetNode.kind !== "dnssd_service"
+    )) continue;
+    if (!dnssd && !(
+      (sourceNode.kind === "ipv4" && edge.kind === "arp_sender") ||
+      (sourceNode.kind === "ipv6" && (
+        edge.kind === "ndp_ns_source_slla" ||
+        edge.kind === "ndp_na_target_tlla"))
+    )) continue;
+    if (!dnssd && targetNode.kind !== "hardware") continue;
+
+    // Address-to-MAC provenance is preserved, but the visual reading
+    // direction on this mode is HARDWARE -> ADDRESS -> SERVICE.
+    const from = dnssd ? source : target;
+    const to = dnssd ? target : source;
+    const x1 = from.x + 256;
+    const x2 = to.x;
+    const fromId = dnssd ? edge.source : edge.target;
+    const toId = dnssd ? edge.target : edge.source;
+    const y1 = from.y + 32 + portOffset("out:" + fromId, edge.id);
+    const y2 = to.y + 32 + portOffset("in:" + toId, edge.id);
+    const ids = parallels.get(edge.source + "|" + edge.target) || [edge.id];
+    const middle = (x1 + x2) / 2;
+    const path = makeSVG("path", {
+      d: "M " + x1 + " " + y1 + " C " + middle + " " + y1 +
+        ", " + middle + " " + y2 + ", " + x2 + " " + y2,
+      class: "map-edge evidence-" + edge.kind +
+        (dnssd && !edge.path_fresh ? " stale-path" : "") +
+        ((selectedEdgeId === edge.id ||
+          (selectedId && (edge.source === selectedId ||
+                          edge.target === selectedId))) ? " selected" : ""),
+    });
+    const group = makeSVG("g", {
+      class: "map-edge-group" + (selectedEdgeId === edge.id ? " selected" : ""),
+      "data-edge-id": edge.id, role: "button", tabindex: "0",
+      "aria-label": (dnssd
+        ? "DNS-SD advertised endpoint: " + edge.ptr.instance +
+          " via " + edge.srv.target_name + " port " + edge.srv.port +
+          " to " + edge.address.address + " observed " +
+          edge.address.observed_at + (edge.path_fresh ? "" : ", TTL expired")
+        : unifiedEvidenceLabel(edge.kind) + " from " +
+          sourceNode.display_address + " to " + targetNode.display_address) +
+        " evidence relationship",
+    });
+    const hasSharedEndpoint =
+      (ports.get("out:" + fromId)?.length || 0) > 1 ||
+      (ports.get("in:" + toId)?.length || 0) > 1;
+    const hit = makeSVG("path", {
+      d: path.getAttribute("d"),
+      class: "map-edge-hit" + (
+        ids.length > 1 || hasSharedEndpoint ? " services-parallel-hit" : ""),
+    });
+    group.append(path, hit);
+    group.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        setSelectedEdge(edge.id);
+      }
+    });
+    viewport.append(group);
+  }
+
+  if (!snapshot.nodes.some((node) => node.kind === "dnssd_service")) {
+    addSVGText(viewport, SERVICE_COLUMN_X.services, ROW_START + 25,
+      "No PTR-backed advertisements in this capture", "services-empty-label");
+  }
+  for (const node of snapshot.nodes) {
+    const position = locations.get(node.id);
+    if (!position) continue;
+    const service = node.kind === "dnssd_service";
+    const selected = node.id === selectedId;
+    const group = makeSVG("g", {
+      class: "map-node " + node.kind + (selected ? " selected" : "") +
+        (service && !node.ptr?.fresh ? " stale-ptr" : ""),
+      transform: "translate(" + position.x + " " + position.y + ")",
+      role: "button", tabindex: "0",
+      "aria-label": service
+        ? "Advertised DNS-SD service " + node.instance + " on " + node.interface
+        : node.kind + " address " + node.display_address + " on " + node.interface,
+      "data-node-id": node.id,
+    });
+    group.append(makeSVG("rect", {
+      x: 0, y: 0, width: service ? SERVICE_CARD_WIDTH : 256,
+      height: service ? 72 : 64, rx: service ? 3 : 8,
+    }));
+    if (service) {
+      // Full name is always present in the inspector/accessible label
+      // and SVG title. Ellipsis explicitly marks a condensed card label.
+      const fullName = String(node.instance);
+      const limit = 35;
+      const cardName = fullName.length > limit
+        ? fullName.slice(0, limit - 1) + "…" : fullName;
+      const title = makeSVG("title");
+      title.textContent = fullName + " (" + node.service_type + ")";
+      group.append(title);
+      addSVGText(group, 12, 21, cardName, "service-name-text");
+      addSVGText(group, 12, 41, node.service_type, "service-type-text");
+      addSVGText(group, 12, 59,
+        "PTR " + (node.ptr?.fresh ? "fresh" : "TTL expired") +
+        " · " + node.interface, "service-status-text");
+    } else {
+      if (node.kind === "ipv6" && node.display_address.length > 28) {
+        const midpoint = node.display_address.lastIndexOf(":", 24);
+        const splitAt = midpoint > 8 ? midpoint + 1 : 24;
+        addSVGText(group, 13, 20, node.display_address.slice(0, splitAt),
+          "ipv6-address-text");
+        addSVGText(group, 13, 37, node.display_address.slice(splitAt),
+          "ipv6-address-text");
+      } else {
+        addSVGText(group, 13, 22, node.display_address);
+      }
+      addSVGText(group, 13, 54,
+        "interface: " + node.interface, "node-meta");
+    }
+    group.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        setSelected(node.id);
+      } else if (moveNodesMode && event.shiftKey &&
+                 (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+        event.preventDefault();
+        const kind = columnKind(node.kind);
+        const index = orderedByKind[kind].findIndex((item) => item.id === node.id);
+        if (reorderNode(kind, node.id,
+                        index + (event.key === "ArrowUp" ? -1 : 1))) {
+          renderGraph();
+          const replacement = Array.from(
+            svg.querySelectorAll("[data-node-id]"),
+          ).find((item) => item.getAttribute("data-node-id") === node.id);
+          if (replacement) replacement.focus();
+        }
+      }
+    });
+    viewport.append(group);
+  }
+}
+
 function renderGraph() {
   if (!graph) return;
   viewport.replaceChildren();
+  viewport.classList.toggle("map-services-canvas", activeMapMode === "services");
 
   const active = visibleAddressGraph();
   if (!active) return;
   const locations = layoutGraph();
+  if (activeMapMode === "services") {
+    renderServicesCanvas(active, locations);
+    updateCamera();
+    return;
+  }
   addSVGText(viewport, 114, 59, activeMapMode === "unified"
     ? "IPV4 / IPV6 ADDRESSES" : "PROTOCOL ADDRESSES", "column-title");
   addSVGText(viewport, 708, 59, "HARDWARE ADDRESSES", "column-title");
@@ -1108,10 +1611,16 @@ moveButton.addEventListener("click", () => {
   svg.classList.toggle("move-mode", moveNodesMode);
   canvasHint.textContent = moveNodesMode
     ? "Drag nodes to reorder · Shift + ↑/↓ to move selected row · Drag empty space to pan"
-    : "Scroll to zoom · Drag to pan · Select an address";
+    : (activeMapMode === "services"
+      ? "Scroll to zoom · Drag to pan · Select an evidence connector · Reset view fits all retained rows"
+      : "Scroll to zoom · Drag to pan · Select an address");
 });
 document.getElementById("auto-arrange").addEventListener("click", () => {
-  if (activeMapMode === "unified") {
+  if (activeMapMode === "services") {
+    serviceManualOrders.protocol = null;
+    serviceManualOrders.hardware = null;
+    serviceManualOrders.services = null;
+  } else if (activeMapMode === "unified") {
     unifiedManualOrders.protocol = null;
     unifiedManualOrders.hardware = null;
   } else {
@@ -1248,6 +1757,29 @@ async function loadGraph() {
   const errorNote = errors ? " · " + errors + " errors" : "";
   lastArpSummary = summary.textContent + errorNote;
   lastUnifiedSummary = "";
+  lastServiceSummary = "";
+  if (live && payload.unified_service_graph) {
+    const services = payload.unified_service_graph;
+    const nodeCount = services.nodes.filter((node) =>
+      node.kind === "dnssd_service").length;
+    const endpoints = services.edges.filter((edge) =>
+      edge.kind === "dnssd_advertised_endpoint").length;
+    lastServiceSummary = "PASSIVE ARP + NDP + DNS-SD · " + services.interface +
+      " · " + status + " · " + nodeCount + " advertised services · " +
+      endpoints + " endpoint paths · " + services.nodes.length +
+      " nodes · " + services.edges.length + " evidence edges" +
+      (services.truncated ? " · CAP REACHED (incomplete evidence)" : "") +
+      (services.omitted_mdns_advertisements
+        ? " · " + services.omitted_mdns_advertisements +
+          " mDNS advertisements omitted" : "") +
+      (services.omitted_ndp_claims
+        ? " · " + services.omitted_ndp_claims + " NDP claims omitted" : "") +
+      (services.omitted_ndp_unlinked
+        ? " · " + services.omitted_ndp_unlinked +
+          " unlinked NDP observations omitted" : "") +
+      (services.arp_bindings_truncated ? " · ARP retention cap reached" : "") +
+      errorNote;
+  }
   if (live && payload.unified_address_graph) {
     const unified = payload.unified_address_graph;
     lastUnifiedSummary = "UNIFIED ARP + NDP · " + unified.interface +
@@ -1255,11 +1787,16 @@ async function loadGraph() {
       " address nodes · " + unified.edges.length + " evidence edges" +
       (unified.truncated ? " · CAP REACHED" : "") + errorNote;
   }
-  summary.textContent = activeMapMode === "unified"
-    ? lastUnifiedSummary : lastArpSummary;
-  if (!graph || !live || lastRevision !== payload.revision) {
+  summary.textContent = activeMapMode === "services" ? lastServiceSummary :
+    activeMapMode === "unified" ? lastUnifiedSummary : lastArpSummary;
+  const serviceRevisionChanged = live && activeMapMode === "services" &&
+    payload.unified_service_graph?.revision !== lastGraphRevision;
+  if (!graph || !live || lastRevision !== payload.revision ||
+      serviceRevisionChanged) {
     const graphRevision = live
-      ? (activeMapMode === "unified"
+      ? (activeMapMode === "services"
+        ? payload.unified_service_graph.revision
+        : activeMapMode === "unified"
         ? payload.unified_address_graph.revision
         : (payload.graph_revision ?? payload.revision)) : null;
     const redrawGraph = !graph || !live ||

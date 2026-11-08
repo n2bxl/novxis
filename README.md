@@ -30,7 +30,7 @@ exploration, and troubleshooting.
   reachability, or the configured settings of other endpoints.
   Encrypted DNS/application traffic is not decrypted.
 
-**Latest M5 acceptance (2026-11-07): 938 passing Python tests in 4.68s** after the merged Phase 1N-M Stage 1 projector. Phase 1N-M Stage 2's additive live service graph is implemented on a separate feature branch, pending its own M5 validation.
+**Latest merged M5 acceptance (2026-11-07): 966 passing Python tests in 5.23s** after Phase 1N-M Stage 2 merged. Live localhost API validation also observed 5 PTR-backed service nodes and 5 independently typed DNS-SD advertised endpoint edges in one finite capture. Stage 3's new Services canvas remains on a feature branch pending its own tests and Safari acceptance.
 This is an observed test baseline, not a claim of an automated CI run
 for every subsequent documentation change.
 
@@ -100,16 +100,22 @@ capture / replay                   separately sourced local OS context
 
 ## Current milestone: Phase 1N-M
 
-**The Phase 1N-L address graph is merged and accepted.** Phase 1N-M
-extends it with independently advertised DNS-SD service instances and
-PTR → SRV → A/AAAA endpoint evidence chains. The Stage 1 pure
-projection and the implementation plan are merged. Stage 2 now adds
-an optional, separate `unified_service_graph` JSON payload to the
-existing local API for combined live sessions; M5 validation is pending.
-Stage 3 will introduce a third switchable **Services** map with columns
-**HARDWARE → IPv4/IPv6 → SERVICES** and provenance-aware selectable lines.
-ARP only and Unified addresses remain separate unchanged views.
+**Stages 1 and 2 are merged and accepted.** The Stage 1 pure DNS-SD
+projector retains bounded PTR → SRV → A/AAAA endpoint evidence;
+Stage 2 exposes the separate `unified_service_graph` through the existing
+loopback-only API. Stage 2's live API acceptance confirmed actual service
+nodes and advertised endpoint paths, not verified service reachability.
 
+**Stage 3 implements the third independent map mode** on a feature branch:
+`ARP only`, `Unified addresses`, and `Services`, with Services laid out
+**HARDWARE ADDRESSES → IPv4/IPv6 ADDRESSES → ADVERTISED SERVICES**.
+Select any ARP/NDP/DNS-SD relationship line to inspect its source evidence
+and, for DNS-SD, the complete separately captured PTR/SRV/A/AAAA
+record chain. Expired retained paths remain selectable but dashed.
+Camera, selection and manual layout are independent per map.
+**M5 tests and Safari live acceptance of Stage 3 are pending.**
+
+- [Phase 1N-M Stage 3 three-column map and Safari acceptance](docs/implementation/2026-11-07-phase1n-m-stage3-services-map.md)
 - [Phase 1N-M Stage 2 live service graph and testing](docs/implementation/2026-11-07-phase1n-m-stage2-live-service-graph.md)
 - [Phase 1N-M Stage 1 pure projector handoff](docs/implementation/2026-11-07-phase1n-m-stage1-dnssd-service-projection.md)
 - [Phase 1N-M implementation plan](docs/implementation/2026-11-07-phase1n-m-dnssd-service-evidence-graph-plan.md)
