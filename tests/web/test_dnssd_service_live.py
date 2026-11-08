@@ -6,7 +6,7 @@ No raw capture, network request, or active discovery is required.
 
 from copy import deepcopy
 from decimal import Decimal
-from ipaddress import IPv4Address
+from ipaddress import IPv4Address, IPv6Address
 import io
 import json
 from threading import Thread
@@ -22,10 +22,12 @@ from novxis.web.dnssd_service_live import (
 )
 
 
-def session(*, protocols=("arp", "mdns", "ndp"), now=None):
+def session(*, protocols=("arp", "mdns", "ndp"), now=None,
+            max_bindings=256):
     if now is None:
         now = [105]
-    state = LiveARPGraphState(clock=lambda: now[0])
+    state = LiveARPGraphState(clock=lambda: now[0],
+                              max_bindings=max_bindings)
     state.ingest({
         "type": "session", "interface": "en0", "protocols": list(protocols),
     })
@@ -501,3 +503,47 @@ def test_live_adapter_does_not_import_packet_parsers_or_make_new_requests():
     assert "subprocess" not in app
     assert "urlopen" not in app
     assert "raw_packet" not in app
+
+
+def test_as_of_time_alone_does_not_change_service_semantic_revision():
+    state, now = session()
+    state.ingest(mdns())
+    first = service_graph(state)
+    now[0] = 106  # Before all PTR/SRV/A/AAAA component TTL boundaries.
+    second = service_graph(state)
+    assert first["as_of"] == "105"
+    assert second["as_of"] == "106"
+    assert second["revision"] == first["revision"]
+    assert second["nodes"] == first["nodes"]
+    assert second["edges"] == first["edges"]
+
+
+def test_arp_capacity_omission_advances_service_revision_without_fake_node():
+    state, _ = session(max_bindings=1)
+    state.ingest(mdns(targets=False))
+    state.ingest(binding())
+    before = service_graph(state)
+    state.ingest(binding(ip="192.0.2.21", mac="020000000021"))
+    after = service_graph(state)
+    assert after["arp_bindings_truncated"]
+    assert after["truncated"]
+    assert after["revision"] > before["revision"]
+    assert after["nodes"] == before["nodes"]
+    assert after["edges"] == before["edges"]
+
+
+def test_ndp_capacity_omission_advances_service_revision_without_new_edge():
+    state, _ = session()
+    state.ingest(mdns(targets=False))
+    start = int(IPv6Address("2001:db8::1"))
+    for offset in range(128):
+        state.ingest(ndp(ip=str(IPv6Address(start + offset))))
+    before = service_graph(state)
+    assert before["omitted_ndp_claims"] == 0
+    state.ingest(ndp(ip=str(IPv6Address(start + 128))))
+    after = service_graph(state)
+    assert after["omitted_ndp_claims"] == 1
+    assert after["truncated"]
+    assert after["revision"] > before["revision"]
+    assert after["nodes"] == before["nodes"]
+    assert after["edges"] == before["edges"]
