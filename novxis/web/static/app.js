@@ -1618,7 +1618,7 @@ function maximumZoomScale() {
 
 function zoomAt(factor, point) {
   // Permit continued smooth zooming after fit scales a dense graph below 40%.
-  const next = Math.min(maximumZoomScale(), Math.max(0.05, camera.scale * factor));
+  const next = Math.min(3.5, Math.max(0.05, camera.scale * factor));
   const ratio = next / camera.scale;
   camera.x = point.x - (point.x - camera.x) * ratio;
   camera.y = point.y - (point.y - camera.y) * ratio;
