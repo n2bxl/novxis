@@ -1,7 +1,7 @@
 # Phase 1N-M Stage 3: Three-column Services evidence map
 
 - **Date:** 2026-11-07
-- **Status:** Post-fix M5 full regression accepted (984 passed in 5.19 s); crowded live Safari rearrange and visibility retest pending
+- **Status:** Post-fix M5 full regression accepted (984 passed in 5.19 s); follow-up Safari recording validates service rearrangement and edge inspection; ready for owner review
 - **Prerequisites:** Phase 1N-M Stage 1 pure projector and Stage 2 local
   `unified_service_graph` JSON merged into `main`
 - **Accepted Stage 2 merged baseline (M5):** 966 passing tests in 5.23 s
@@ -245,7 +245,7 @@ The owner also observed **10 retained service cards and 18 advertised
 endpoint paths** in the API summary even though only a subset of
 cards was visible in the cropped, panned or zoomed canvas. Off-screen
 rendered content is not the same as omitted capture data. The
-Services hint now explains that **Reset view** fits retained rows.
+Services hint currently suggests **Reset view** fits retained rows, but a subsequent Safari recording shows the reset camera can leave a large blank region before the graph's top row. True fit-to-bounds is a separate Stage 4 UX refinement; no retained nodes were shown to be discarded by this framing issue.
 Every valid retained node/edge is iterated for rendering, without a
 frontend limit on number of displayed services.
 
@@ -269,9 +269,39 @@ This does not replace M5 Safari acceptance.
 
 **New manual retest:** pan/zoom across a tall Services graph; activate
 Rearrange and move a middle service card; verify that other cards
-do not bunch, Reset view fits the retained graph, multiple converging
-paths can be selected separately, and the incomplete-evidence
-warning does not masquerade as TTL expiry. The owner has now reported **984 full-suite tests passed in 5.19 s** after pulling these branch changes. A new live Safari rearrangement and full-column visibility retest is still required.
+do not bunch, multiple converging paths can be selected separately,
+and the incomplete-evidence warning does not masquerade as TTL expiry.
+The owner confirmed **984 full-suite tests passed in 5.19 s** and subsequently provided a new Safari recording confirming the rearrangement fix. True Reset view framing remains a separate UX follow-up.
+
+## Post-fix Safari confirmation (2026-11-08)
+
+Owner supplied a new, roughly two-minute private Safari recording after
+the sparse service-slot and shared-endpoint connector fixes.
+
+**Observed:** the Services canvas remains stable while the owner
+rearranges and navigates among advertised service cards. Previously
+observed all-at-once column collapse no longer occurs. Multiple
+retained service clusters and their corresponding DNS-SD evidence
+paths remain displayed while panning and zooming. The right-hand
+Evidence Inspector shows selected PTR → SRV → A/AAAA path
+provenance, including expired record components, while the graph
+continues to preserve stale dashed relationships. This is live visual
+acceptance of the **rearrangement regression**, not an assertion
+of complete network visibility or a port reachability test.
+
+The owner previously confirmed a post-fix M5 **984/984 full-suite pass
+in 5.19 s**, including the 18 Stage 3 browser-contract tests.
+
+**Observed separate viewport limitation:** activating Reset view
+can leave pronounced vertical whitespace before the first graph rows
+instead of snugly fitting the visible node extents. This should be
+investigated in Stage 4; it does not change the retained graph or
+reintroduce the rearrangement spasm. Captures with a retention limit
+remain incomplete regardless of viewport position.
+
+The Stage 3 implementation can now proceed to owner review and
+squash-merge. This file update records acceptance only and does not
+alter the tested runtime renderer.
 
 ## Exit criteria
 
