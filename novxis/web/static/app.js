@@ -8,8 +8,10 @@ const summary = document.getElementById("summary");
 const mapTitle = document.getElementById("map-title");
 const mapModeArp = document.getElementById("map-mode-arp");
 const mapModeUnified = document.getElementById("map-mode-unified");
+const mapModeServices = document.getElementById("map-mode-services");
 const arpLegend = document.getElementById("arp-legend");
 const unifiedLegend = document.getElementById("unified-legend");
+const servicesLegend = document.getElementById("services-legend");
 const inspectorTitle = document.getElementById("inspector-title");
 const inspector = document.getElementById("inspector-content");
 const hostPanel = document.getElementById("host-context");
@@ -91,48 +93,62 @@ for (const name of sidebarTabNames) {
 let graph = null;
 let lastArpSummary = "";
 let lastUnifiedSummary = "";
+let lastServiceSummary = "";
 let activeMapMode = "arp";
 let selectedId = null;
 let selectedEdgeId = null;
 const mapSelections = {
   arp: { node: null, edge: null },
   unified: { node: null, edge: null },
+  services: { node: null, edge: null },
 };
 const mapCameras = {
   arp: { x: 0, y: 0, scale: 1 },
   unified: { x: 0, y: 0, scale: 1 },
+  services: { x: 0, y: 0, scale: 1 },
 };
 
 function visibleAddressGraph() {
+  if (activeMapMode === "services") return graph?.unified_service_graph;
   return activeMapMode === "unified" ? graph?.unified_address_graph : graph;
 }
 
 function columnKind(kind) {
+  if (activeMapMode === "services" && kind === "dnssd_service") return "services";
   return kind === "hardware" ? "hardware" : "protocol";
 }
 
 function manualOrderForView() {
+  if (activeMapMode === "services") return serviceManualOrders;
   return activeMapMode === "unified" ? unifiedManualOrders : manualOrders;
 }
 
 function updateMapModeControls() {
   mapModeArp.setAttribute("aria-pressed", String(activeMapMode === "arp"));
   mapModeUnified.setAttribute("aria-pressed", String(activeMapMode === "unified"));
-  mapTitle.textContent = activeMapMode === "unified"
+  mapModeServices.setAttribute("aria-pressed", String(activeMapMode === "services"));
+  mapTitle.textContent = activeMapMode === "services"
+    ? "Unified address and service evidence map" : activeMapMode === "unified"
     ? "Unified address evidence map" : "Observed address map";
-  document.getElementById("auto-arrange").title = activeMapMode === "unified"
+  document.getElementById("auto-arrange").title = activeMapMode === "services"
+    ? "Group advertised service instances by scoped address evidence"
+    : activeMapMode === "unified"
     ? "Group IPv4 and IPv6 claims around MAC evidence anchors"
     : "Minimize crossed ARP sender claims";
   arpLegend.hidden = activeMapMode !== "arp";
   unifiedLegend.hidden = activeMapMode !== "unified";
-  svg.setAttribute("aria-label", activeMapMode === "unified"
+  servicesLegend.hidden = activeMapMode !== "services";
+  svg.setAttribute("aria-label", activeMapMode === "services"
+    ? "Interactive three-column map of hardware, IP addresses, and advertised DNS-SD services"
+    : activeMapMode === "unified"
     ? "Interactive evidence graph of IPv4, IPv6, and hardware address claims"
     : "Interactive graph of observed ARP protocol and hardware addresses");
 }
 
 function switchMapMode(mode) {
-  if (mode !== "arp" && mode !== "unified") return;
+  if (!["arp", "unified", "services"].includes(mode)) return;
   if (mode === "unified" && mapModeUnified.disabled) return;
+  if (mode === "services" && mapModeServices.disabled) return;
   if (mode === activeMapMode) return;
   mapSelections[activeMapMode] = { node: selectedId, edge: selectedEdgeId };
   mapCameras[activeMapMode] = { ...camera };
@@ -142,7 +158,8 @@ function switchMapMode(mode) {
   camera = { ...mapCameras[mode] };
   updateMapModeControls();
   if (graph) {
-    summary.textContent = mode === "unified" ? lastUnifiedSummary : lastArpSummary;
+    summary.textContent = mode === "services" ? lastServiceSummary :
+      mode === "unified" ? lastUnifiedSummary : lastArpSummary;
     renderGraph();
     showInspector();
     selectSidebarTab("evidence");
@@ -160,6 +177,25 @@ function updateMapModes(payload) {
   mapModeUnified.title = available
     ? "Show independently observed IPv4, IPv6 and MAC address claims"
     : "Requires a live ARP + mDNS + NDP capture";
+  const services = payload.unified_service_graph;
+  const serviceAvailable = available &&
+    services?.schema_version === 1 &&
+    services?.origin === "passive-arp-ndp-mdns" &&
+    services.interface === payload.source?.interface &&
+    services.capture_scope === unified.capture_scope &&
+    Array.isArray(services.nodes) && Array.isArray(services.edges);
+  mapModeServices.disabled = !serviceAvailable;
+  mapModeServices.title = serviceAvailable
+    ? "Inspect PTR-backed DNS-SD service instances and endpoint evidence"
+    : "Requires a live ARP + mDNS + NDP service graph";
+  if (!serviceAvailable && activeMapMode === "services") {
+    mapSelections.services = { node: selectedId, edge: selectedEdgeId };
+    mapCameras.services = { ...camera };
+    activeMapMode = "arp";
+    selectedId = mapSelections.arp.node;
+    selectedEdgeId = mapSelections.arp.edge;
+    camera = { ...mapCameras.arp };
+  }
   if (!available && activeMapMode === "unified") {
     mapSelections.unified = { node: selectedId, edge: selectedEdgeId };
     mapCameras.unified = { ...camera };
@@ -173,6 +209,7 @@ function updateMapModes(payload) {
 
 mapModeArp.addEventListener("click", () => switchMapMode("arp"));
 mapModeUnified.addEventListener("click", () => switchMapMode("unified"));
+mapModeServices.addEventListener("click", () => switchMapMode("services"));
 let stageHeight = 620;
 let camera = { x: 0, y: 0, scale: 1 };
 let dragging = null;
@@ -183,6 +220,7 @@ const ROW_START = 105;
 const COLUMN_X = { protocol: 114, hardware: 708 };
 const manualOrders = { protocol: null, hardware: null };
 const unifiedManualOrders = { protocol: null, hardware: null };
+const serviceManualOrders = { protocol: null, hardware: null, services: null };
 let orderedByKind = { protocol: [], hardware: [] };
 let moveNodesMode = false;
 const openSubnetGroups = new Set();
@@ -556,6 +594,7 @@ function showMDNSEvidence(evidence) {
           button.className = "mdns-arp-link";
           button.textContent = "Inspect independent ARP address";
           button.addEventListener("click", () => {
+            if (activeMapMode === "services") switchMapMode("arp");
             if (activeMapMode === "unified") switchMapMode("arp");
             selectedId = address.arp_node_id;
             selectedEdgeId = null;
@@ -1111,7 +1150,11 @@ moveButton.addEventListener("click", () => {
     : "Scroll to zoom · Drag to pan · Select an address";
 });
 document.getElementById("auto-arrange").addEventListener("click", () => {
-  if (activeMapMode === "unified") {
+  if (activeMapMode === "services") {
+    serviceManualOrders.protocol = null;
+    serviceManualOrders.hardware = null;
+    serviceManualOrders.services = null;
+  } else if (activeMapMode === "unified") {
     unifiedManualOrders.protocol = null;
     unifiedManualOrders.hardware = null;
   } else {
