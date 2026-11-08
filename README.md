@@ -30,7 +30,7 @@ exploration, and troubleshooting.
   reachability, or the configured settings of other endpoints.
   Encrypted DNS/application traffic is not decrypted.
 
-**Latest M5 acceptance (2026-11-07): 895 passing Python tests in 4.57s** following the Stage 3 layout refinement. Live Safari graph, MAC-first arrangement, and typed edge inspection were observed; PR #49 awaits owner squash-merge.
+**Latest M5 acceptance (2026-11-07): 938 passing Python tests in 4.68s** after the merged Phase 1N-M Stage 1 projector. Phase 1N-M Stage 2's additive live service graph is implemented on a separate feature branch, pending its own M5 validation.
 This is an observed test baseline, not a claim of an automated CI run
 for every subsequent documentation change.
 
@@ -98,16 +98,28 @@ capture / replay                   separately sourced local OS context
 - Visual layout must not invent physical devices, network links,
   or default-gateway ownership.
 
-## Current milestone: Phase 1N-L
+## Current milestone: Phase 1N-M
 
-**Stages 1 and 2 merged; Stage 3 Unified addresses 2D mode validated on its feature branch, PR #49 ready for owner review.** Reuse
-existing ARP sender and ICMPv6 NS-source/NA-target observations to show
-**separate IPv4 and IPv6 address nodes** connected to shared,
-**capture-scope/interface-qualified hardware-address nodes**, with
-provenance-aware typed edges and an independent unified 2D view.
-Preserve conflicts and the existing ARP-only debugger. This milestone
-does **not** add DNS-SD graph nodes, gateway/topology inference, LLDP,
-active probing, or device identity fusion.
+**The Phase 1N-L address graph is merged and accepted.** Phase 1N-M
+extends it with independently advertised DNS-SD service instances and
+PTR → SRV → A/AAAA endpoint evidence chains. The Stage 1 pure
+projection and the implementation plan are merged. Stage 2 now adds
+an optional, separate `unified_service_graph` JSON payload to the
+existing local API for combined live sessions; M5 validation is pending.
+Stage 3 will introduce a third switchable **Services** map with columns
+**HARDWARE → IPv4/IPv6 → SERVICES** and provenance-aware selectable lines.
+ARP only and Unified addresses remain separate unchanged views.
+
+- [Phase 1N-M Stage 2 live service graph and testing](docs/implementation/2026-11-07-phase1n-m-stage2-live-service-graph.md)
+- [Phase 1N-M Stage 1 pure projector handoff](docs/implementation/2026-11-07-phase1n-m-stage1-dnssd-service-projection.md)
+- [Phase 1N-M implementation plan](docs/implementation/2026-11-07-phase1n-m-dnssd-service-evidence-graph-plan.md)
+
+### Previous milestone: Phase 1N-L
+
+Phase 1N-L established separate IPv4/IPv6 address nodes and
+capture-scope/interface-qualified hardware-address evidence, with
+selectable ARP/NDP typed edges. It did not infer physical devices,
+default gateway roles or active services.
 
 - [Stage 3 unified 2D visualization and manual acceptance](docs/implementation/2026-11-07-unified-address-graph-stage3.md)
 - [Stage 2 live metadata adapter and validation](docs/implementation/2026-11-07-unified-address-graph-stage2.md)
