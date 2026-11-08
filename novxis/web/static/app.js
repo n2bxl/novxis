@@ -1584,12 +1584,20 @@ function svgPoint(event) {
 }
 
 function maximumZoomScale() {
-  // The graph's viewBox height grows with retained rows. Safari scales
-  // that tall viewBox down to fit the canvas, so a fixed camera limit
-  // makes even the maximum zoom unreadably small in dense captures.
-  // Compensate for the viewBox height while retaining the original 3.5
-  // limit for shorter graphs. This affects presentation only.
-  return 3.5 * Math.max(1, stageHeight / 620);
+  // Default SVG preserveAspectRatio is xMidYMid meet. The graph's real
+  // on-screen scale therefore depends on BOTH viewBox dimensions and
+  // the available CSS viewport. A row-count multiplier is insufficient
+  // when Safari is resized, especially to a wide/short window.
+  const rect = svg.getBoundingClientRect();
+  const view = svg.viewBox.baseVal;
+  if (rect.width <= 0 || rect.height <= 0 ||
+      view.width <= 0 || view.height <= 0) return 3.5;
+  const cssPixelsPerUnit = Math.min(
+    rect.width / view.width, rect.height / view.height);
+  // Allow a node's 15-unit address text to reach roughly 75 CSS pixels
+  // at the upper limit, irrespective of window dimensions or graph rows.
+  // Keep the historical 3.5 floor for small graphs.
+  return Math.max(3.5, 5 / cssPixelsPerUnit);
 }
 
 function zoomAt(factor, point) {
