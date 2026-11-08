@@ -110,13 +110,13 @@ geometry from the merged Phase A assets is unchanged.
 
 | File | Role |
 | --- | --- |
-| `source/w3-tech-stripe.svg` | Transparent, bespoke gold NOVXIS lettering, followed by three gold forward-slanted stripes |
+| `source/w3-tech-stripe.svg` | Transparent, bespoke gold NOVXIS lettering, followed by two narrow gold forward slashes |
 | `source/novxis-lockup-horizontal.svg` | Self-contained full Concept A icon, separator, W3 wordmark and exact tagline |
 
 The W3 source uses **six separate original geometric letter paths**
-(`N`, `O`, `V`, `X`, `I`, `S`) and **three independent stripe paths**.
+(`N`, `O`, `V`, `X`, `I`, `S`) and **two independent forward-slash paths**.
 The wordmark itself uses **no font, image, glow, script or external dependency**.
-Its viewBox is `0 0 620 72` and its appearance follows the angular W3
+Its viewBox is `0 0 552 72` and its appearance follows the angular W3
 concept without claiming pixel-identical tracing of the concept board.
 
 The horizontal lockup has a `0 0 1200 250` viewBox, and embeds
@@ -152,11 +152,31 @@ remain an explicit production-readiness decision.
   Test in target browsers (including Safari) before final export, and
   consider outlining the confirmed font as a later production fallback.
 
-The headline lettering and stripes are unaffected by this refinement.
+The headline lettering and icon are unaffected by the tagline refinement.
+
+### W3 punctuation revision: two forward slashes
+
+After reviewing the first full lockup, the user chose to replace the three
+thick decorative stripes with **two narrower forward slashes**. This is a
+deliberate move toward terminal/path typography, not a racing-stripe motif.
+
+- Two gold `/` paths, not three.
+- Each slash is **15 SVG units wide horizontally**, matching the visual
+  thickness of the roughly 16-unit W3 letter strokes.
+- Separate, crisp forward-leaning parallelogram paths; no blur or stroke filter.
+- The slashes follow the `S` with measured spacing, like appended punctuation.
+- The standalone SVG viewBox tightens to `0 0 552 72` to avoid retaining
+  unused space from the former third stripe.
+- The icon, all six W3 letter paths, the separator and the larger green/cyan
+  tagline remain **unchanged**.
+
+The lockup duplicates the standalone W3 paths exactly. The revision is
+subject to the same responsive rendering/optical review as the rest of the
+identity assets.
 
 ### Display-size guidance
 
-The wordmark was rasterized at **614, 307, and 154 px**. The combined
+The original three-stripe wordmark was rasterized at **614, 307, and 154 px** before the double-slash revision. The combined
 lockup was rasterized at **1200, 600, and 300 px**; below approximately
 600 px the tagline becomes a secondary detail. Use the standalone wordmark
 or icon at smaller widths, rather than shrinking the full lockup until its
@@ -175,7 +195,7 @@ python -m pytest tests/branding/test_brand_svg_assets.py -q
 The focused tests validate SVG/XML parsing, expected letter and stripe
 paths, exact reuse of canonical icon and standalone wordmark paths inside
 the lockup, the approved tagline, flat palette, and absence of embedded
-scripts/images. **8 focused tests passed locally** during preparation.
+scripts/images. **8 focused tests passed locally** during the initial Phase B preparation; rerun the suite to validate the revised double-slash artwork.
 No full NOVXIS networking regression suite was run for these static assets.
 This branch does not modify application behavior or introduce rendering
 dependencies into the NOVXIS runtime.
