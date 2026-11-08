@@ -1249,7 +1249,8 @@ function renderServicesCanvas(snapshot, locations) {
   const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
   const parallels = new Map();
   for (const edge of snapshot.edges) {
-    if (edge.kind !== "dnssd_advertised_endpoint") continue;
+    // Keep separate source-record paths hit-testable even when they
+    // share the same two visual endpoints (including NS vs NA claims).
     const pair = edge.source + "|" + edge.target;
     if (!parallels.has(pair)) parallels.set(pair, []);
     parallels.get(pair).push(edge.id);
@@ -1286,13 +1287,11 @@ function renderServicesCanvas(snapshot, locations) {
     const x2 = to.x;
     let y1 = from.y + 32;
     let y2 = to.y + 32;
-    if (dnssd) {
-      const ids = parallels.get(edge.source + "|" + edge.target) || [edge.id];
-      const index = ids.indexOf(edge.id);
-      const offset = (index - (ids.length - 1) / 2) * 9;
-      y1 += offset;
-      y2 += offset;
-    }
+    const ids = parallels.get(edge.source + "|" + edge.target) || [edge.id];
+    const index = ids.indexOf(edge.id);
+    const offset = (index - (ids.length - 1) / 2) * 24;
+    y1 += offset;
+    y2 += offset;
     const middle = (x1 + x2) / 2;
     const path = makeSVG("path", {
       d: "M " + x1 + " " + y1 + " C " + middle + " " + y1 +
@@ -1311,7 +1310,8 @@ function renderServicesCanvas(snapshot, locations) {
         : unifiedEvidenceLabel(edge.kind)) + " evidence relationship",
     });
     const hit = makeSVG("path", {
-      d: path.getAttribute("d"), class: "map-edge-hit",
+      d: path.getAttribute("d"),
+      class: "map-edge-hit" + (ids.length > 1 ? " services-parallel-hit" : ""),
     });
     group.append(path, hit);
     group.addEventListener("keydown", (event) => {
@@ -1323,6 +1323,10 @@ function renderServicesCanvas(snapshot, locations) {
     viewport.append(group);
   }
 
+  if (!snapshot.nodes.some((node) => node.kind === "dnssd_service")) {
+    addSVGText(viewport, SERVICE_COLUMN_X.services, ROW_START + 25,
+      "No PTR-backed advertisements in this capture", "services-empty-label");
+  }
   for (const node of snapshot.nodes) {
     const position = locations.get(node.id);
     if (!position) continue;
