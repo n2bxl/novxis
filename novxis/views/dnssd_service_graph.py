@@ -84,6 +84,7 @@ class DNSSDServiceNode:
     service_type: str
     instance: str
     ptr: DNSSDPTRRecord
+    kind: Literal["dnssd_service"] = "dnssd_service"
 
 
 @dataclass(frozen=True, slots=True)
