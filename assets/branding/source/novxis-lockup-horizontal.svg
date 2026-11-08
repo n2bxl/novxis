@@ -33,11 +33,12 @@
     <path id="stripe-3" d="M578 0 H615 L590 72 H553 Z"/>
   </g>
   </g>
-  <!-- Align the tagline under the six-letter NOVXIS name (not the trailing ///).
-       Letterforms occupy source x=0..443; at scale 1.32 and x=293 they end at x=877.76.
-       letter spacing preserves monospace glyph proportions while matching the wordmark. -->
+  <!-- The 29-character cyan phrase at 32px naturally nearly fills 555 SVG units
+       in standard monospace (~0.6em/character). Use only minor spacing adjustment
+       to align with the N–S letter width, leaving the three stripes beyond it.
+       W3 name: x=293..877.76 after scale 1.32, tagline: x=293..878. -->
   <g id="brand-tagline" aria-label="&gt; OBSERVE / VISUALIZE / EXPLORE">
-    <text x="293" y="193" font-size="24" font-weight="500" font-family="IBM Plex Mono, DejaVu Sans Mono, monospace" fill="#88E6A1">&gt;</text>
-    <text x="323" y="193" textLength="555" lengthAdjust="spacing" font-size="24" font-weight="500" font-family="IBM Plex Mono, DejaVu Sans Mono, monospace" fill="#76D8DE">OBSERVE / VISUALIZE / EXPLORE</text>
+    <text x="293" y="200" font-size="32" font-weight="500" font-family="IBM Plex Mono, DejaVu Sans Mono, monospace" fill="#88E6A1">&gt;</text>
+    <text x="323" y="200" textLength="555" lengthAdjust="spacing" font-size="32" font-weight="500" font-family="IBM Plex Mono, DejaVu Sans Mono, monospace" fill="#76D8DE">OBSERVE / VISUALIZE / EXPLORE</text>
   </g>
 </svg>
