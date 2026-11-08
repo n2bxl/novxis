@@ -57,7 +57,7 @@ def test_ipv6_neighbor_claims_remain_separate_with_all_provenance():
         '"NA target TLLA claim"',
         '" · advertised Ethernet "',
         '" · captured "',
-        '" (not a target-MAC association)"',
+        '" (not a target-MAC association) · "',
         '"No NDP freshness TTL is inferred."',
     ):
         assert expected in view
