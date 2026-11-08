@@ -275,3 +275,18 @@ h2 { font-size: 18px; line-height: 1.35; margin-top: 10px; overflow-wrap: anywhe
 /* Parallel evidence paths must remain independently pointer-selectable. */
 .map-edge-hit.services-parallel-hit { stroke-width: 12; }
 .services-empty-label { fill: #a8bacb; font-size: 12px; }
+
+/* Stage 2: one preserved evidence field per readable line. The sidebar
+   scrolls within the viewport instead of making cards artificially short. */
+.evidence-metadata-line {
+  display: block;
+  margin: 3px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+.mdns-target-claim > .evidence-metadata-line:first-child,
+.mdns-target-address > .evidence-metadata-line:first-child {
+  color: var(--text);
+}
