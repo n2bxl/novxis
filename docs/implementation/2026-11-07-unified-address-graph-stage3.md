@@ -201,6 +201,28 @@ Only sanitized aggregate counts and synthetic test data should
 be committed in public docs. Do not publish captures, private
 service names, or actual IP/MAC addresses.
 
+## Follow-up Safari observation after MAC-first refinement
+
+The developer provided a second authorized private Safari recording on
+2026-11-07, after enabling the MAC-anchored layout refinement. The
+**Unified addresses** view visibly groups option-backed IPv6 and ARP IPv4
+address evidence around their shared interface-scoped hardware node.
+The owner confirmed that manually rearranging a hardware-address node
+also moves its correlated IP address cluster as a group, and reported
+that the revised arrangement is preferable to the prior IP-first sort.
+
+The recording also shows the independent IPv6 sidebar continuing to
+display missing-TLLA Neighbor Advertisements as unlinked observations,
+rather than inventing hardware-address evidence. This is a **qualitative
+Safari acceptance of the new layout and interaction**, not an assertion
+that every acceptance checklist case has been executed. The private
+recording, MAC/IP identifiers and individual service details are not
+committed.
+
+**Still pending:** post-refinement M5 focused and full Python regression
+output, and any remaining explicit Safari checks. Do not mark the PR
+ready for review until the full acceptance run is confirmed.
+
 ## Deferred
 
 - PTR/SRV/A/AAAA service-record graph branches (separate milestone).
