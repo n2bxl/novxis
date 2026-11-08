@@ -19,7 +19,14 @@ def group(root, identity: str):
 
 @pytest.mark.parametrize(
     "name",
-    ["x-junction.svg", "x-junction-compact.svg", "w3-tech-stripe.svg", "novxis-lockup-horizontal.svg"],
+    [
+        "x-junction.svg",
+        "x-junction-compact.svg",
+        "monochrome/x-junction-compact-white.svg",
+        "monochrome/x-junction-compact-black.svg",
+        "w3-tech-stripe.svg",
+        "novxis-lockup-horizontal.svg",
+    ],
 )
 def test_sources_parse_and_have_no_external_images_or_scripts(name):
     root = parse(name)
