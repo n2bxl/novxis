@@ -154,6 +154,12 @@ the local network. The server remains loopback-only.
   retractions remove them, bad/wrong-interface data is rejected.
 - Separate capture scopes remain distinct; NDP unlinked observations
   do not become hardware claims.
+- When the bounded NDP receiver sees a 129th distinct claim (128-claim
+  default), it evicts the oldest retained claim, increments its omission
+  counter and updates the address and service views. The test must
+  expect one old IPv6 node/edge removed and the newest retained claim
+  replacing it, not frozen node/edge lists. The PTR-only service
+  remains unlinked to all of these IPv6 hardware observations.
 - Existing localhost API returns JSON-serializable additive metadata,
   and the same NDJSON producer still drives the entire service view.
 
