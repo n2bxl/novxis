@@ -22,12 +22,14 @@ irregularities. The earlier thinner, smaller-plus SVG was superseded.
 | File | Intended use |
 | --- | --- |
 | `source/x-junction.svg` | Full-fidelity icon with cyan corner brackets |
-| `source/x-junction-compact.svg` | Same *gold/green core geometry*, without brackets, enlarged optically for 16–32 px |
+| `source/x-junction-compact.svg` | **Phase C1 Corner Frame X:** continuous gold X with cyan open-corner brackets; optimized for small sizes |
 
 Both files are transparent vector originals, with no external font,
-filter, pixel image, script, or background. The compact version uses the
-same central and gold paths with a tighter viewBox; it is a derived
-size variant, **not** a redesign of the approved primary mark.
+filter, pixel image, script, or background. **As of Phase C1, the compact
+mark intentionally differs from the full mark:** it preserves the four
+corner brackets but replaces the four separated gold arms and green plus
+with one continuous gold X. The full-size Canva-derived mark remains
+unchanged.
 
 The Canva PNG supplied for this approval is the visual reference for this
 vector update. The earlier selected concept exploration board remains
@@ -66,8 +68,8 @@ Review conventions:
 - Inspect rasterizations at their **native pixel sizes**.
 - Preserve the full SVG as the canonical artistic source. Do not edit
   its geometry solely to optimize the compact version.
-- Before platform packaging, still test monochrome, light background,
-  reduced visual effects, and platform icon silhouettes.
+- Before platform packaging, still test light background, reduced visual
+  effects, and platform icon silhouettes.
 
 Simple XML sanity check:
 
@@ -76,7 +78,7 @@ python - <<'PY'
 from xml.etree import ElementTree as ET
 for name, expected in (
     ("x-junction", "0 0 2000 2000"),
-    ("x-junction-compact", "300 300 1400 1400"),
+    ("x-junction-compact", "0 0 128 128"),
 ):
     path = f"assets/branding/source/{name}.svg"
     root = ET.parse(path).getroot()
@@ -200,11 +202,67 @@ No full NOVXIS networking regression suite was run for these static assets.
 This branch does not modify application behavior or introduce rendering
 dependencies into the NOVXIS runtime.
 
+## Phase C1: Corner Frame X compact icon and monochrome foundations
+
+**Design selected:** *Corner Frame X* (concept C), approved on 2026-11-08.
+It is a small-size identity mark, **not** a generic close, cancel, or
+checkbox icon. The earlier compact mark with separated gold arms and a
+green center plus has been replaced; the approved full-size mark, wordmark,
+and horizontal lockup are unchanged.
+
+| Asset | Purpose |
+| --- | --- |
+| `source/x-junction-compact.svg` | Canonical full-color compact: connected gold X and cyan open-corner frame |
+| `source/monochrome/x-junction-compact-white.svg` | Same exact paths, all-white, transparent background for dark surfaces |
+| `source/monochrome/x-junction-compact-black.svg` | Same exact paths, all-black, transparent background for light surfaces |
+
+**Geometry contract:** each file uses `viewBox="0 0 128 128"`,
+contains **four separate cyan (or monochrome) L-shaped corner brackets**
+and **one connected X path**. There is no center `+`, no enclosing
+square/rectangle, and no glow. The open corners help distinguish NOVXIS
+from a boxed cancellation/checkmark UI symbol. Monochrome variants do not
+change any path geometry, only the fill color (`#FFFFFF` or `#000000`).
+
+**Design usage:** use the full original `x-junction.svg` at larger sizes;
+use the compact Corner Frame X in small toolbars, lists, and favicons.
+Do not substitute it for actual close/delete/dismiss buttons within the
+application, as that would confuse branding with an action.
+
+### C1 validation
+
+- Full-color and both monochrome variants were rasterized at **16, 32, 64,
+  and 128 px** for visual review, on appropriate contrasting surfaces.
+- The dedicated tests assert: exactly four independent corner brackets and
+  one connected X, no central green plus or boxed rectangle, identical
+  geometry across single-color variants, correct colors, and no live fonts.
+- Optional CairoSVG + Pillow tests check nonblank transparent output at
+  **16 / 32 / 64 px**; the optional packages are not runtime dependencies.
+- `tests/branding/test_brand_svg_assets.py` also includes the two new mono
+  files in general XML safety checks.
+
+Run the focused test suite in a development environment:
+
+```bash
+python -m pytest tests/branding/test_compact_icon.py tests/branding/test_brand_svg_assets.py -q
+```
+
+The isolated C1 tests were exercised locally with equivalent SVG path
+fixtures, including optional rasterization, with **15 passing test cases**.
+That validation is not a claim that the full NOVXIS repository test suite
+was executed or that Safari/final OS icon integration was verified. Before
+merge, review the committed SVGs and test in Safari if desired.
+
+### Future Phase C2
+
+Automated multi-size PNG exports, monochrome variants of the **full-size**
+lockup, terminal text-mode mark, final font portability, and
+platform-specific `.icns`/`.ico` packaging remain future work.
+
 ## Next assets
 
 1. Review the W3 vector lettering and combined layout against the
    approved concept before calling the specific SVG geometry final.
-2. Develop monochrome/high-contrast variants and platform-specific exports.
+2. Develop monochrome versions of the full icon/lockup, plus platform-specific exports.
 3. Decide whether to outline the tagline in a verified IBM Plex Mono
    style for fully portable rendering.
 4. Add terminal-compatible `[>+<] NOVXIS` representations and an optional
