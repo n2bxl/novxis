@@ -303,6 +303,40 @@ def test_services_sidebar_and_old_ndp_inspector_remain_separate():
     assert 'Cross-response joins require fresh matching DNS owner names' in js
 
 
+def test_all_retained_services_and_valid_evidence_edges_render_without_display_cap():
+    _, js, _ = assets()
+    renderer = section(js, "function renderServicesCanvas(", "function renderGraph(")
+    assert "for (const edge of snapshot.edges) {" in renderer
+    assert "for (const node of snapshot.nodes) {" in renderer
+    assert 'const position = locations.get(node.id);' in renderer
+    assert 'viewport.append(group);' in renderer
+    assert 'const service = node.kind === "dnssd_service";' in renderer
+    assert 'edge.kind === "dnssd_advertised_endpoint"' in renderer
+    # DOM rendering has no arbitrary slice() or max-card cap.
+    assert 'snapshot.nodes.slice(' not in renderer
+    assert 'snapshot.edges.slice(' not in renderer
+    layout = section(js, "function layoutServiceGraph(", "function preserveManualOrder(")
+    assert 'services.forEach((service, index) => locations.set(service.id, {' in layout
+    assert 'stageHeight = Math.max(' in layout
+    assert 'lastServiceSlot + 1' in layout
+    assert 'svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);' in layout
+
+
+def test_service_map_explains_offscreen_rows_and_identifies_missing_evidence():
+    _, js, _ = assets()
+    assert 'Reset view fits all retained rows' in js
+    assert 'Fit all retained service, IP and hardware rows' in js
+    live = js[js.index("async function loadGraph()"):]
+    for name in (
+        'services.omitted_mdns_advertisements',
+        'services.omitted_ndp_claims',
+        'services.omitted_ndp_unlinked',
+        'services.arp_bindings_truncated',
+    ):
+        assert name in live
+    assert 'CAP REACHED (incomplete evidence)' in live
+
+
 def test_stage_three_adds_no_network_access_or_new_privilege():
     html, js, _ = assets()
     assert js.count('fetch("/api/graph"') == 1
