@@ -62,6 +62,6 @@ def test_centering_is_services_only_and_does_not_modify_evidence():
     assert 'const columns = { hardware, protocol, services };' in layout
     assert 'if (activeMapMode === "services") return layoutServiceGraph(active);' in script
     unified = script.split("function layoutUnifiedGraph(", 1)[1].split(
-        "const SERVICE_COLUMN_X", 1
+        "const SERVICE_CARD_WIDTH", 1
     )[0]
     assert 'const columns = { hardware, protocol, services };' not in unified
