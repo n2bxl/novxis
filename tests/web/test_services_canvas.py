@@ -135,7 +135,7 @@ def test_services_are_compact_and_sorted_by_first_supporting_ip():
         'let lastServiceBottom = ROW_START - SERVICE_CARD_GAP;',
         'const y = lastServiceBottom + SERVICE_CARD_GAP;',
         'lastServiceBottom = y + serviceCardHeight(service);',
-        'lastServiceBottom + 175',
+        'renderedBottom + 175',
     ):
         assert expected in view
     assert 'serviceSlots' not in view
@@ -326,7 +326,7 @@ def test_all_retained_services_and_valid_evidence_edges_render_without_display_c
     assert 'services.forEach((service) => {' in layout
     assert 'locations.set(service.id, { x: SERVICE_COLUMN_X.services, y });' in layout
     assert 'stageHeight = Math.max(' in layout
-    assert 'lastServiceBottom + 175' in layout
+    assert 'renderedBottom + 175' in layout
     assert 'svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);' in layout
 
 
