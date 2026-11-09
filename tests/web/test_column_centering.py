@@ -49,7 +49,7 @@ def test_manual_drag_and_svg_stage_use_post_centering_positions():
     assert center < drag < stage
     assert 'locations.get(service.id).y + serviceCardHeight(service) / 2' in layout
     assert 'renderedBottom + 175' in layout
-    assert 'svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);' in layout
+    assert 'svg.setAttribute("viewBox", "0 0 " + serviceColumns.viewWidth + " " + stageHeight);' in layout
 
 
 def test_centering_is_services_only_and_does_not_modify_evidence():
