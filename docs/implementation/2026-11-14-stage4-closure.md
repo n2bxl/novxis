@@ -61,9 +61,10 @@ evidence or the API contract.
 - Stage 4A: focused regression, full **1,011** tests, 7/7 Safari checks;
   separately observed tall-IP and tall-Services centering scenarios.
 - Stage 4B.1: complete native Cairo dependency verification for optional
-  brand-raster tests; full **1,032** then **1,036**-test branch baselines
-  (the latter also includes new spacing control contracts), and owner
-  Safari inspection of zoom, resize, spacing and evidence paths.
+  brand-raster tests; **1,032** passing tests before the four slider-control
+  contracts were added. The eight final responsive-layout contracts also
+  passed as part of the final 1,041-test regression suite. Owner Safari
+  review covered zoom, resize, spacing and evidence paths.
 - Stage 4B.2: full **1,041/1,041** tests before and after the PR #64
   squash-merge branch reconciliation; final **1,041/1,041 in 5.35s**
   on updated `main` after PR #65 merged. Safari recordings showed
