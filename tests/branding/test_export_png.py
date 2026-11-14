@@ -5,7 +5,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from PIL import Image
+
+pytest.importorskip("cairosvg", reason="optional branding exporter dependencies")
+Image = pytest.importorskip("PIL.Image", reason="optional branding exporter dependencies")
 
 TOOLS = Path(__file__).resolve().parents[2] / "tools" / "branding"
 sys.path.insert(0, str(TOOLS))
