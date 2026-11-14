@@ -15,6 +15,16 @@ paths. Do not infer congestion from the number of captured packets.
   margin; the IP column sits halfway between hardware and Services columns.
 - Services headers and empty-state text follow the same coordinates as nodes.
 - The Services SVG viewBox width follows this dynamic horizontal extent.
+- A Services-only **Column spacing** slider overlays the map (without reducing
+  its height). It adds 0–3000 horizontal SVG units in 100-unit increments,
+  defaulting to +600. Hardware remains anchored at x=24; IP moves halfway
+  across the expanded gap; Services moves to the right edge.
+- Moving the slider changes only Services-view X coordinates, the SVG
+  horizontal extent, and the resulting connector shapes. It does not modify
+  Y coordinates, card sizes, evidence records, camera state, or manual orders.
+- The original Reset view/fit formula remains untouched. For exceptionally
+  wide gaps on a short or narrow screen, the existing fit-to-all algorithm may
+  still scale the complete graph uniformly to keep all content visible.
 - A ResizeObserver redraws only the Services presentation when canvas width
   changes. It does not reset the camera or manual ordering.
 - Stage 4A longest-rendered-column vertical centering remains in place.
@@ -40,7 +50,8 @@ python -m pytest tests/web/test_responsive_service_columns.py \
 python -m pytest
 ```
 
-Expected full suite: **1015 tests** (1011 baseline + four new contracts).
+Expected full suite: **1036 tests** (1032 latest passed baseline + four new
+spacing-control contracts).
 
 ## Safari acceptance
 1. Compare narrow and wide Safari windows: wider windows spread the three
@@ -51,7 +62,15 @@ Expected full suite: **1015 tests** (1011 baseline + four new contracts).
 4. Confirm Reset view, zoom-to-read, pan, mousewheel zoom and sidebar scroll.
 5. Confirm service names, TTL expiry, individual evidence selections and
    keyboard movement are unchanged.
-6. Switch between ARP/Unified/Services. Only Services uses the new horizontal
-   geometry.
+6. Switch between ARP/Unified/Services. The spacing slider is visible
+   only in Services, and its value persists across map-mode switches.
+7. On the 34-service stress capture, drag Column spacing from +600 toward
+   +1600 or more. Confirm Hardware stays on the left, IP stays between the
+   columns, and Services moves farther right; no card height, row position,
+   ordering or service evidence changes.
+8. Compare Reset view before/after spacing changes. Confirm original
+   fit-to-all behavior is preserved. With extreme spacing, check whether
+   the width becomes the limiting fit dimension; do not interpret fit-to-all
+   shrinkage as a vertical-layout change.
 
 This stage does not claim density-aware routing or edge crossing reduction.
