@@ -12,6 +12,9 @@ const mapModeServices = document.getElementById("map-mode-services");
 const arpLegend = document.getElementById("arp-legend");
 const unifiedLegend = document.getElementById("unified-legend");
 const servicesLegend = document.getElementById("services-legend");
+const serviceSpacingControl = document.getElementById("service-spacing-control");
+const serviceSpacingSlider = document.getElementById("service-column-spacing");
+const serviceSpacingValue = document.getElementById("service-column-spacing-value");
 const inspectorTitle = document.getElementById("inspector-title");
 const inspector = document.getElementById("inspector-content");
 const hostPanel = document.getElementById("host-context");
@@ -95,6 +98,16 @@ let lastArpSummary = "";
 let lastUnifiedSummary = "";
 let lastServiceSummary = "";
 let activeMapMode = "arp";
+let serviceExtraGap = Number(serviceSpacingSlider.value);
+serviceSpacingSlider.addEventListener("input", () => {
+  const next = Number(serviceSpacingSlider.value);
+  if (!Number.isFinite(next) || next === serviceExtraGap) return;
+  serviceExtraGap = next;
+  serviceSpacingValue.textContent = "+" + next;
+  // Presentation-only horizontal redraw. Never change camera scale, row
+  // positions, evidence metadata, or manual-order state.
+  if (graph && activeMapMode === "services") renderGraph();
+});
 let selectedId = null;
 let selectedEdgeId = null;
 const mapSelections = {
@@ -138,6 +151,7 @@ function updateMapModeControls() {
   arpLegend.hidden = activeMapMode !== "arp";
   unifiedLegend.hidden = activeMapMode !== "unified";
   servicesLegend.hidden = activeMapMode !== "services";
+  serviceSpacingControl.hidden = activeMapMode !== "services";
   if (!moveNodesMode) canvasHint.textContent = activeMapMode === "services"
     ? "Scroll to zoom · Drag to pan · Select an evidence connector · Reset view frames the visible evidence"
     : "Scroll to zoom · Drag to pan · Select an address";
@@ -1138,8 +1152,11 @@ const SERVICE_MIN_VIEW_WIDTH = 1080;
 // Let wide browser windows add space BETWEEN columns, without stretching
 // text or cards. At narrow widths preserve the established 1080-unit layout.
 function serviceColumnGeometry() {
-  const viewWidth = Math.max(
+  const viewportWidth = Math.max(
     SERVICE_MIN_VIEW_WIDTH, Math.round(canvas.clientWidth || SERVICE_MIN_VIEW_WIDTH));
+  // Extra room affects only X coordinates and SVG width, not stageHeight,
+  // row locations, card dimensions, or any network observations.
+  const viewWidth = viewportWidth + serviceExtraGap;
   const hardware = SERVICE_COLUMN_LEFT;
   const services = viewWidth - SERVICE_COLUMN_LEFT - SERVICE_CARD_WIDTH;
   const protocol = Math.round((hardware + services) / 2);
