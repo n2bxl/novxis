@@ -8,3 +8,6 @@ build/
 dist/
 *.egg-info/
 .DS_Store
+
+# Generated branding PNGs and manifest (rebuild from versioned SVG sources)
+assets/branding/exports/
