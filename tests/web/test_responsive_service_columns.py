@@ -58,3 +58,64 @@ def test_address_modes_keep_existing_fixed_geometry():
     assert "serviceColumnGeometry()" not in unified
     assert "function serviceNameLines(instance)" in js
     assert "serviceCardHeight(node)" in js
+
+
+def test_extra_column_spacing_has_visible_accessible_services_only_control():
+    html = resources.files("novxis.web.static").joinpath("index.html").read_text(
+        encoding="utf-8"
+    )
+    css = resources.files("novxis.web.static").joinpath("styles.css").read_text(
+        encoding="utf-8"
+    )
+    assert 'id="service-spacing-control" class="service-spacing-control" hidden' in html
+    assert '<label for="service-column-spacing">Column spacing</label>' in html
+    assert 'id="service-column-spacing" type="range" min="0" max="3000"' in html
+    assert 'step="100" value="600"' in html
+    assert 'id="service-column-spacing-value"' in html
+    assert '.service-spacing-control[hidden] { display: none; }' in css
+    assert 'position: absolute; z-index: 1' in css
+
+
+def test_user_spacing_changes_horizontal_graph_extent_not_node_dimensions():
+    js = script()
+    geometry = js.split("function serviceColumnGeometry() {", 1)[1].split(
+        "const SERVICE_NAME_CHARS_PER_LINE", 1
+    )[0]
+    assert "const viewWidth = viewportWidth + serviceExtraGap;" in geometry
+    assert "const hardware = SERVICE_COLUMN_LEFT;" in geometry
+    assert "const services = viewWidth - SERVICE_COLUMN_LEFT - SERVICE_CARD_WIDTH;" in geometry
+    assert "const protocol = Math.round((hardware + services) / 2);" in geometry
+    assert "serviceExtraGap" not in js.split("function serviceCardHeight(node) {", 1)[1].split(
+        "let serviceSlotCenters", 1
+    )[0]
+
+
+def test_spacing_slider_redraws_services_without_touching_camera_or_order():
+    js = script()
+    handler = js.split('serviceSpacingSlider.addEventListener("input", () => {', 1)[1].split(
+        "let selectedId = null;", 1
+    )[0]
+    assert "serviceExtraGap = next;" in handler
+    assert 'serviceSpacingValue.textContent = "+" + next;' in handler
+    assert 'if (graph && activeMapMode === "services") renderGraph();' in handler
+    for prohibited in ("resetView(", "camera.scale", "camera =", "stageHeight", "manualOrders"):
+        assert prohibited not in handler
+    assert 'serviceSpacingControl.hidden = activeMapMode !== "services";' in js
+
+
+def test_spacing_does_not_modify_vertical_centering_or_reset_view_algorithm():
+    js = script()
+    layout = js.split("function layoutServiceGraph(", 1)[1].split(
+        "function preserveManualOrder(", 1
+    )[0]
+    fit = js.split("function resetView() {", 1)[1].split(
+        'document.getElementById("zoom-in")', 1
+    )[0]
+    assert "const columns = { hardware, protocol, services };" in layout
+    assert "const center = (reference.top + reference.bottom) / 2;" in layout
+    assert "const renderedBottom = Math.max(0," in layout
+    assert "renderedBottom + 175" in layout
+    assert "serviceExtraGap" not in layout
+    assert "serviceExtraGap" not in fit
+    assert "const scale = Math.min(1, availableWidth / bounds.width," in fit
+    assert "availableHeight / bounds.height);" in fit
