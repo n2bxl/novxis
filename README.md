@@ -46,6 +46,22 @@ python -m pip install -e ".[dev]"
 python -m pytest
 ```
 
+**Optional raster-brand test dependency (macOS):** The compact-icon
+raster checks use CairoSVG (Python package) and the native Cairo graphics
+library (installed separately). These are test-only tools, not a runtime
+requirement for live capture or the browser:
+
+```bash
+python -m pip install CairoSVG
+brew install cairo
+# If macOS still cannot locate libcairo when importing cairosvg:
+export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix cairo)/lib${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
+python -m pytest tests/branding/test_compact_icon.py -q
+```
+
+The library-path export applies to the current shell session. Without
+the optional renderer, the nine raster checks may be skipped.
+
 **Offline, sanitized ARP preview** (no network capture):
 
 ```bash
