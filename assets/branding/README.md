@@ -264,40 +264,40 @@ platform-specific `.icns`/`.ico` packaging remain future work.
 developer-side asset tooling only. It does **not** create a macOS app bundle,
 Windows icon container, distributable package, or installation artifact.
 
-The export script is \`tools/branding/export_png.py\`. Its only optional
-developer dependencies are pinned in \`tools/branding/requirements.txt\`.
+The export script is `tools/branding/export_png.py`. Its only optional
+developer dependencies are pinned in `tools/branding/requirements.txt`.
 Neither dependency is added to NOVXIS application runtime requirements.
 
 | Source | Output prefix | Sizes |
 | --- | --- | --- |
-| \`source/x-junction.svg\` | \`full-color-\` | 64, 128, 256, 512 |
-| \`source/x-junction-compact.svg\` | \`compact-color-\` | 16, 32, 64, 128, 256, 512 |
-| \`source/monochrome/x-junction-compact-white.svg\` | \`compact-white-\` | 16, 32, 64, 128, 256, 512 |
-| \`source/monochrome/x-junction-compact-black.svg\` | \`compact-black-\` | 16, 32, 64, 128, 256, 512 |
+| `source/x-junction.svg` | `full-color-` | 64, 128, 256, 512 |
+| `source/x-junction-compact.svg` | `compact-color-` | 16, 32, 64, 128, 256, 512 |
+| `source/monochrome/x-junction-compact-white.svg` | `compact-white-` | 16, 32, 64, 128, 256, 512 |
+| `source/monochrome/x-junction-compact-black.svg` | `compact-black-` | 16, 32, 64, 128, 256, 512 |
 
-**Total: 22 transparent PNGs and one \`manifest.json\`.** Output goes to
-\`assets/branding/exports/png/\`, which is deliberately Git-ignored. Only
+**Total: 22 transparent PNGs and one `manifest.json`.** Output goes to
+`assets/branding/exports/png/`, which is deliberately Git-ignored. Only
 the canonical SVGs and the export tooling are version-controlled.
 
 ### Run it on the M5
 
-From the \`novxis\` repository root, after updating your branch and activating
+From the `novxis` repository root, after updating your branch and activating
 your existing project virtual environment:
 
-\`\`\`bash
+```bash
 python -m pip install -r tools/branding/requirements.txt
 python tools/branding/export_png.py
 python tools/branding/export_png.py --check
 python -m pytest tests/branding/test_export_png.py -q
-\`\`\`
+```
 
 If CairoSVG cannot load the Cairo shared library on macOS, install the
-system Cairo runtime separately (for example \`brew install cairo\`) and retry.
+system Cairo runtime separately (for example `brew install cairo`) and retry.
 This optional tooling is **not** required to run NOVXIS network capture or
 the 2D browser preview.
 
 For a scratch output directory, use
-\`python tools/branding/export_png.py --output-dir /tmp/novxis-icon-exports\`.
+`python tools/branding/export_png.py --output-dir /tmp/novxis-icon-exports`.
 
 ### Reproducibility and validation
 
@@ -308,7 +308,7 @@ For a scratch output directory, use
   fully opaque fill colors.
 - The manifest records source SHA-256, PNG SHA-256, dimensions and CairoSVG
   version in stable, sorted JSON; it does **not** include timestamps.
-- \`--check\` rerenders the assets in memory and byte-compares each exported
+- `--check` rerenders the assets in memory and byte-compares each exported
   PNG and the manifest, detecting missing, modified and unexpected PNGs.
   It makes **no changes** in check mode.
 - The exporter does not delete unknown files when writing. It overwrites its
@@ -316,7 +316,7 @@ For a scratch output directory, use
 
 This yields repeatable output in the **same pinned toolchain/environment**.
 We do **not** guarantee identical PNG bytes across different Cairo backends,
-operating systems or rasterizer versions. Run exports and \`--check\` in the
+operating systems or rasterizer versions. Run exports and `--check` in the
 same controlled environment for byte-level verification.
 
 ### Intentional exclusions
@@ -324,7 +324,7 @@ same controlled environment for byte-level verification.
 The W3 wordmark and horizontal lockup remain SVG masters for now. The lockup
 contains editable tagline text with IBM Plex Mono and fallback behavior, so
 rasterizing it across systems could change its appearance. Defer portable
-outlined typography to another design review. Likewise, \`.icns\`, \`.ico\`,
+outlined typography to another design review. Likewise, `.icns`, `.ico`,
 app bundling, code-signing, packaging and redistribution/licensing review are
 **not** part of this phase.
 
