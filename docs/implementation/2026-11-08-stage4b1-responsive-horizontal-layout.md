@@ -30,13 +30,17 @@ paths. Do not infer congestion from the number of captured packets.
 - Stage 4A longest-rendered-column vertical centering remains in place.
 - Other views (ARP only and Unified) retain their original geometry.
 
-## Future density-aware extension: Stage 4B.2
-Density should measure **visible evidence-edge crowding near a column gap**
-instead of packet count or raw number of edges. Candidate signals include
-distinct endpoint fan-in/out ports, path intersections and segment proximity.
-Apply additional *bounded* horizontal spacing only after evidence-based
-metrics and a Safari baseline exist. Avoid visual changes driven by network
-packets with no new graph relationship.
+## Follow-up after merge (2026-11-14)
+
+Stage 4B.1 was squash-merged as [PR #64](https://github.com/n2bxl/novxis/pull/64).
+Stage 4B.2 subsequently shipped as
+[PR #65](https://github.com/n2bxl/novxis/pull/65), ordering shared
+connector ports by their opposite endpoint's vertical position. That
+**local crossing reduction** is not density-based automatic spacing.
+
+Global intersection detection, quantitative congestion metrics, automatic
+width adjustment, and layout hysteresis remain deferred. They should be
+measured against a fixed evidence fixture, not packet count or arrival rate.
 
 ## Validation
 Run:
@@ -74,3 +78,11 @@ spacing-control contracts).
    shrinkage as a vertical-layout change.
 
 This stage does not claim density-aware routing or edge crossing reduction.
+
+## Final acceptance
+
+The combined Stage 4B implementation passed **1,041/1,041** tests on
+post-merge `main` (2026-11-14, 5.35s), including the eight final
+responsive-spacing source contracts. Original expected counts and Safari
+checklist above are preserved as implementation-time context. See
+[Stage 4 closeout](2026-11-14-stage4-closure.md).
