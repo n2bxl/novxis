@@ -112,9 +112,9 @@ def test_hardware_ip_service_columns_have_separate_graph_node_types():
         'const span = Math.max(count, 1);',
         'addressSlots.push(row + index);',
         'for (const ip of automatic.ungrouped) addressSlots.push(row++);',
-        'SERVICE_COLUMN_X.hardware',
-        'SERVICE_COLUMN_X.protocol',
-        'SERVICE_COLUMN_X.services',
+        'serviceColumns.hardware',
+        'serviceColumns.protocol',
+        'serviceColumns.services',
     ):
         assert required in view
     assert 'HARDWARE ADDRESSES' in js
@@ -324,10 +324,10 @@ def test_all_retained_services_and_valid_evidence_edges_render_without_display_c
     assert 'snapshot.edges.slice(' not in renderer
     layout = section(js, "function layoutServiceGraph(", "function preserveManualOrder(")
     assert 'services.forEach((service) => {' in layout
-    assert 'locations.set(service.id, { x: SERVICE_COLUMN_X.services, y });' in layout
+    assert 'locations.set(service.id, { x: serviceColumns.services, y });' in layout
     assert 'stageHeight = Math.max(' in layout
     assert 'renderedBottom + 175' in layout
-    assert 'svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);' in layout
+    assert 'svg.setAttribute("viewBox", "0 0 " + serviceColumns.viewWidth + " " + stageHeight);' in layout
 
 
 def test_service_map_explains_offscreen_rows_and_identifies_missing_evidence():

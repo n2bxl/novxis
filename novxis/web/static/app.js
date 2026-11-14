@@ -12,6 +12,9 @@ const mapModeServices = document.getElementById("map-mode-services");
 const arpLegend = document.getElementById("arp-legend");
 const unifiedLegend = document.getElementById("unified-legend");
 const servicesLegend = document.getElementById("services-legend");
+const serviceSpacingControl = document.getElementById("service-spacing-control");
+const serviceSpacingSlider = document.getElementById("service-column-spacing");
+const serviceSpacingValue = document.getElementById("service-column-spacing-value");
 const inspectorTitle = document.getElementById("inspector-title");
 const inspector = document.getElementById("inspector-content");
 const hostPanel = document.getElementById("host-context");
@@ -95,6 +98,16 @@ let lastArpSummary = "";
 let lastUnifiedSummary = "";
 let lastServiceSummary = "";
 let activeMapMode = "arp";
+let serviceExtraGap = Number(serviceSpacingSlider.value);
+serviceSpacingSlider.addEventListener("input", () => {
+  const next = Number(serviceSpacingSlider.value);
+  if (!Number.isFinite(next) || next === serviceExtraGap) return;
+  serviceExtraGap = next;
+  serviceSpacingValue.textContent = "+" + next;
+  // Presentation-only horizontal redraw. Never change camera scale, row
+  // positions, evidence metadata, or manual-order state.
+  if (graph && activeMapMode === "services") renderGraph();
+});
 let selectedId = null;
 let selectedEdgeId = null;
 const mapSelections = {
@@ -138,6 +151,7 @@ function updateMapModeControls() {
   arpLegend.hidden = activeMapMode !== "arp";
   unifiedLegend.hidden = activeMapMode !== "unified";
   servicesLegend.hidden = activeMapMode !== "services";
+  serviceSpacingControl.hidden = activeMapMode !== "services";
   if (!moveNodesMode) canvasHint.textContent = activeMapMode === "services"
     ? "Scroll to zoom · Drag to pan · Select an evidence connector · Reset view frames the visible evidence"
     : "Scroll to zoom · Drag to pan · Select an address";
@@ -1131,8 +1145,23 @@ function layoutUnifiedGraph(snapshot) {
 
 // Services mode builds on the same MAC-first address clustering, but keeps a
 // third independently arranged service column. Placement is not identity.
-const SERVICE_COLUMN_X = { hardware: 24, protocol: 395, services: 765 };
 const SERVICE_CARD_WIDTH = 282;
+const SERVICE_COLUMN_LEFT = 24;
+const SERVICE_MIN_VIEW_WIDTH = 1080;
+
+// Let wide browser windows add space BETWEEN columns, without stretching
+// text or cards. At narrow widths preserve the established 1080-unit layout.
+function serviceColumnGeometry() {
+  const viewportWidth = Math.max(
+    SERVICE_MIN_VIEW_WIDTH, Math.round(canvas.clientWidth || SERVICE_MIN_VIEW_WIDTH));
+  // Extra room affects only X coordinates and SVG width, not stageHeight,
+  // row locations, card dimensions, or any network observations.
+  const viewWidth = viewportWidth + serviceExtraGap;
+  const hardware = SERVICE_COLUMN_LEFT;
+  const services = viewWidth - SERVICE_COLUMN_LEFT - SERVICE_CARD_WIDTH;
+  const protocol = Math.round((hardware + services) / 2);
+  return { viewWidth, hardware, protocol, services };
+}
 
 const SERVICE_NAME_CHARS_PER_LINE = 32;
 const SERVICE_NAME_LINE_HEIGHT = 16;
@@ -1171,6 +1200,7 @@ function serviceCardHeight(node) {
 
 let serviceSlotCenters = [];
 function layoutServiceGraph(snapshot) {
+  const serviceColumns = serviceColumnGeometry();
   const automatic = computeUnifiedAutoOrders(snapshot);
   const hardware = preserveManualOrder("hardware", automatic.hardware);
   const defaultProtocol = hardware.flatMap((mac) =>
@@ -1212,7 +1242,7 @@ function layoutServiceGraph(snapshot) {
     const count = (automatic.groups.get(mac.id) || []).length;
     const span = Math.max(count, 1);
     locations.set(mac.id, {
-      x: SERVICE_COLUMN_X.hardware,
+      x: serviceColumns.hardware,
       y: ROW_START + (row + (span - 1) / 2) * ROW_STEP,
     });
     for (let index = 0; index < count; index++) {
@@ -1222,7 +1252,7 @@ function layoutServiceGraph(snapshot) {
   }
   for (const ip of automatic.ungrouped) addressSlots.push(row++);
   protocol.forEach((ip, index) => locations.set(ip.id, {
-    x: SERVICE_COLUMN_X.protocol,
+    x: serviceColumns.protocol,
     y: ROW_START + addressSlots[index] * ROW_STEP,
   }));
   // Single compact Services column: every card follows its predecessor,
@@ -1232,7 +1262,7 @@ function layoutServiceGraph(snapshot) {
   let lastServiceBottom = ROW_START - SERVICE_CARD_GAP;
   services.forEach((service) => {
     const y = lastServiceBottom + SERVICE_CARD_GAP;
-    locations.set(service.id, { x: SERVICE_COLUMN_X.services, y });
+    locations.set(service.id, { x: serviceColumns.services, y });
     lastServiceBottom = y + serviceCardHeight(service);
   });
   // Center each shorter rendered column against the tallest column's
@@ -1272,7 +1302,7 @@ function layoutServiceGraph(snapshot) {
     620, Math.max(row, protocol.length) * ROW_STEP + 175,
     renderedBottom + 175,
   );
-  svg.setAttribute("viewBox", "0 0 1080 " + stageHeight);
+  svg.setAttribute("viewBox", "0 0 " + serviceColumns.viewWidth + " " + stageHeight);
   return locations;
 }
 
@@ -1335,11 +1365,12 @@ function layoutGraph() {
 // Services SVG is deliberately a separate presentation path. ARP-only and
 // Unified addresses retain their existing geometry and edge inspectors.
 function renderServicesCanvas(snapshot, locations) {
-  addSVGText(viewport, SERVICE_COLUMN_X.hardware, 59,
+  const serviceColumns = serviceColumnGeometry();
+  addSVGText(viewport, serviceColumns.hardware, 59,
     "HARDWARE ADDRESSES", "column-title");
-  addSVGText(viewport, SERVICE_COLUMN_X.protocol, 59,
+  addSVGText(viewport, serviceColumns.protocol, 59,
     "IPV4 / IPV6 ADDRESSES", "column-title");
-  addSVGText(viewport, SERVICE_COLUMN_X.services, 59,
+  addSVGText(viewport, serviceColumns.services, 59,
     "ADVERTISED SERVICES", "column-title");
 
   const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
@@ -1450,7 +1481,7 @@ function renderServicesCanvas(snapshot, locations) {
   }
 
   if (!snapshot.nodes.some((node) => node.kind === "dnssd_service")) {
-    addSVGText(viewport, SERVICE_COLUMN_X.services, ROW_START + 25,
+    addSVGText(viewport, serviceColumns.services, ROW_START + 25,
       "No PTR-backed advertisements in this capture", "services-empty-label");
   }
   for (const node of snapshot.nodes) {
@@ -1967,3 +1998,15 @@ async function start() {
   }
 }
 start();
+
+// Recompute Services-only geometry when the actual canvas width changes.
+// Do not reset the camera or reorder network observations.
+if (typeof ResizeObserver !== "undefined") {
+  let previousCanvasWidth = Math.round(canvas.clientWidth);
+  new ResizeObserver(() => {
+    const nextWidth = Math.round(canvas.clientWidth);
+    if (nextWidth === previousCanvasWidth) return;
+    previousCanvasWidth = nextWidth;
+    if (graph && activeMapMode === "services") renderGraph();
+  }).observe(canvas);
+}

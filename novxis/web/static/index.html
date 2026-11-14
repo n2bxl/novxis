@@ -42,6 +42,13 @@
           </div>
         </div>
         <div class="canvas-wrap">
+          <div id="service-spacing-control" class="service-spacing-control" hidden>
+            <label for="service-column-spacing">Column spacing</label>
+            <input id="service-column-spacing" type="range" min="0" max="3000"
+              step="100" value="600" title="Extra horizontal spacing in graph units">
+            <output id="service-column-spacing-value"
+              for="service-column-spacing">+600</output>
+          </div>
           <svg id="map" viewBox="0 0 1080 620" role="img"
             aria-label="Interactive graph of observed ARP protocol and hardware addresses">
             <g id="viewport"></g>
