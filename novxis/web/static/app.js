@@ -1384,20 +1384,40 @@ function renderServicesCanvas(snapshot, locations) {
   }
   for (const ids of parallels.values()) ids.sort();
 
-  // Fan each visible connector into its own port on shared endpoints,
-  // even when the other endpoint differs. Otherwise 10 service paths
-  // may converge exactly on top of each other and appear to be one.
+  // Fan each visible connector into its own port on shared endpoints.
+  // Sort the ports by the vertical center of the OPPOSITE node, rather
+  // than by evidence ID. For multiple paths from the same IP to a service,
+  // the topmost originating IP enters the topmost available service port.
+  // This reduces avoidable crossings without moving or reordering nodes.
   const ports = new Map();
+  const oppositeY = new Map();
   for (const edge of snapshot.edges) {
     const dnssd = edge.kind === "dnssd_advertised_endpoint";
     const fromId = dnssd ? edge.source : edge.target;
     const toId = dnssd ? edge.target : edge.source;
-    for (const key of ["out:" + fromId, "in:" + toId]) {
+    const fromPosition = locations.get(fromId);
+    const toPosition = locations.get(toId);
+    const toNode = nodes.get(toId);
+    if (!fromPosition || !toPosition || !toNode) continue;
+    const targetCenter = toPosition.y +
+      (dnssd ? serviceCardHeight(toNode) / 2 : 32);
+    const sourceCenter = fromPosition.y + 32;
+    for (const [key, remoteY] of [
+      ["out:" + fromId, targetCenter],
+      ["in:" + toId, sourceCenter],
+    ]) {
       if (!ports.has(key)) ports.set(key, []);
       ports.get(key).push(edge.id);
+      oppositeY.set(key + "|" + edge.id, remoteY);
     }
   }
-  for (const ids of ports.values()) ids.sort();
+  for (const [key, ids] of ports) {
+    // Edge IDs break ties for parallel paths and equal-height cards.
+    // Source-record identities remain distinct and individually selectable.
+    ids.sort((a, b) =>
+      oppositeY.get(key + "|" + a) - oppositeY.get(key + "|" + b) ||
+      a.localeCompare(b));
+  }
   const portOffset = (key, edgeId) => {
     const ids = ports.get(key) || [edgeId];
     if (ids.length <= 1) return 0;
