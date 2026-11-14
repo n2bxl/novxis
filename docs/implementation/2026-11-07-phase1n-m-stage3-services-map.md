@@ -1,5 +1,12 @@
 # Phase 1N-M Stage 3: Three-column Services evidence map
 
+> **Historical implementation record.** Stage 3 merged as
+> [PR #61](https://github.com/n2bxl/novxis/pull/61); its final compact
+> Services presentation, full-name wrapping and independent evidence paths
+> are part of the [Stage 4 closeout](2026-11-14-stage4-closure.md).
+> The draft/testing status below describes intermediate November 7–8
+> checkpoints, not the current repository state.
+
 - **Date:** 2026-11-07
 - **Status:** Post-fix M5 full regression accepted (984 passed in 5.19 s); follow-up Safari recording validates service rearrangement and edge inspection; ready for owner review
 - **Prerequisites:** Phase 1N-M Stage 1 pure projector and Stage 2 local

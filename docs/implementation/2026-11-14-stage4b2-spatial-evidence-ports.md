@@ -31,10 +31,14 @@ minimum crossings. Opposite-order endpoints between different cards may
 still require real intersections. Automatic full-layout reordering and
 path bundling are intentionally out of scope.
 
-## Branch and dependency
-PR #64 (Stage 4B.1) has been accepted and squash-merged. This focused
-Stage 4B.2 branch is based directly on the merged `main`, containing only
-its own renderer, tests and documentation changes.
+## Final status and merge sequence
+
+[PR #64](https://github.com/n2bxl/novxis/pull/64) (Stage 4B.1) and
+[PR #65](https://github.com/n2bxl/novxis/pull/65) (Stage 4B.2)
+were squash-merged to `main`, in that order. PR #65 was rebased
+as a focused three-file change against the merged #64 baseline.
+This implementation is complete; the branch workflow described during
+the sprint is historical.
 
 ## Validation
 ```bash
@@ -45,10 +49,12 @@ python -m pytest tests/web/test_spatial_port_routing.py \
 python -m pytest
 ```
 
-Expected full suite at the current branch snapshot: **1041 collected**
-(1032 previously passed before four Stage 4B.1 spacing control tests,
-plus five new Stage 4B.2 port-routing tests). Local execution is
-required to confirm.
+**Verified:** 1,041/1,041 passed in 5.35 seconds on the
+developer's updated `main` (macOS Python 3.14.6, pytest 9.1.1,
+2026-11-14). Five spatial-port tests and eight responsive-layout
+tests are included. Local Safari recordings were reviewed for
+connector readability, drag behavior and evidence inspection;
+not every individual parallel hit target was exhaustively tested.
 
 ## Safari acceptance
 1. Compare the recorded AirPlay convergence case: incoming paths from
@@ -64,3 +70,7 @@ required to confirm.
    changed.
 6. Compare a fixed sanitized evidence graph (when available) to distinguish
    routing improvement from differences in live capture traffic.
+
+## Closeout link
+
+See [Stage 4 merged acceptance and 3D renderer boundary](2026-11-14-stage4-closure.md).

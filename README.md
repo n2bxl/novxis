@@ -18,10 +18,11 @@ exploration, and troubleshooting.
   classic DNS, mDNS/DNS-SD, IPv6 framing, and ICMPv6 Neighbor Discovery
   (NS/NA). Protocol coverage differs between standalone CLIs and the
   live browser view.
-- **Local 2D evidence debugger:** live ARP IPv4-to-MAC sender claims, a
-  separate IPv6 NDP evidence tab, DNS-SD service records with matching
-  IPv4-to-ARP and IPv6-to-NDP inspection shortcuts, and camera/layout
-  controls. The 2D debugger remains a permanent reference surface.
+- **Local 2D evidence debugger:** independent ARP-only, Unified address
+  and Services graph modes; selectable ARP/NDP/DNS-SD evidence paths,
+  separate context/sidebar tabs, compact Services cards, vertical centering,
+  configurable horizontal spacing and spatially ordered edge ports. The
+  2D debugger remains a permanent reference surface.
 - **Separate host context:** locally reported macOS interface/prefix and
   selected IPv4 default-route context. This is **OS-reported** data,
   not passive packet evidence.
@@ -30,9 +31,7 @@ exploration, and troubleshooting.
   reachability, or the configured settings of other endpoints.
   Encrypted DNS/application traffic is not decrypted.
 
-**Latest merged M5 acceptance (2026-11-07): 966 passing Python tests in 5.23s** after Phase 1N-M Stage 2 merged. Live localhost API validation also observed 5 PTR-backed service nodes and 5 independently typed DNS-SD advertised endpoint edges in one finite capture. Stage 3's new Services canvas remains on a feature branch pending its own tests and Safari acceptance.
-This is an observed test baseline, not a claim of an automated CI run
-for every subsequent documentation change.
+**Latest merged M5 acceptance (2026-11-14): 1,041 / 1,041 Python tests passed in 5.35 seconds** on up-to-date `main` after [PR #65](https://github.com/n2bxl/novxis/pull/65) merged. The local Safari acceptance covered Stage 4 layout, camera/navigation, selectable evidence paths, and spatial connector routing. This is a reported local regression run, not a claim about CI.
 
 ## Quick start
 
@@ -46,6 +45,22 @@ source .venv/bin/activate
 python -m pip install -e ".[dev]"
 python -m pytest
 ```
+
+**Optional raster-brand test dependency (macOS):** The compact-icon
+raster checks use CairoSVG (Python package) and the native Cairo graphics
+library (installed separately). These are test-only tools, not a runtime
+requirement for live capture or the browser:
+
+```bash
+python -m pip install CairoSVG
+brew install cairo
+# If macOS still cannot locate libcairo when importing cairosvg:
+export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix cairo)/lib${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
+python -m pytest tests/branding/test_compact_icon.py -q
+```
+
+The library-path export applies to the current shell session. Without
+the optional renderer, the nine raster checks may be skipped.
 
 **Offline, sanitized ARP preview** (no network capture):
 
@@ -98,27 +113,26 @@ capture / replay                   separately sourced local OS context
 - Visual layout must not invent physical devices, network links,
   or default-gateway ownership.
 
-## Current milestone: Phase 1N-M
+## Current checkpoint: Phase 1N-M and Stage 4 complete
 
-**Stages 1 and 2 are merged and accepted.** The Stage 1 pure DNS-SD
-projector retains bounded PTR → SRV → A/AAAA endpoint evidence;
-Stage 2 exposes the separate `unified_service_graph` through the existing
-loopback-only API. Stage 2's live API acceptance confirmed actual service
-nodes and advertised endpoint paths, not verified service reachability.
+**Stages 1–3 and 4A/4B are merged and locally accepted.** NOVXIS provides three independent 2D map modes: **ARP only**, **Unified addresses**, and **Services**. The Services map displays **HARDWARE → IPv4/IPv6 → ADVERTISED SERVICES** using capture-scope-qualified evidence. Original ARP/NDP and separately supported DNS-SD PTR → SRV → A/AAAA relationships remain individually inspectable. TTL-expired retained DNS-SD paths are dashed, not silently removed or presented as reachable services.
 
-**Stage 3 implements the third independent map mode** on a feature branch:
-`ARP only`, `Unified addresses`, and `Services`, with Services laid out
-**HARDWARE ADDRESSES → IPv4/IPv6 ADDRESSES → ADVERTISED SERVICES**.
-Select any ARP/NDP/DNS-SD relationship line to inspect its source evidence
-and, for DNS-SD, the complete separately captured PTR/SRV/A/AAAA
-record chain. Expired retained paths remain selectable but dashed.
-Camera, selection and manual layout are independent per map.
-**M5 tests and Safari live acceptance of Stage 3 are pending.**
+- **Stage 4A (PR #62):** Center shorter columns on the tallest column's *rendered* card bounds without changing node ordering.
+- **Stage 4B.1 (PR #64):** Fit horizontal column geometry to the canvas width and expose a Services-only **Column spacing** slider (+0 to +3000 SVG units; +600 default). Card sizes and vertical layout stay independent of this preference.
+- **Stage 4B.2 (PR #65):** Order connector attachment ports by the *opposite* card's vertical position, using stable edge IDs for equal-position ties. This reduces avoidable local crossings without repositioning any card, changing its manual order, or merging evidence claims. Global crossing minimization is **not** implemented.
 
-- [Phase 1N-M Stage 3 three-column map and Safari acceptance](docs/implementation/2026-11-07-phase1n-m-stage3-services-map.md)
-- [Phase 1N-M Stage 2 live service graph and testing](docs/implementation/2026-11-07-phase1n-m-stage2-live-service-graph.md)
-- [Phase 1N-M Stage 1 pure projector handoff](docs/implementation/2026-11-07-phase1n-m-stage1-dnssd-service-projection.md)
-- [Phase 1N-M implementation plan](docs/implementation/2026-11-07-phase1n-m-dnssd-service-evidence-graph-plan.md)
+**Status:** The post-merge M5 suite passed **1,041/1,041 in 5.35s** on 2026-11-14. A finite, authorized Wi-Fi stress capture yielded 34 advertised services, 69 endpoint paths, 74 graph nodes and 82 evidence edges; the UI explicitly marked its retention cap as **incomplete evidence**. These counts describe one observation window, not a device inventory or complete subnet.
+
+- [Stage 4 closeout, acceptance and renderer boundary](docs/implementation/2026-11-14-stage4-closure.md)
+- [Stage 4A vertical column centering](docs/implementation/2026-11-08-stage4a-column-centering.md)
+- [Stage 4B.1 viewport-responsive horizontal spacing](docs/implementation/2026-11-08-stage4b1-responsive-horizontal-layout.md)
+- [Stage 4B.2 spatial evidence connector ports](docs/implementation/2026-11-14-stage4b2-spatial-evidence-ports.md)
+- [Phase 1N-M Stage 3 three-column map](docs/implementation/2026-11-07-phase1n-m-stage3-services-map.md)
+- [Phase 1N-M Stage 2 live service graph](docs/implementation/2026-11-07-phase1n-m-stage2-live-service-graph.md)
+- [Phase 1N-M Stage 1 pure projector](docs/implementation/2026-11-07-phase1n-m-stage1-dnssd-service-projection.md)
+- [Historical Phase 1N-M plan](docs/implementation/2026-11-07-phase1n-m-dnssd-service-evidence-graph-plan.md)
+
+**Next:** Review renderer/layout/routing boundaries and deterministic evidence fixtures before planning new protocols or 3D work. No subsequent sprint is yet committed.
 
 ### Previous milestone: Phase 1N-L
 

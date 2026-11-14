@@ -1,5 +1,13 @@
 # Phase 1N-M: DNS-SD Service Evidence Graph implementation plan
 
+> **Historical design plan, superseded by merged implementation.**
+> Phase 1N-M Stages 1–3 and Stage 4A/4B were completed and accepted
+> by 2026-11-14. The latest measured post-merge `main` baseline is
+> **1,041/1,041 passing tests**. The final Services layout uses one
+> compact column ordered by first supporting IP, rather than this
+> proposal's early clustering/median concept. For observed behavior,
+> see [Stage 4 closeout](2026-11-14-stage4-closure.md).
+
 - **Date:** 2026-11-07
 - **Status:** Design approved for planning; no Phase 1N-M implementation started
 - **Baseline:** Phase 1N-L merged, 895 full-suite Python tests passing on M5 in 4.60 s

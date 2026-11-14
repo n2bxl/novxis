@@ -52,3 +52,11 @@ Expected full suite: 1,011 (1,007 baseline + four new checks).
 
 Horizontal widening and edge-path congestion work are explicitly deferred
 to a separate Stage 4 step to isolate presentation regressions.
+
+## Final status (2026-11-14)
+
+[PR #62](https://github.com/n2bxl/novxis/pull/62) was merged and
+accepted. The seven Safari acceptance checks passed, including the
+service-heavy case where Services becomes the tallest column. Stage 4
+subsequently closed with **1,041/1,041** post-merge tests on `main`.
+See [Stage 4 closeout](2026-11-14-stage4-closure.md).
